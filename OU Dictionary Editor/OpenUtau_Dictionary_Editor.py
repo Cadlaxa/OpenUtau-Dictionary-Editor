@@ -282,6 +282,9 @@ class Dictionary(tk.Tk):
             self.viewer_tree.bind("<ButtonPress-1>", self.start_drag)
             self.viewer_tree.bind("<B1-Motion>", self.on_drag)
             self.viewer_tree.bind("<ButtonRelease-1>", self.stop_drag)
+            # keyboard entries
+            self.viewer_tree.bind("<Delete>", lambda event: self.delete_manual_entry())
+            self.viewer_tree.bind("<Escape>", lambda event: self.close())
 
             # Buttons for saving or discarding changes
             button_frame = tk.Frame(self.entries_window)
@@ -290,50 +293,36 @@ class Dictionary(tk.Tk):
             ttk.Button(button_frame, text="Refresh", command=self.update_entries_window).pack(side=tk.RIGHT, padx=5, pady=10)
             ttk.Button(button_frame, text="Close", command=self.close).pack(side=tk.RIGHT, padx=5, pady=10)
         self.refresh_treeview()
-
+    
     def start_drag(self, event):
-        # Initialize the drag_window if it doesn't already exist
+        self.drag_start_x = event.x
+        self.drag_start_y = event.y
+        self.dragged_item = self.viewer_tree.identify_row(event.y)
+        self.drag_initiated = False
+
+    def on_drag(self, event):
+        # Update the position of the drag window during the drag
+        dx = abs(event.x - self.drag_start_x)
+        dy = abs(event.y - self.drag_start_y)
+        # Determine if the movement is enough to consider it a drag (you can adjust the threshold)
+        if (dx > 5 or dy > 5) and not self.drag_initiated:
+            self.drag_initiated = True
+            self.create_drag_window(event)
+        if self.drag_initiated:
+            # Update the position of the drag window during the drag
+            self.drag_window.geometry(f"+{event.x_root}+{event.y_root}")
+            self.autoscroll(event)
+
+    def create_drag_window(self, event):
         if not hasattr(self, 'drag_window') or not self.drag_window:
             self.drag_window = tk.Toplevel(self)
             self.drag_window.overrideredirect(True)
             self.drag_window.attributes("-alpha", 0.8)
-
-            # Styling the label
-            bg_color = '#FFD700'
-            text_color = '#000000'
-            font_style = ("Helvetica", 7, "bold")
-
-            # Create a label with improved styling
-            label = tk.Label(self.drag_window, text="Aesthetic drag", bg=bg_color, fg=text_color, font=font_style, padx=5, pady=3)
+            label = tk.Label(self.drag_window, text="Aesthetic drag", bg='#FFD700', fg='#000000', font=("Helvetica", 8, "bold"))
             label.pack(ipadx=3, ipady=3, expand=True)
-
-            # Configuring the window with rounded corners
             self.drag_window.config(borderwidth=1, relief="solid")
             self.drag_window.wm_attributes("-topmost", True)
-            self.drag_window.wm_attributes("-toolwindow", True) 
-
-            # Apply rounded corners to the window
-            self.drag_window.config(borderwidth=2, relief="solid")
-            try:
-                self.drag_window.wm_attributes("-alpha", 0.95)  # Windows OS
-                self.drag_window.config(bg=bg_color)
-                label.config(bg=bg_color)
-            except Exception:
-                # Fallback for other OS, as "-alpha" might not work on all systems
-                self.drag_window.config(bg=bg_color)
-                label.config(bg=bg_color)
-
-        self.dragged_item = self.viewer_tree.identify_row(event.y)
-        self.drag_window.geometry(f"+{event.x_root}+{event.y_root}")
-
-    def on_drag(self, event):
-        # Update the position of the drag window during the drag
-        if hasattr(self, 'drag_window') and self.drag_window:
-            self.drag_window.geometry(f"+{event.x_root}+{event.y_root}")
-            self.drag_window.update_idletasks()  # Force the GUI to update
-
-        # Check mouse position and scroll accordingly
-        self.autoscroll(event)
+            self.drag_window.wm_attributes("-toolwindow", True)
 
     def autoscroll(self, event):
         treeview_height = self.viewer_tree.winfo_height()
@@ -349,38 +338,33 @@ class Dictionary(tk.Tk):
             self.viewer_tree.yview_scroll(int(1 * speed), "units")
 
     def stop_drag(self, event):
-        if hasattr(self, 'dragged_item') and self.dragged_item:
+        if self.drag_initiated and hasattr(self, 'dragged_item') and self.dragged_item:
             # Identify the target item
             target_item = self.viewer_tree.identify_row(event.y)
-
             if target_item and self.dragged_item != target_item:
-                # Calculate positions in the Treeview
+                # Perform your drag logic here
                 dragged_index = self.viewer_tree.index(self.dragged_item)
                 target_index = self.viewer_tree.index(target_item)
-                # Move the dragged item in the Treeview to its new position
                 self.viewer_tree.move(self.dragged_item, '', target_index)
-                # Extract data from the dragged item
+                
                 dragged_data = self.viewer_tree.item(self.dragged_item, 'values')
                 dragged_grapheme = dragged_data[0]
-                # Adjust dictionary for dragged item
                 if dragged_grapheme in self.dictionary:
                     dragged_entry = self.dictionary.pop(dragged_grapheme)
                     new_keys = list(self.dictionary.keys())
                     new_keys.insert(target_index, dragged_grapheme)
                     new_dict = {}
                     for key in new_keys:
-                        if key == dragged_grapheme:
-                            new_dict[key] = dragged_entry
-                        else:
-                            new_dict[key] = self.dictionary[key]
+                        new_dict[key] = dragged_entry if key == dragged_grapheme else self.dictionary[key]
                     self.dictionary = new_dict
-                else:
-                    messagebox.showinfo("Error", f"Grapheme {dragged_grapheme} not found in dictionary.")
+
+            # Close and clean up the drag window if it was opened
             if hasattr(self, 'drag_window') and self.drag_window:
                 self.drag_window.destroy()
                 self.drag_window = None
-            self.viewer_tree.selection_set(self.dragged_item)
-            self.update_entries_window()
+            self.viewer_tree.selection_set(self.dragged_item)  # Restore selection
+            self.update_entries_window()  # Refresh view
+        self.drag_initiated = False  # Reset the drag initiated flag
                 
     def regex_replace_dialog(self):
         if self.replace_window is None or not self.replace_window.winfo_exists():
