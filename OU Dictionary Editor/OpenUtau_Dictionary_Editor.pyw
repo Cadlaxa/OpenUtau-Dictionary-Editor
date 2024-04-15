@@ -5,9 +5,9 @@ import os
 from ruamel.yaml import YAML, YAMLError
 import re
 import tkinter.font as tkFont
+import configparser
 
-# Directory for the YAML Templates
-Templates = "OU Dictionary Editor\Templates"
+
 
 def escape_special_characters(text):
     # Convert non-string text to string
@@ -21,7 +21,7 @@ def escape_special_characters(text):
 def escape_grapheme(grapheme):
         # Check if the first character is a special character that might require quoting
         if grapheme[0] in r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?]+":
-            return f'"{grapheme}"'  # Return the grapheme enclosed in double quotes
+            return f'"{grapheme}"'
         return grapheme
  
 class Dictionary(tk.Tk):
@@ -36,6 +36,8 @@ class Dictionary(tk.Tk):
         self.title(self.base_title)
         self.current_filename = None
         self.file_modified = False
+        # Template folder directory
+        self.Templates = self.read_template_directory()
 
         # Dictionary to hold the data
         self.dictionary = {}
@@ -50,6 +52,37 @@ class Dictionary(tk.Tk):
         self.lowercase_phonemes_var.set(False)  # Default is off
         self.current_order = [] # To store the manual order of keys
         self.create_widgets()
+    
+    # Directory for the YAML Templates via templae.ini
+    def read_template_directory(self, config_file="templates.ini"):
+        config = configparser.ConfigParser()
+        # Check if the config file exists
+        if os.path.exists(config_file):
+            config.read(config_file)
+            try:
+                return config.get('Paths', 'template_location')
+            except (configparser.NoSectionError, configparser.NoOptionError):
+                pass
+        # Prompt user to select a directory if the path isn't set or file doesn't exist
+        return self.prompt_for_directory(initial_dir=".", save_config=True, config_file=config_file)
+
+    def prompt_for_directory(self, initial_dir, save_config, config_file):
+        directory = filedialog.askdirectory(initialdir=initial_dir, title="Select Templates Directory")
+        if not directory:
+            messagebox.showinfo("Templates Directory", "No directory selected, exiting application.")
+            self.quit()  # or self.destroy()
+            return None
+        
+        if save_config:
+            self.save_directory_to_config(directory, config_file)
+        
+        return directory
+
+    def save_directory_to_config(self, directory, config_file):
+        config = configparser.ConfigParser()
+        config['Paths'] = {'template_location': directory}
+        with open(config_file, 'w') as configfile:
+            config.write(configfile)
 
     def update_title(self):
         if self.current_filename:
@@ -535,7 +568,7 @@ class Dictionary(tk.Tk):
                 return  # Return if the user cancels the file selection
         else:
             # Define the base directory for templates and construct the file path
-            data_folder = Templates
+            data_folder = self.Templates
             template_path = os.path.join(data_folder, selected_template)
         
         # Read existing data from the template as text, ignoring the entries section
@@ -593,7 +626,7 @@ class Dictionary(tk.Tk):
                 return  # Return if the user cancels the file selection
         else:
             # Define the base directory for templates and construct the file path
-            data_folder = Templates
+            data_folder = self.Templates
             template_path = os.path.join(data_folder, selected_template)
         
         # Read existing data from the template as text, ignoring the entries section
@@ -641,7 +674,7 @@ class Dictionary(tk.Tk):
 
     def load_template(self, selection):
         # Build the full path to the template file
-        file_path = os.path.join(Templates, selection)
+        file_path = os.path.join(self.Templates, selection)
         yaml = YAML(typ='safe')
         try:
             with open(file_path, 'r') as file:
@@ -710,7 +743,7 @@ class Dictionary(tk.Tk):
         template_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
         
         # Path to the Data folder
-        data_folder_path = Templates
+        data_folder_path = self.Templates
         self.update_template_combobox(template_combobox, data_folder_path)
         
         ttk.Checkbutton(options_frame, text="Remove Number Accents", variable=self.remove_numbered_accents_var).grid(row=1, column=0, padx=10, pady=5, sticky="ew")
