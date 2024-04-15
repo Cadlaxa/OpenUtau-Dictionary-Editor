@@ -6,6 +6,9 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
   pip install tk sv-ttk ruamel.yaml
   ```
 ---
+## 📍 Download the latest version here:
+[![Download Latest Release](https://img.shields.io/github/v/release/Cadlaxa/OpenUtau-Dictionary-Editor?style=for-the-badge&label=Download)](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases)
+---
 # Features
 ## Open/Append YAML Dictionaries
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/68d34381-0e09-4d10-8440-6806b784b9d8)
