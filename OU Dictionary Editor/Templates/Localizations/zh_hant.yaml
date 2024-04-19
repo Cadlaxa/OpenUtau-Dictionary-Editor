@@ -27,7 +27,7 @@ rep_button: "替代"
 close: "關閉"
 refresh: "刷新"
 clear_all: "清除所有項目"
-drag: "可以進行出於美觀上的拖曳"
+drag: "可以透過拖曳來提高辭典的美觀程度"
 
 # Themes
 theme: "主題"
