@@ -18,7 +18,7 @@ add_entry: "新增條目"
 convert_cmudict: "轉換CMUDict至YAML"
 append_yaml: "追加YAML檔"
 open_yaml: "開啟YAML檔案"
-save_ou: "儲存OU辭典"
+save_ou: "儲存OU字典"
 save_ds: "儲存DS字典"
 
 # Entry Viewer
