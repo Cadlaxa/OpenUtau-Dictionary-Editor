@@ -1,0 +1,47 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+# Entry Editor (tab 1)
+# Entry Options
+entry_option: "Entry Opsyons:"
+select_template: "Piliin ang Template:"
+remove_accents: "Tanggalin ang Number Accents"
+lowercase_phonemes: "Gawing Lowercase ang mga Phonemes"
+
+# Manual Entry
+man_entry: "Manual na Entry"
+delete_entry: "Burahin ang Entry"
+add_entry: "Maglagay ng Entry"
+
+# Main Buttons UI
+convert_cmudict: "Isalin ang CMUDict sa YAML"
+append_yaml: "Dugtungan ang YAML File"
+open_yaml: "Buksan ang YAML File"
+save_ou: "I-save sa OU Dictionary"
+save_ds: "I-save sa DS Dictionary"
+
+# Entry Viewer
+search: "Hanapin:"
+rep_button: "Palitan"
+close: "Isara"
+refresh: "Refresh"
+clear_all: "Tanggalin Lahat ng Entries"
+drag: "Aesthetic drag"
+
+# Themes
+theme: "Mga Tema"
+def_theme: "Pilin ang Tema:"
+
+# Regex Dialog
+reg_pattern: "Regex Pattern:"
+replacement: "Pagpapalitan:"
+apply: "Ilapat"
+
+# Settings (tab 2)
+select_local: "Piliin ang Lokalisasyon:"
+local_op: "Opsyons para sa Lokalisasyon:"
+
+# Tab names
+tab1: "Entry Editor"
+tab2: "Settings"
