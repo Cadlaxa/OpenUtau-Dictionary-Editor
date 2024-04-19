@@ -7,7 +7,7 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
   ```
 ---
 ## 📍 Download the latest version here:
-[![Download Latest Release](https://img.shields.io/github/v/release/Cadlaxa/OpenUtau-Dictionary-Editor?style=for-the-badge&label=Download)](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases)
+[![Download Latest Release](https://img.shields.io/github/v/release/Cadlaxa/OpenUtau-Dictionary-Editor?style=for-the-badge&label=Download&kill_cache=1)](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases)
 ---
 # Features
 ## Open/Append YAML Dictionaries
