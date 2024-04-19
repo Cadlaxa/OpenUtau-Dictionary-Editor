@@ -1,0 +1,47 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+# Entry Editor (tab 1)
+# Entry Options
+entry_option: "Entry Options"
+select_template: "Select Template:"
+remove_accents: "Remove Number Accents"
+lowercase_phonemes: "Make Phonemes Lowercase"
+
+# Manual Entry
+man_entry: "Manual Entry"
+delete_entry: "Delete Entry"
+add_entry: "Add Entry"
+
+# Main Buttons UI
+convert_cmudict: "Convert CMUDict to YAML"
+append_yaml: "Append YAML File"
+open_yaml: "Open YAML File"
+save_ou: "Save OU Dictionary"
+save_ds: "Save DS Dictionary"
+
+# Entry Viewer
+search: "Search:"
+rep_button: "Replace"
+close: "Close"
+refresh: "Refresh"
+clear_all: "Clear all entries"
+drag: "Aesthetic drag"
+
+# Themes
+theme: "Themes"
+def_theme: "Select Theme:"
+
+# Regex Dialog
+reg_pattern: "Regex Pattern:"
+replacement: "Replacement:"
+apply: "Apply"
+
+# Settings (tab 2)
+select_local: "Select Localization:"
+local_op: "Localization Options"
+
+# Tab names
+tab1: "Entry Editor"
+tab2: "Settings"
