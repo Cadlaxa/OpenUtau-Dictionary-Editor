@@ -4,44 +4,44 @@
 
 # Entry Editor (tab 1)
 # Entry Options
-entry_option: "Entry Options"
-select_template: "Select Template:"
-remove_accents: "Remove Number Accents"
-lowercase_phonemes: "Make Phonemes Lowercase"
+entry_option: "條目選項"
+select_template: "選擇範本:"
+remove_accents: "刪除數字重音符號標識"
+lowercase_phonemes: "將音素改為小寫"
 
 # Manual Entry
-man_entry: "Manual Entry"
-delete_entry: "Delete Entry"
-add_entry: "Add Entry"
+man_entry: "手工管理條目"
+delete_entry: "刪除條目"
+add_entry: "增加條目"
 
 # Main Buttons UI
-convert_cmudict: "Convert CMUDict to YAML"
-append_yaml: "Append YAML File"
-open_yaml: "Open YAML File"
-save_ou: "Save OU Dictionary"
-save_ds: "Save DS Dictionary"
+convert_cmudict: "轉換CMUDict至YAML"
+append_yaml: "追加YAML文件"
+open_yaml: "打開YAML文件"
+save_ou: "保存嘅OU詞典"
+save_ds: "保存嘅DS詞典"
 
 # Entry Viewer
-search: "Search:"
-rep_button: "Replace"
-close: "Close"
-refresh: "Refresh"
-clear_all: "Clear all entries"
-drag: "Aesthetic drag"
+search: "搜尋:"
+rep_button: "替代"
+close: "關閉"
+refresh: "刷新"
+clear_all: "清除所有條目"
+drag: "可以透過拖動提高字典嘅美觀程度"
 
 # Themes
-theme: "Themes"
-def_theme: "Select Theme:"
+theme: "主題"
+def_theme: "選擇主題:"
 
 # Regex Dialog
-reg_pattern: "Regex Pattern:"
-replacement: "Replacement:"
-apply: "Apply"
+reg_pattern: "正規表達式模式:"
+replacement: "替換:"
+apply: "應用"
 
 # Settings (tab 2)
-select_local: "Select Localization:"
-local_op: "Localization Options"
+select_local: "選擇本地化:"
+local_op: "本地化選項"
 
 # Tab names
-tab1: "Entry Editor"
-tab2: "Settings"
+tab1: "條目編輯器"
+tab2: "設定"
