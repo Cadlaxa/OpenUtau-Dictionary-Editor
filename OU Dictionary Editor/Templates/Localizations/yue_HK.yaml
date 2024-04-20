@@ -34,7 +34,7 @@ theme: "主題"
 def_theme: "選擇主題:"
 
 # Regex Dialog
-reg_pattern: "正規表達式模式:"
+reg_pattern: "字符串模式:"
 replacement: "替換:"
 apply: "應用"
 
