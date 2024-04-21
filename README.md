@@ -1,7 +1,7 @@
 # OpenUtau-Dictionary-Editor
 A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for OpenUtau 🥰😍
 ![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
-- To use this GUI Toolkit, first open the **`[Install modules.bat]`** to install the necessary Python modules in order for the toolkit to work or just manually pip install them:
+- To use this GUI Toolkit, I recommend using **`python version 3.8 and above`** then open the **`[Install modules.bat]`** to install the necessary Python modules in order for the toolkit to work or just manually pip install them:
   ```
   pip install tk sv-ttk ruamel.yaml
   ```
@@ -16,9 +16,11 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 ## Create a YAML Dictionary from Scratch
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/46568b2b-b722-4e44-8c67-cdeae38d91f3)
 - You can add the graphemes and phonemes onto the Manual Entry section. Pressing the **`[Add Entry]`** button will add them to the Entries viewer. Using the **`[Delete Entry]`** button or the delete button on your keyboard will delete the selected entry. By clicking the entries first then `shift` + `click` to other entries will highlight them so that users can batch delete the entries using the **`[Delete Entry]`** button or the delete keyboard button.
+- `Note: If creating a dictionary from scratch, choose a yaml template from the combobox picker`
 ## Using OpenUtau YAML Templates or Custom Template
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d364e70f-60c2-4735-ad74-5796a9a2c19d)
 - Using the combobox picker, users can choose their OpenUtau YAML template to create their dictionary. Also, users can add their own templates by placing them in the **`[Templates]`** folder so the GUI toolkit will recognize the files via the templates.ini and use them for dictionary creation.
+- `Tip: if you're creating a custom dict from scratch, add your template from the templates folder so that you can use it on the picker and add your entries, if you have already made a custom dict, just import them to the editor then use 'Current Template' so that it add the entries to the current imported yaml file and still preserve the custom symbols 🫶🏻`
 ## Converting CMUdict to OU YAML dictionary
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7932b90b-ca63-4901-bfd6-cc011abdbeb3)
 - Function to convert the CMUdict.txt into a functional OpenUTAU dictionary. Note that the CMUdict mustn't have a **`;;;`** or the GUI toolkit will throw an error.
