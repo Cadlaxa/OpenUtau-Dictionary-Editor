@@ -1,0 +1,47 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+# Entry Editor (tab 1)
+# Entry Options
+entry_option: "條目選項"
+select_template: "選擇模板:"
+remove_accents: "刪除數字重音符號標識"
+lowercase_phonemes: "將音素改為小寫"
+
+# Manual Entry
+man_entry: "手動管理條目"
+delete_entry: "刪除條目"
+add_entry: "新增條目"
+
+# Main Buttons UI
+convert_cmudict: "轉換CMUDict至YAML"
+append_yaml: "追加YAML檔"
+open_yaml: "開啟YAML檔案"
+save_ou: "儲存OU字典"
+save_ds: "儲存DS字典"
+
+# Entry Viewer
+search: "搜尋:"
+rep_button: "替代"
+close: "關閉"
+refresh: "刷新"
+clear_all: "清除所有項目"
+drag: "可以透過拖曳來提高辭典的美觀程度"
+
+# Themes
+theme: "主題"
+def_theme: "選擇主題:"
+
+# Regex Dialog
+reg_pattern: "字串模式:"
+replacement: "替換:"
+apply: "應用"
+
+# Settings (tab 2)
+select_local: "選擇語言在地化:"
+local_op: "語言在地化選項"
+
+# Tab names
+tab1: "條目編輯器"
+tab2: "設定"
