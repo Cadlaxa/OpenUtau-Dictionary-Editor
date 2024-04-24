@@ -20,6 +20,7 @@ append_yaml: "Append YAML File"
 open_yaml: "Open YAML File"
 save_ou: "Save OU Dictionary"
 save_ds: "Save DS Dictionary"
+edit_sym: "View Symbols"
 
 # Entry Viewer
 search: "Search:"
@@ -41,6 +42,10 @@ apply: "Apply"
 # Settings (tab 2)
 select_local: "Select Localization:"
 local_op: "Localization Options"
+
+# Updates (tab 3)
+update: "Updates"
+update_b: "Check for Updates"
 
 # Tab names
 tab1: "Entry Editor"

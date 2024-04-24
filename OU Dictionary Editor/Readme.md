@@ -1,5 +1,17 @@
 # Changelog
 ---
+**`(4/--/24)`**
+- Added more themes and color accents `["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", "Fern", "Lemon Ginger", "Lightning Yellow", "Mint", "Orange", "Pear", "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"]`
+- Autoscroll speed adjusted from `10` to `20`
+- Added font rescaling feature on Tree Viewer
+- Added `Chinese Simplified`,  `Chinese Traditional`, and `Cantonese` localization (thanks to @Zout141)
+- Added  standard python gitignore (thanks to @oxygen-dioxide)
+- Added an automatic updater feature
+- Added Symbols viewer (kinda buggy and cannot edit the symbols yet)
+- Changed windows font from `Segoe UI` to `Arial Rounded MT Bold`
+- Fixes to UI elements
+- More Fixes
+
 **`(4/19/24)`**
 - Tabs
 - Localizations via YAML file

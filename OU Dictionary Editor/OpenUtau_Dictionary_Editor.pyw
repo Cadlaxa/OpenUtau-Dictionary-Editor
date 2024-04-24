@@ -1,15 +1,21 @@
 import tkinter as tk
+from Assets.modules.sv_ttk import sv_ttk
 from tkinter import filedialog, messagebox, ttk, BOTH
-import sv_ttk
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
 from ruamel.yaml import YAML, YAMLError
 import tkinter.font as tkFont
 import configparser
+from Assets.modules import requests
+import zipfile
+import shutil
 
+# Directories
 TEMPLATES = P('./Templates')
 LOCAL = P('./Templates/Localizations')
+ASSETS = P('./Assets')
+
 def escape_special_characters(text):
     # Convert non-string text to string
     if not isinstance(text, str):
@@ -31,7 +37,18 @@ class Dictionary(tk.Tk):
 
         # Initialize the sv_ttk theme
         sv_ttk.set_theme("dark")
-        self.theme_var = tk.StringVar(value="Dark")  # Default theme
+        config = configparser.ConfigParser()
+        config.read('settings.ini')
+        selected_theme = config.get('Settings', 'theme', fallback='Dark')
+        selected_accent = config.get('Settings', 'accent', fallback='Electric Blue')
+
+        self.theme_var = tk.StringVar(value=selected_theme)
+        self.accent_var = tk.StringVar(value=selected_accent)
+
+        selected_local = config.get('Settings', 'localization', fallback='Templates\Localizations\en_US.yaml')
+        self.localization_var = tk.StringVar(value=selected_local)
+
+        self.current_version = "v0.2.8"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -48,19 +65,48 @@ class Dictionary(tk.Tk):
         # Dictionary to hold the data
         self.dictionary = {}
         self.localization = {}
+        self.symbols = {}
+
+        # Fonts
+        self.tree_font = tkFont.Font(family="Helvetica", size=10, weight="normal")
+        self.tree_font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
+        self.font = tkFont.Font(family="Helvetica", size=10, weight="normal")
+        self.font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
         
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
         self.text_widget = None
         self.replace_window = None
         self.drag_window = None
+        self.symbol_editor_window = None
         self.remove_numbered_accents_var = tk.BooleanVar()
         self.remove_numbered_accents_var.set(False)  # Default is off
         self.lowercase_phonemes_var = tk.BooleanVar()
         self.lowercase_phonemes_var.set(False)  # Default is off
-        self.current_order = [] # To store the manual order of keys
+        self.current_order = [] # To store the manual order of entries
         self.create_widgets()
         self.init_localization()
+
+        if not self.is_connected():
+            return
+        try:
+            self.response = requests.get("https://api.github.com/repos/Cadlaxa/OpenUtau-Dictionary-Editor/releases/latest")
+            self.response.raise_for_status()
+            self.latest_release = self.response.json()
+            self.latest_version_tag = self.latest_release['tag_name']
+            self.latest_asset = self.latest_release['assets'][0]  # first asset is the zip file
+
+            if self.latest_version_tag > self.current_version:
+                self.check_for_updates()
+        except requests.RequestException as e:
+            messagebox.showerror("Update Error", f"Could not check for updates: {str(e)}")
+    
+    def change_font_size(self, delta):
+        for font in [self.tree_font, self.tree_font_b]:
+            current_size = font['size']
+            new_size = max(10, current_size + delta)
+            font.configure(size=new_size)
+        self.refresh_treeview()
     
     # Directory for the YAML Templates via templae.ini
     def read_template_directory(self, config_file="settings.ini"):
@@ -88,7 +134,7 @@ class Dictionary(tk.Tk):
     def save_directory_to_config(self, directory, config_file):
         config = configparser.ConfigParser()
         config['Paths'] = {'template_location': directory}
-        config['Settings'] = {'localization': directory +'/Localizations/en_US.yaml'}
+        config['Settings'] = {'localization': LOCAL / 'en_US.yaml'}
         with open(config_file, 'w') as configfile:
             config.write(configfile)
         
@@ -101,18 +147,57 @@ class Dictionary(tk.Tk):
     def toggle_theme(self, event=None):
         # Read the current theme selection from the combobox
         theme_name = self.theme_var.get()
+        accent_name = self.accent_var.get()
+        theme_map = {
+            ("Electric Blue", "Dark"): "sun-valley-dark",
+            ("Electric Blue", "Light"): "sun-valley-light",
+            ("Amaranth", "Light"): "amaranth_light",
+            ("Amaranth", "Dark"): "amaranth_dark",
+            ("Amethyst", "Light"): "amethyst_light",
+            ("Amethyst", "Dark"): "amethyst_dark",
+            ("Burnt Sienna", "Light"): "burnt-sienna_light",
+            ("Burnt Sienna", "Dark"): "burnt-sienna_dark",
+            ("Dandelion", "Light"): "dandelion_light",
+            ("Dandelion", "Dark"): "dandelion_dark",
+            ("Denim", "Light"): "denim_light",
+            ("Denim", "Dark"): "denim_dark",
+            ("Fern", "Light"): "fern_light",
+            ("Fern", "Dark"): "fern_dark",
+            ("Lemon Ginger", "Light"): "lemon-ginger_light",
+            ("Lemon Ginger", "Dark"): "lemon-ginger_dark",
+            ("Lightning Yellow", "Light"): "lightning-yellow_light",
+            ("Lightning Yellow", "Dark"): "lightning-yellow_dark",
+            ("Mint", "Light"): "mint_light",
+            ("Mint", "Dark"): "mint_dark",
+            ("Orange", "Light"): "orange_light",
+            ("Orange", "Dark"): "orange_dark",
+            ("Pear", "Light"): "pear_light",
+            ("Pear", "Dark"): "pear_dark",
+            ("Persian Red", "Light"): "persian-red_light",
+            ("Persian Red", "Dark"): "persian-red_dark",
+            ("Pink", "Light"): "pink_light",
+            ("Pink", "Dark"): "pink_dark",
+            ("Salmon", "Light"): "salmon_light",
+            ("Salmon", "Dark"): "salmon_dark",
+            ("Sapphire", "Light"): "sapphire_light",
+            ("Sapphire", "Dark"): "sapphire_dark",
+            ("Sea Green", "Light"): "sea-green_light",
+            ("Sea Green", "Dark"): "sea-green_dark",
+            ("Seance", "Light"): "seance_light",
+            ("Seance", "Dark"): "seance_dark"
+        }
         # Apply the theme using sv_ttk
-        if theme_name == "Dark":
-            sv_ttk.set_theme("dark")
-        elif theme_name == "Light":
-            sv_ttk.set_theme("light")
-        self.save_theme_to_config(theme_name)
+        theme_key = (accent_name, theme_name)
+        if theme_key in theme_map:
+            ttk.Style().theme_use(theme_map[theme_key])
+            self.save_theme_to_config(accent_name, theme_name)
     
-    def save_theme_to_config(self, theme_name):
+    def save_theme_to_config(self, accent_name, theme_name):
         config = configparser.ConfigParser()
         config.read(self.config_file)
         if 'Settings' not in config.sections():
             config['Settings'] = {}
+        config['Settings']['accent'] = accent_name
         config['Settings']['theme'] = theme_name
         with open(self.config_file, 'w') as configfile:
             config.write(configfile)
@@ -122,11 +207,50 @@ class Dictionary(tk.Tk):
         config.read(self.config_file)
         try:
             theme_name = config.get('Settings', 'theme')
-            self.theme_var.set(theme_name)
-            if theme_name == "Dark":
-                sv_ttk.set_theme("dark")
-            elif theme_name == "Light":
-                sv_ttk.set_theme("light")
+            #theme_name = self.theme_var.get()
+            accent_name = config.get('Settings', 'accent')
+            theme_map = {
+                ("Electric Blue", "Dark"): "sun-valley-dark",
+                ("Electric Blue", "Light"): "sun-valley-light",
+                ("Amaranth", "Light"): "amaranth_light",
+                ("Amaranth", "Dark"): "amaranth_dark",
+                ("Amethyst", "Light"): "amethyst_light",
+                ("Amethyst", "Dark"): "amethyst_dark",
+                ("Burnt Sienna", "Light"): "burnt-sienna_light",
+                ("Burnt Sienna", "Dark"): "burnt-sienna_dark",
+                ("Dandelion", "Light"): "dandelion_light",
+                ("Dandelion", "Dark"): "dandelion_dark",
+                ("Denim", "Light"): "denim_light",
+                ("Denim", "Dark"): "denim_dark",
+                ("Fern", "Light"): "fern_light",
+                ("Fern", "Dark"): "fern_dark",
+                ("Lemon Ginger", "Light"): "lemon-ginger_light",
+                ("Lemon Ginger", "Dark"): "lemon-ginger_dark",
+                ("Lightning Yellow", "Light"): "lightning-yellow_light",
+                ("Lightning Yellow", "Dark"): "lightning-yellow_dark",
+                ("Mint", "Light"): "mint_light",
+                ("Mint", "Dark"): "mint_dark",
+                ("Orange", "Light"): "orange_light",
+                ("Orange", "Dark"): "orange_dark",
+                ("Pear", "Light"): "pear_light",
+                ("Pear", "Dark"): "pear_dark",
+                ("Persian Red", "Light"): "persian-red_light",
+                ("Persian Red", "Dark"): "persian-red_dark",
+                ("Pink", "Light"): "pink_light",
+                ("Pink", "Dark"): "pink_dark",
+                ("Salmon", "Light"): "salmon_light",
+                ("Salmon", "Dark"): "salmon_dark",
+                ("Sapphire", "Light"): "sapphire_light",
+                ("Sapphire", "Dark"): "sapphire_dark",
+                ("Sea Green", "Light"): "sea-green_light",
+                ("Sea Green", "Dark"): "sea-green_dark",
+                ("Seance", "Light"): "seance_light",
+                ("Seance", "Dark"): "seance_dark"
+            }
+            # Apply the theme using sv_ttk
+            theme_key = (accent_name, theme_name)
+            if theme_key in theme_map:
+                ttk.Style().theme_use(theme_map[theme_key])
         except (configparser.NoSectionError, configparser.NoOptionError):
             sv_ttk.set_theme("dark")
 
@@ -180,7 +304,6 @@ class Dictionary(tk.Tk):
             self.update_title()
             self.current_order = list(self.dictionary.keys())
 
-        from ruamel.yaml import YAML, YAMLError
         yaml = YAML(typ='safe')
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
@@ -194,17 +317,50 @@ class Dictionary(tk.Tk):
             messagebox.showerror("Error", f"An error occurred while reading the YAML file: {str(e)}")
             return
 
-        if not isinstance(data, dict) or 'entries' not in data:
-            messagebox.showerror("Error", "Invalid YAML format: No 'entries' key found or file structure is incorrect.")
-            return
+        entries = []
+        if 'entries' in data and isinstance(data['entries'], list):
+            entries = data['entries']
+        else:
+            # Attempt to collect entries as a list of entries
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item:
+                        entries.append(item)
+            elif isinstance(data, dict):
+                if 'grapheme' in data and 'phonemes' in data:
+                    entries.append(data)
 
-        entries = data['entries']
         if not isinstance(entries, list):
             messagebox.showerror("Error", "The 'entries' key must be associated with a list.")
             return
 
         self.dictionary = {}
         self.data_list = []  # Initialize data_list
+
+        if 'symbols' in data and isinstance(data['symbols'], list):
+            symbols = data['symbols']
+        else:
+            messagebox.showerror("Error", "The 'symbols' key must be associated with a list.")
+            return
+        
+        self.symbols = {}
+        self.symbols_list = []  # Initialize symbols_list
+
+        for item in symbols:
+            if not isinstance(item, dict):
+                messagebox.showerror("Error", "Entry format incorrect. Each entry must be a dictionary.")
+                return
+            symbol = item.get('symbol')
+            type_ = item.get('type')
+            if symbol is None or type_ is None:
+                messagebox.showerror("Error", "Symbol entry is incomplete.")
+                return
+            if not isinstance(type_, str):  # Change to check if type is a string
+                messagebox.showerror("Error", "Type must be a string representing the category.")
+                return
+            self.symbols[symbol] = [type_]  # Store type in a list for compatibility with other code parts
+            # Append the loaded data to symbols_list
+            self.symbols_list.append({'symbol': symbol, 'type': [type_]})
 
         for item in entries:
             if not isinstance(item, dict):
@@ -228,7 +384,6 @@ class Dictionary(tk.Tk):
             return
         
         yaml = YAML(typ='safe')
-        merged_entries = []
 
         for filepath in filepaths:
             try:
@@ -237,23 +392,33 @@ class Dictionary(tk.Tk):
                     if data is None:
                         raise ValueError("The YAML file is empty or has an incorrect format.")
 
-                    if not isinstance(data, dict) or 'entries' not in data:
-                        messagebox.showerror("Error", "Invalid YAML format: No 'entries' key found or file structure is incorrect in file: " + filepath)
-                        continue
-
-                    entries = data['entries']
-                    if not isinstance(entries, list):
-                        messagebox.showerror("Error", "The 'entries' key must be associated with a list in file: " + filepath)
-                        continue
+                    entries = []
+                    if 'entries' in data and isinstance(data['entries'], list):
+                        entries = data['entries']
+                    else:
+                        # Attempt to collect entries assuming various possible data structures
+                        if isinstance(data, list):
+                            for item in data:
+                                if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item:
+                                    entries.append(item)
+                        elif isinstance(data, dict) and 'grapheme' in data and 'phonemes' in data:
+                            entries.append(data)
 
                     for item in entries:
                         if not isinstance(item, dict):
-                            messagebox.showerror("Error", "Entry format incorrect in file: " + filepath + ". Each entry must be a dictionary.")
+                            messagebox.showerror(
+                                "Error",
+                                "Entry format incorrect in file: {}. Each entry must be a dictionary.".format(filepath)
+                            )
                             continue
+
                         grapheme = item.get('grapheme')
                         phonemes = item.get('phonemes', [])
                         if grapheme is None or not isinstance(phonemes, list):
-                            messagebox.showerror("Error", "Each entry must have a 'grapheme' key and a list of 'phonemes' in file: " + filepath)
+                            messagebox.showerror(
+                                "Error",
+                                "Each entry must have a 'grapheme' key and a list of 'phonemes' in file: {}".format(filepath)
+                            )
                             continue
 
                         # Merge data into the dictionary
@@ -271,6 +436,58 @@ class Dictionary(tk.Tk):
                 continue
 
         self.update_entries_window()
+    
+    def open_symbol_editor(self):
+        if self.symbol_editor_window is None or not self.symbol_editor_window.winfo_exists():
+            self.symbol_editor_window = tk.Toplevel(self)
+            self.symbol_editor_window.title("Symbols Viewer")
+            self.symbol_editor_window.protocol("WM_DELETE_WINDOW")
+
+            # Create a Frame for the search bar
+            search_bar_frame = ttk.Frame(self.symbol_editor_window, style='Card.TFrame')
+            search_bar_frame.pack(fill=tk.X, padx=15, pady=10)
+            search_button = ttk.Button(search_bar_frame, text="Search:", style='Accent.TButton')
+            search_button.pack(side=tk.LEFT, padx=(10), pady=10)
+            self.localizable_widgets['search'] = search_button
+            self.search_var = tk.StringVar()
+            self.search_var.trace("w", lambda name, index, mode, sv=self.search_var: self.filter_symbols_treeview())
+            search_entry = ttk.Entry(search_bar_frame, textvariable=self.search_var)
+            search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+
+            # Create a Frame to hold the Treeview and the Scrollbar
+            treeview_frame = tk.Frame(self.symbol_editor_window)
+            treeview_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Create the Treeview
+            self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type'), show='headings', height=16)
+            self.symbol_treeview.heading('Symbol', text='Symbol')
+            self.symbol_treeview.heading('Type', text='Type')
+            self.symbol_treeview.column('Symbol', width=120, anchor='w')
+            self.symbol_treeview.column('Type', width=180, anchor='w')
+            self.symbol_treeview.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
+
+            # Create and pack the Scrollbar
+            treeview_scrollbar = ttk.Scrollbar(treeview_frame, orient=tk.VERTICAL, command=self.symbol_treeview.yview)
+            treeview_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(5))
+            self.symbol_treeview.configure(yscrollcommand=treeview_scrollbar.set)
+            
+            # Keyboard entries
+            self.symbol_treeview.bind("<Escape>", lambda event: self.close())
+
+            # Buttons for saving or discarding changes
+            action_button_frame = tk.Frame(self.symbol_editor_window)
+            action_button_frame.pack(fill=tk.X, expand=False)
+            refresh_button = ttk.Button(action_button_frame, text="Refresh", command=self.refresh_treeview_symbols)
+            refresh_button.pack(side=tk.RIGHT, padx=5, pady=10)
+            self.localizable_widgets['refresh'] = refresh_button
+            close_button = ttk.Button(action_button_frame, text="Close", command=self.close)
+            close_button.pack(side=tk.RIGHT, padx=5, pady=10)
+            self.localizable_widgets['close'] = close_button
+            ttk.Button(action_button_frame, text="-", style='Accent.TButton', command=lambda: self.change_font_size(-1)).pack(side="left", padx=(15,5), pady=10)
+            ttk.Button(action_button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1)).pack(side="left", padx=5, pady=10)
+        self.refresh_treeview_symbols()
+        if self.symbol_editor_window.winfo_exists():
+            self.apply_localization()
 
     def add_manual_entry(self):
         global yaml_loaded
@@ -295,7 +512,7 @@ class Dictionary(tk.Tk):
                     del self.dictionary[grapheme]  # Delete the entry from the dictionary
                     self.viewer_tree.delete(item_id)  # Remove the item from the treeview
                 else:
-                    messagebox.showinfo("Notice", f"Grapheme {grapheme} not found in dictionary.")
+                    messagebox.showinfo("Notice", f"Grapheme: {grapheme} not found in dictionary.")
             else:
                 messagebox.showinfo("Notice", f"No data found for item ID {item_id}.")
         self.update_entries_window() 
@@ -318,7 +535,7 @@ class Dictionary(tk.Tk):
 
             # Create a Frame for the search bar
             search_frame = ttk.Frame(self.entries_window, style='Card.TFrame')
-            search_frame.pack(fill=tk.X, padx=10, pady=10)
+            search_frame.pack(fill=tk.X, padx=15, pady=10)
             search_label = ttk.Button(search_frame, text="Search:", style='Accent.TButton')
             search_label.pack(side=tk.LEFT, padx=(10,5), pady=5)
             self.localizable_widgets['search'] = search_label
@@ -338,13 +555,13 @@ class Dictionary(tk.Tk):
             self.viewer_tree = ttk.Treeview(frame, columns=('Grapheme', 'Phonemes'), show='headings', height=16)
             self.viewer_tree.heading('Grapheme', text='Grapheme')
             self.viewer_tree.heading('Phonemes', text='Phonemes')
-            self.viewer_tree.column('Grapheme', width=150, anchor='w')
-            self.viewer_tree.column('Phonemes', width=210, anchor='w')
-            self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(10,0))
+            self.viewer_tree.column('Grapheme', width=180, anchor='w')
+            self.viewer_tree.column('Phonemes', width=240, anchor='w')
+            self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
 
             # Create and pack the Scrollbar
             scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=self.viewer_tree.yview)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(5))
             self.viewer_tree.configure(yscrollcommand=scrollbar.set)
             
             # Bind the selection and drag events
@@ -360,7 +577,7 @@ class Dictionary(tk.Tk):
             button_frame = tk.Frame(self.entries_window)
             button_frame.pack(fill=tk.X, expand=False)
             clear = ttk.Button(button_frame, text="Clear all entries", style='Accent.TButton', command=self.delete_all_entries)
-            clear.pack(side=tk.RIGHT, padx=5, pady=10)
+            clear.pack(side=tk.RIGHT, padx=(5,25), pady=10)
             self.localizable_widgets['clear_all'] = clear
             ref = ttk.Button(button_frame, text="Refresh", command=self.update_entries_window)
             ref.pack(side=tk.RIGHT, padx=5, pady=10)
@@ -368,6 +585,8 @@ class Dictionary(tk.Tk):
             close = ttk.Button(button_frame, text="Close", command=self.close)
             close.pack(side=tk.RIGHT, padx=5, pady=10)
             self.localizable_widgets['close'] = close
+            ttk.Button(button_frame, text="-", style='Accent.TButton', command=lambda: self.change_font_size(-1)).pack(side="left", padx=(15,5), pady=10)
+            ttk.Button(button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1)).pack(side="left", padx=5, pady=10)
         self.refresh_treeview()
         if self.entries_window.winfo_exists():
             self.apply_localization()
@@ -410,10 +629,10 @@ class Dictionary(tk.Tk):
 
         if y_relative < scroll_zone_size:
             # Calculate scroll speed based on distance to edge
-            speed = 1 - (y_relative / scroll_zone_size)
+            speed = 5 - (y_relative / scroll_zone_size)
             self.viewer_tree.yview_scroll(int(-1 * speed), "units")
         elif y_relative > (treeview_height - scroll_zone_size):
-            speed = 1 - ((treeview_height - y_relative) / scroll_zone_size)
+            speed = 5 - ((treeview_height - y_relative) / scroll_zone_size)
             self.viewer_tree.yview_scroll(int(1 * speed), "units")
 
     def stop_drag(self, event):
@@ -523,20 +742,48 @@ class Dictionary(tk.Tk):
                     self.viewer_tree.delete(*self.viewer_tree.get_children())
                     self.update_entries_window()
                     self.entries_window.destroy()
-                    #self.create_widgets()
+                    self.create_widgets()
                 else:
                     return
         else:
             return
+    
+    def refresh_treeview_symbols(self):
+        # Setup tag configurations for normal and bold fonts
+        self.symbol_treeview.tag_configure('normal', font=self.tree_font)
+        self.symbol_treeview.tag_configure('selected', font=self.tree_font_b)
+
+        # Capture the symbol of the currently selected item before clearing entries
+        selected = self.symbol_treeview.selection()
+        selected_symbol = None
+        if selected:
+            selected_item_id = selected[0]
+            selected_item_values = self.symbol_treeview.item(selected_item_id, "values")
+            selected_symbol = selected_item_values[0] if selected_item_values else None
+
+        # Clear all current entries from the treeview
+        self.symbol_treeview.delete(*self.symbol_treeview.get_children())
+
+        # Insert new entries into the treeview
+        new_selection_id = None
+        for entry in self.symbols_list:
+            symbol = entry['symbol']
+            type_list = entry['type'] 
+            item_id = self.symbol_treeview.insert('', 'end', values=(symbol, type_list), tags=('normal',))
+            # Check if this was the previously selected symbol
+            if symbol == selected_symbol:
+                new_selection_id = item_id
+
+        # If there was a previously selected symbol, reselect its new corresponding item ID
+        if new_selection_id:
+            self.symbol_treeview.selection_set(new_selection_id)
+            self.symbol_treeview.item(new_selection_id, tags=('selected',))
+            self.symbol_treeview.see(new_selection_id) 
 
     def refresh_treeview(self):
-        # Define fonts
-        self.normal_font = tkFont.Font(family="Helvetica", size=10, weight="normal")
-        self.bold_font = tkFont.Font(family="Helvetica", size=10, weight="bold")
-
         # Setup tag configurations for normal and bold fonts
-        self.viewer_tree.tag_configure('normal', font=self.normal_font)
-        self.viewer_tree.tag_configure('selected', font=self.bold_font)
+        self.viewer_tree.tag_configure('normal', font=self.tree_font)
+        self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
 
         # Capture the grapheme of the currently selected item before clearing entries
         selected = self.viewer_tree.selection()
@@ -576,21 +823,27 @@ class Dictionary(tk.Tk):
                 if not (search_text in self.viewer_tree.item(item, "values")[0].lower() or
                         search_text in self.viewer_tree.item(item, "values")[1].lower()):
                     self.viewer_tree.delete(item)
+    
+    def filter_symbols_treeview(self):
+        search_symbol = self.search_var.get().lower()
+        self.refresh_treeview()
+        if search_symbol:
+            for item in self.symbol_treeview.get_children():
+                if not (search_symbol in self.symbol_treeview.item(item, "values")[0].lower() or
+                        search_symbol in self.symbol_treeview.item(item, "values")[1].lower()):
+                    self.symbol_treeview.delete(item)
 
     def on_tree_selection(self, event):
-        # Define fonts
-        self.normal_font = tkFont.Font(family="Helvetica", size=10, weight="normal")
-        self.bold_font = tkFont.Font(family="Helvetica", size=10, weight="bold")
-        
+                
         for item in self.viewer_tree.get_children():
             self.viewer_tree.item(item, tags=('normal',))
-        self.viewer_tree.tag_configure('normal', font=self.normal_font)
+        self.viewer_tree.tag_configure('normal', font=self.tree_font)
 
         # Apply bold font to selected items
         selected_items = self.viewer_tree.selection()
         for item in selected_items:
             self.viewer_tree.item(item, tags=('selected',))
-        self.viewer_tree.tag_configure('selected', font=self.bold_font)
+        self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
         
         selected_items = self.viewer_tree.selection()
         if selected_items:
@@ -781,7 +1034,7 @@ class Dictionary(tk.Tk):
     def create_widgets(self):
         # Main notebook to contain tabs
         self.notebook = ttk.Notebook(self)
-        self.notebook.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        self.notebook.grid(row=0, column=0, padx=15, pady=10, sticky="nsew")
         self.notebook.grid_columnconfigure(0, weight=1)
         self.notebook.grid_rowconfigure(0, weight=1)
         
@@ -802,16 +1055,11 @@ class Dictionary(tk.Tk):
         self.main_editor_widgets()
         self.settings_widgets()
     
-    def update_checkbox_label(var, checkbutton, base_text, active_text=" ✔️"):
-        if var.get():
-            checkbutton.config(text=base_text + active_text)
-        else:
-            checkbutton.config(text=base_text)
-
     def main_editor_widgets(self):
         # Options Frame setup
+        #ttk.Label(self.options_tab, text="OU Dict Editor", font=self.title_font).grid(row=0, column=0, padx=10, pady=(15, 0))
         options_frame = ttk.LabelFrame(self.options_tab, text="Entry options")
-        options_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        options_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         options_frame.grid_columnconfigure(0, weight=1)
         options_frame.grid_columnconfigure(1, weight=2)
         self.localizable_widgets['entry_option'] = options_frame 
@@ -819,81 +1067,85 @@ class Dictionary(tk.Tk):
         # Populate the Options frame
         self.template_var = tk.StringVar()
         template_label = ttk.Label(options_frame, text="Select Template:")  # Default text
-        template_label.grid(row=0, column=0, padx=5, pady=5, sticky="e")
+        template_label.grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.localizable_widgets['select_template'] = template_label
 
         template_combobox = ttk.Combobox(options_frame, textvariable=self.template_var, state="readonly")
-        template_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        template_combobox.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
         self.update_template_combobox(template_combobox, self.Templates)
 
         # Add localizable Checkbuttons
         remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", variable=self.remove_numbered_accents_var)
-        remove_accents_cb.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        remove_accents_cb.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['remove_accents'] = remove_accents_cb
 
         lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", variable=self.lowercase_phonemes_var)
-        lowercase_phonemes_cb.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        lowercase_phonemes_cb.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['lowercase_phonemes'] = lowercase_phonemes_cb
+
+        edit_symbols = ttk.Button(options_frame, text="Edit Symbols", style='Accent.TButton', command=self.open_symbol_editor)
+        edit_symbols.grid(row=3, column=1, padx=10, pady=(5,10), sticky="ew")
+        self.localizable_widgets['edit_sym'] = edit_symbols
        
         # Sorting combobox
         self.sort_options_var = tk.StringVar()
         self.sort_combobox = ttk.Combobox(options_frame, textvariable=self.sort_options_var, state="readonly", values=('Default Sorting', 'A-Z Sorting', 'Z-A Sorting'))
         self.sort_combobox.set('Default Sorting')
-        self.sort_combobox.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        self.sort_combobox.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
         self.sort_combobox.bind("<<ComboboxSelected>>", self.sort_entries)
 
         # Manual Entry Frame
         manual_frame = ttk.LabelFrame(self.options_tab, text="Manual Entry")  # Default text
-        manual_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        manual_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
         manual_frame.grid_columnconfigure(0, weight=1)
         manual_frame.grid_columnconfigure(1, weight=1)
         self.localizable_widgets['man_entry'] = manual_frame  # Localizing the frame label
 
         # Entries and buttons for manual entries
         self.word_entry = ttk.Entry(manual_frame)
-        self.word_entry.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        self.word_entry.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.phoneme_entry = ttk.Entry(manual_frame)
-        self.phoneme_entry.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+        self.phoneme_entry.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 
         add_entry_button = ttk.Button(manual_frame, text="Add Entry", style='Accent.TButton', command=self.add_manual_entry)
-        add_entry_button.grid(row=1, column=1, columnspan=1, padx=5, pady=10)
+        add_entry_button.grid(row=2, column=1, columnspan=1, padx=5, pady=10)
         self.localizable_widgets['add_entry'] = add_entry_button
 
         delete_entry_button = ttk.Button(manual_frame, text="Delete Entry", style='Accent.TButton', command=self.delete_manual_entry)
-        delete_entry_button.grid(row=1, column=0, columnspan=1, padx=5, pady=10)
+        delete_entry_button.grid(row=2, column=0, columnspan=1, padx=5, pady=10)
         self.localizable_widgets['delete_entry'] = delete_entry_button
 
         # Create frames for each set of buttons
         convert_frame = ttk.Frame(self)
-        convert_frame.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
+        convert_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         load_frame = ttk.Frame(self)
-        load_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
+        load_frame.grid(row=4, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         save_frame = ttk.Frame(self)
-        save_frame.grid(row=4, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
+        save_frame.grid(row=5, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         cad_frame = ttk.Frame(self)
-        cad_frame.grid(row=5, column=0, columnspan=3, padx=10, pady=5, sticky="ew")
+        cad_frame.grid(row=6, column=0, columnspan=3, padx=10, pady=5, sticky="ew")
         label_font = tkFont.Font(size=10)
         label_color = "gray"
 
         # Add buttons to each frame
         cmu = ttk.Button(convert_frame, text="Convert CMUDict to YAML", command=self.load_cmudict)
-        cmu.pack(fill=tk.X)
+        cmu.pack(fill=tk.X, padx=5)
         self.localizable_widgets['convert_cmudict'] = cmu
         ap_yaml = ttk.Button(load_frame, text= "Append YAML File", command=self.merge_yaml_files)
-        ap_yaml.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0,5), pady=(5))
+        ap_yaml.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5), pady=(5))
         self.localizable_widgets['append_yaml'] = ap_yaml
         open_yaml = ttk.Button(load_frame, text= "Open YAML File", command=self.load_yaml_file)
-        open_yaml.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0), pady=(5))
+        open_yaml.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5), pady=(5))
         self.localizable_widgets['open_yaml'] = open_yaml
         
         # For saving, you might want distinct actions for each button, so specify them if they differ
         ou_save = ttk.Button(save_frame, text="Save OU Dictionary", style='Accent.TButton', command=self.save_as_yaml)
-        ou_save.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0,5), pady=(0,5))
+        ou_save.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5), pady=(0,5))
         self.localizable_widgets['save_ou'] = ou_save
         ds_save = ttk.Button(save_frame, text="Save DS Dictionary", style='Accent.TButton', command=self.save_as_ds_yaml)
-        ds_save.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5,0), pady=(0,5))
+        ds_save.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(5), pady=(0,5))
         self.localizable_widgets['save_ds'] = ds_save
-        label = ttk.Label(cad_frame, text="© Cadlaxa | OU Dictionary Editor v0.1.7", font=label_font, foreground=label_color)
+        label = ttk.Label(cad_frame, text=f"© Cadlaxa | OU Dictionary Editor {self.current_version}", font=label_font, foreground=label_color)
         label.grid(row=0, column=1, sticky="ew", pady=(0,10))
         cad_frame.columnconfigure(0, weight=1)
         cad_frame.columnconfigure(1, weight=0)
@@ -905,50 +1157,157 @@ class Dictionary(tk.Tk):
         self.grid_columnconfigure(0, weight=1)
 
     def settings_widgets(self):
+        # LabelFrame for updates
+        update_frame = ttk.LabelFrame(self.additional_tab, text="Updates")
+        update_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        self.localizable_widgets['update'] = update_frame
+        update_frame.grid_columnconfigure(0, weight=1)
+        update_frame.grid_columnconfigure(1, weight=1)
+        update_frame.grid_columnconfigure(2, weight=1)
+        update_frame.grid_rowconfigure(0, weight=1)
+        update_frame.grid_rowconfigure(1, weight=1)
+        update_frame.grid_rowconfigure(2, weight=1)
+
+        # Button to check for updates
+        update_button = ttk.Button(update_frame, text="Check for Updates", style='Accent.TButton', command=self.check_for_updates)
+        update_button.grid(row=1, column=1, padx=10, pady=20, sticky="ew",)
+        self.localizable_widgets['update_b'] = update_button
+        # Make sure the frame expands with the window
+        update_frame.grid_columnconfigure(0, weight=1)
+
         # LabelFrame for themes
         theme_frame = ttk.LabelFrame(self.additional_tab, text="Themes")
-        theme_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+        theme_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['theme'] = theme_frame
         theme_frame.grid_columnconfigure(0, weight=1)
         theme_frame.grid_columnconfigure(1, weight=1)
 
+        # Frame for theme combobox within the theme_frame
+        self.theming = ttk.Frame(theme_frame)
+        self.theming.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+        self.theming.grid_columnconfigure(1, weight=1)
+
+        # Label and combobox for Accent selection
+        theme_select = ttk.Label(theme_frame, text="Select Theme:")
+        theme_select.grid(row=0, column=0, padx=20, pady=10, sticky="nsew")
+        self.localizable_widgets['def_theme'] = theme_select
+        theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", 
+                         "Fern", "Lemon Ginger", "Lightning Yellow", "Mint", "Orange", "Pear", "Persian Red", 
+                         "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"]  # Theme options
+        theme_combobox = ttk.Combobox(theme_frame, textvariable=self.accent_var, values=theme_options, state="readonly")
+        theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
+
+        # Radio button for light theme
+        light_theme_button = ttk.Radiobutton(theme_frame, text="Light", value="Light", variable=self.theme_var, command=self.toggle_theme)
+        light_theme_button.grid(row=1, column=0, pady=(0, 10))
+
+        # Radio button for dark theme
+        dark_theme_button = ttk.Radiobutton(theme_frame, text="Dark", value="Dark", variable=self.theme_var, command=self.toggle_theme)
+        dark_theme_button.grid(row=1, column=1, pady=(0, 10))
+
         # LabelFrame for localization selection on the options tab
         localization_frame = ttk.LabelFrame(self.additional_tab, text="Localization Options")
-        localization_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        localization_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['local_op'] = localization_frame
         localization_frame.grid_columnconfigure(0, weight=1)
         localization_frame.grid_columnconfigure(1, weight=1)
-               
+
         # Frame for localization combobox within the localization_frame
         self.save_loc = ttk.Frame(localization_frame)
         self.save_loc.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
-        self.save_loc.grid_columnconfigure(1, weight=1)  # Allows the combobox to expand with the window width
+        self.save_loc.grid_columnconfigure(1, weight=1)
 
-        self.localization_var = tk.StringVar()  # Variable to hold the selected localization file
-
-        # Label and combobox for localization file selection
         local_select = ttk.Label(self.save_loc, text="Select Localization:")
-        local_select.grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+        local_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['select_local'] = local_select
         localization_combobox = ttk.Combobox(self.save_loc, textvariable=self.localization_var, state="readonly")
-        localization_combobox.grid(row=0, column=1, padx=10, pady=10, sticky=tk.EW)
-        
-        localization_combobox.bind("<<ComboboxSelected>>", self.localization_selected)  # Bind event
+        localization_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+
+        localization_combobox.bind("<<ComboboxSelected>>", self.localization_selected)
         self.update_localization_combobox(localization_combobox)
+    
+    def is_connected(self):
+        # Check internet connection by trying to reach Google lmao
+        try:
+            requests.get("http://www.google.com", timeout=3)
+            return True
+        except requests.RequestException:
+            return False
+    
+    def check_for_updates(self):
+        if not self.is_connected():
+            messagebox.showerror("Internet Error", "No internet connection. Please check your connection and try again.")
+            return
+        try:
+            if self.latest_version_tag > self.current_version:
+                if messagebox.askyesno("Update Available", f"Version {self.latest_version_tag} is available. Do you want to update now?"):
+                    self.download_and_install_update(self.latest_asset['browser_download_url'])
+            else:
+                messagebox.showinfo("No Updates", "You are up to date!")
+        except requests.RequestException as e:
+            messagebox.showerror("Update Error", f"Could not check for updates: {str(e)}")
 
-        # Frame for theme combobox within the theme_frame
-        self.theming = ttk.Frame(theme_frame)
-        self.theming.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
-        self.theming.grid_columnconfigure(1, weight=1)  # Allows the combobox to expand with the window width
+    def download_and_install_update(self, download_url):
+        downloads_path = str(P("./Downloads"))
+        if not os.path.exists(downloads_path):
+            os.makedirs(downloads_path)
 
-        # Label and combobox for localization file selection
-        theme_select = ttk.Label(theme_frame, text="Select Theme:")
-        theme_select.grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
-        self.localizable_widgets['def_theme'] = theme_select
-        theme_options = ["Light", "Dark"]  # Theme options
-        theme_combobox = ttk.Combobox(theme_frame, textvariable=self.theme_var, values=theme_options, state="readonly")
-        theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky=tk.EW)
-        theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
+        local_zip_path = os.path.join(downloads_path, f"OU Dict Editor {self.latest_version_tag}.zip")
+        temp_extraction_path = os.path.join(downloads_path, "temp_extract")  # Temporary extraction directory
+        
+        try:
+            # Download the file
+            with requests.get(download_url, stream=True) as r:
+                r.raise_for_status()
+                with open(local_zip_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+
+            # Extract ZIP file using Python
+            with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_extraction_path)
+
+            # Move the contents of the first directory in the extracted folder
+            first_directory = next(os.walk(temp_extraction_path))[1][0]
+            source_path = os.path.join(temp_extraction_path, first_directory)
+            target_path = str(P('./OU DICTIONARY EDITOR'))
+            
+            if not os.path.exists(target_path):
+                os.makedirs(target_path)
+
+            for item in os.listdir(source_path):
+                s = os.path.join(source_path, item)
+                d = os.path.join(target_path, item)
+                if os.path.isdir(s):
+                    shutil.copytree(s, d, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(s, d)
+
+            # Inform user about the restart
+            messagebox.showinfo("Application Close", "The application will now close. Please move the downloaded file manually.")
+
+            # Delete the temporary files and folders
+            os.remove(local_zip_path)
+            shutil.rmtree(temp_extraction_path)
+
+            # Close application
+            self.close_application()
+
+        except requests.RequestException as e:
+            messagebox.showerror("Download Error", f"Could not download the update: {str(e)}")
+        except zipfile.BadZipFile:
+            messagebox.showerror("Unzip Error", "The downloaded file was not a valid zip file.")
+        except Exception as e:
+            messagebox.showerror("Update Error", f"An error occurred during the update process: {str(e)}")
+
+    def close_application(self):
+        # This should safely close the application
+        sys.exit()
+
+    def restart_application(self):
+        # Restarting the application
+        os.execl(sys.executable, sys.executable, *sys.argv)
     
     def init_localization(self):
         # Read the last used localization file path
@@ -1018,9 +1377,16 @@ class Dictionary(tk.Tk):
             return None
 
     def apply_localization(self):
+        if not hasattr(self, '.\Templates\Localizations\en_US.yaml'):
+            yaml = YAML()
+            with open('.\Templates\Localizations\en_US.yaml', 'r') as file:
+                self.default_localization = yaml.load(file)
+
         if hasattr(self, 'localizable_widgets'):
             for key, widget in self.localizable_widgets.items():
-                text = self.localization.get(key, "Key not found")
+                # Retrieve text from current localization or fall back to default localization
+                text = self.localization.get(key, self.default_localization.get(key))
+                
                 if widget.winfo_exists():
                     if isinstance(widget, ttk.LabelFrame):
                         widget.config(text=text)
@@ -1029,8 +1395,8 @@ class Dictionary(tk.Tk):
                     elif isinstance(widget, ttk.Notebook):
                         for index in range(widget.index("end")):
                             tab_text_key = f'tab_text_{index}'
-                            if tab_text_key in self.localization:
-                                widget.tab(index, text=self.localization[tab_text_key])
+                            tab_text = self.localization.get(tab_text_key, self.default_localization.get(tab_text_key))
+                            widget.tab(index, text=tab_text)
                     elif isinstance(widget, ttk.Frame):
                         pass
                     else:

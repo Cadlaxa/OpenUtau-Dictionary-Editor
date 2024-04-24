@@ -42,6 +42,10 @@ apply: "Ilapat"
 select_local: "Piliin ang Lokalisasyon:"
 local_op: "Opsyons para sa Lokalisasyon:"
 
+# Updates (tab 3)
+update: "Mga Update"
+update_b: "Tignan para sa Updates"
+
 # Tab names
 tab1: "Entry Editor"
 tab2: "Settings"
