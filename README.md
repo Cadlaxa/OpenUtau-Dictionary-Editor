@@ -1,7 +1,11 @@
 # OpenUtau-Dictionary-Editor
 A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for OpenUtau 🥰😍
 ![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
-- To use this GUI Toolkit, I recommend using **`python version 3.10 and above`** and that's it.
+- To use this GUI Toolkit, I recommend using **`python version 3.10 and above`**
+- installing the modules:
+  ```
+  pip install ruamel.yaml tk
+  ```
 ---
 ## 📍 Download the latest version here:
 [![Download Latest Release](https://img.shields.io/github/v/release/Cadlaxa/OpenUtau-Dictionary-Editor?style=for-the-badge&label=Download&kill_cache=1)](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases)
