@@ -24,7 +24,7 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 - `Tip: if you're creating a custom dict from scratch, add your template from the templates folder so that you can use it on the picker and add your entries, if you have already made a custom dict, just import them to the editor then use 'Current Template' so that it add the entries to the current imported yaml file and still preserve the custom symbols`
 ## Sorting the Entries
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/86e65879-9af1-4cda-af37-70b8c1cc40a6)
-- Users can sirt their entries alphabetically either **`A-Z`** to **`Z-A`**
+- Users can sort their entries alphabetically either **`A-Z`** or **`Z-A`**
 ## Converting CMUdict to OU YAML dictionary
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/2ecf2317-435b-427a-8535-c53dc83150cd)
 - Function to convert the CMUdict.txt into a functional OpenUTAU dictionary. Note that the CMUdict mustn't have a **`;;;`** or the GUI toolkit will throw an error.
