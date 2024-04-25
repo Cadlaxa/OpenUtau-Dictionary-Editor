@@ -4,7 +4,7 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 - To use this GUI Toolkit, I recommend using **`python version 3.10 and above`**
 - installing the modules:
   ```
-  pip install ruamel.yaml tk
+  pip install ruamel.yaml tk requests
   ```
 ---
 ## 📍 Download the latest version here:
