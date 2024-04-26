@@ -20,6 +20,7 @@ append_yaml: "追加YAML文件"
 open_yaml: "打開YAML文件"
 save_ou: "保存嘅OU詞典"
 save_ds: "保存嘅DS詞典"
+edit_sym: "檢視符號"
 
 # Entry Viewer
 search: "搜尋:"
@@ -27,7 +28,7 @@ rep_button: "替代"
 close: "關閉"
 refresh: "刷新"
 clear_all: "清除所有條目"
-drag: "可以透過拖動提高字典嘅美觀程度"
+drag: "可以透過拖動提高字典美觀嘅程度"
 
 # Themes
 theme: "主題"
@@ -41,6 +42,10 @@ apply: "應用"
 # Settings (tab 2)
 select_local: "選擇本地化:"
 local_op: "本地化選項"
+
+# Updates (tab 3)
+update: "更新"
+update_b: "檢查更新"
 
 # Tab names
 tab1: "條目編輯器"
