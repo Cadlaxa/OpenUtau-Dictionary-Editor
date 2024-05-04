@@ -15,7 +15,8 @@ delete_entry: "Delete Entry"
 add_entry: "Add Entry"
 
 # Main Buttons UI
-convert_cmudict: "Convert CMUDict to YAML"
+convert_cmudict: "Import CMUDict"
+export_cmudict: "Export CMUDict"
 append_yaml: "Append YAML File"
 open_yaml: "Open YAML File"
 save_ou: "Save OU Dictionary"

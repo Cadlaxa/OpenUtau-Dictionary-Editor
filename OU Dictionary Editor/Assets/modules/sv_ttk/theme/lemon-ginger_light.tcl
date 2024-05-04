@@ -77,7 +77,7 @@ namespace eval ttk::theme::lemon-ginger_light {
       }
     }
 
-    ttk::style configure Accent.TButton -padding {8 2 8 3} -anchor center -foreground "#000000"
+    ttk::style configure Accent.TButton -padding {8 2 8 3} -anchor center -foreground "#ffffff"
     ttk::style map Accent.TButton -foreground [list pressed "#25536a" disabled "#a5a5a5"]
 
     ttk::style element create AccentButton.button image \

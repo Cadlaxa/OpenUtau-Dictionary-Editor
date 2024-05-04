@@ -1,6 +1,18 @@
 # Changelog
 ---
-**`(4/--/24)`**
+**`(5/4/24)`**
+- Update `Chinese Simplified`,  `Chinese Traditional`, and `Cantonese` localizations (thanks to @Zout141)
+- Fixed `Lemon Ginger` theme font color on accented buttons for better contrast
+- Add entries function now adds the entry below the selected entry instead on the end of the treeview, if no selected entry, it will add to the end of the treeview instead.
+- Add entry deselection function via **`Right-Click`**
+- Fixed drag label getting stuck when dragging into something else than the entries
+- Add feature to export CMUdict text files
+- Fixed Update button failed to check update if the internet is temporary disconnected and reconnects again
+- Search function now ignores `,` from the search, from `hh, eh, l, ow` to `hh eh l ow` same with the regex find and replace function.
+- Add `undo` and `redo` function via `Ctrl + z`/`Command + z` `Ctrl + y`/`Command + y`
+- More Fixes
+
+**`(4/24/24)`**
 - Added more themes and color accents `["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", "Fern", "Lemon Ginger", "Lightning Yellow", "Mint", "Orange", "Pear", "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"]`
 - Autoscroll speed adjusted from `10` to `20`
 - Added font rescaling feature on Tree Viewer

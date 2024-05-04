@@ -15,7 +15,8 @@ delete_entry: "Burahin ang Entry"
 add_entry: "Maglagay ng Entry"
 
 # Main Buttons UI
-convert_cmudict: "Isalin ang CMUDict sa YAML"
+convert_cmudict: "I-import ang CMUDict"
+export_cmudict: "I-export ang CMUDict"
 append_yaml: "Dugtungan ang YAML File"
 open_yaml: "Buksan ang YAML File"
 save_ou: "I-save sa OU Dictionary"
