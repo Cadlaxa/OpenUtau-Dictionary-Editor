@@ -953,7 +953,6 @@ class Dictionary(tk.Tk):
         else:
             messagebox.showinfo("Paste", "Clipboard is empty.")
 
-
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
@@ -992,23 +991,33 @@ class Dictionary(tk.Tk):
         if new_word and new_phonemes:
             # Convert phonemes list to a string for display
             phoneme_display = ', '.join(new_phonemes)
-            # Check if the grapheme already exists in the viewer_tree
-            exists = False
-            for item in self.viewer_tree.get_children():
-                grapheme, _ = self.viewer_tree.item(item, 'values')
-                if grapheme == new_word:
-                    # Update the existing item's phonemes
-                    self.viewer_tree.item(item, values=(new_word, phoneme_display))
-                    exists = True
-                    break
-            # Insert new entry if the grapheme does not exist
-            if not exists:
-                selected = self.viewer_tree.selection()
-                insert_index = 'end'
-                if selected:
-                    insert_index = self.viewer_tree.index(selected[0]) + 1
-                self.viewer_tree.insert('', insert_index, values=(new_word, phoneme_display), tags=('normal',))
-            self.dictionary[new_word] = new_phonemes
+
+            selected = self.viewer_tree.selection()
+            insert_index = 'end'
+            if selected:
+                insert_index = self.viewer_tree.index(selected[-1]) + 1  # Adjust to insert after the last selected item
+
+            if new_word in self.dictionary:
+                # Update the existing item's phonemes
+                self.dictionary[new_word] = new_phonemes  # Update dictionary
+                for item in self.viewer_tree.get_children():
+                    if self.viewer_tree.item(item, 'values')[0] == new_word:
+                        self.viewer_tree.item(item, values=(new_word, phoneme_display))
+                        break
+            else:
+                # Insert new entry if the grapheme does not exist
+                if insert_index == 'end':
+                    self.viewer_tree.insert('', 'end', values=(new_word, phoneme_display), tags=('normal',))
+                    self.dictionary[new_word] = new_phonemes  # Add to dictionary
+                else:
+                    # More complex case: we need to insert at a specific position
+                    # Temporarily store items, insert new, and rebuild dictionary
+                    items = list(self.dictionary.items())
+                    items.insert(insert_index, (new_word, new_phonemes))
+                    self.dictionary.clear()
+                    self.dictionary.update(items)
+                    # Insert in the tree at the correct position
+                    self.viewer_tree.insert('', insert_index, values=(new_word, phoneme_display), tags=('normal',))
 
     def filter_treeview(self):
         search_text = self.search_var.get().lower().replace(",", "")  # Remove commas from search text
@@ -1056,7 +1065,7 @@ class Dictionary(tk.Tk):
 
             # Concatenate all graphemes and phonemes for display
             graphemes_text = ', '.join(graphemes)
-            phonemes_text = '; '.join(', '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
+            phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
 
             # Update the entries in the respective widgets
             self.word_entry.delete(0, tk.END)

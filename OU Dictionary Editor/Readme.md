@@ -2,7 +2,7 @@
 ---
 **`(5/--/24)`**
 - Fix saving YAML bug
-- Add `copy`, `cut`, and paste function via `Ctrl + c`/`Command + c` `Ctrl + x`/`Command + x` `Ctrl + v`/`Command + v`
+- Add `copy`, `cut`, and `paste` function via `Ctrl + c`/`Command + c` `Ctrl + x`/`Command + x` `Ctrl + v`/`Command + v`
 - Treeview Selected can now handle multiple datas at once
 - Seudo OpenUtau plugin Feature
 
