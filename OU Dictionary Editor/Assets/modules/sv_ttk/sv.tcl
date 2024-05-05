@@ -1,41 +1,10 @@
 package require Tk 8.6
 
-source [file join [file dirname [info script]] theme light.tcl]
-source [file join [file dirname [info script]] theme dark.tcl]
-source [file join [file dirname [info script]] theme amaranth_dark.tcl]
-source [file join [file dirname [info script]] theme amaranth_light.tcl]
-source [file join [file dirname [info script]] theme amethyst_dark.tcl]
-source [file join [file dirname [info script]] theme amethyst_light.tcl]
-source [file join [file dirname [info script]] theme burnt-sienna_dark.tcl]
-source [file join [file dirname [info script]] theme burnt-sienna_light.tcl]
-source [file join [file dirname [info script]] theme dandelion_dark.tcl]
-source [file join [file dirname [info script]] theme dandelion_light.tcl]
-source [file join [file dirname [info script]] theme denim_dark.tcl]
-source [file join [file dirname [info script]] theme denim_light.tcl]
-source [file join [file dirname [info script]] theme fern_dark.tcl]
-source [file join [file dirname [info script]] theme fern_light.tcl]
-source [file join [file dirname [info script]] theme lemon-ginger_dark.tcl]
-source [file join [file dirname [info script]] theme lemon-ginger_light.tcl]
-source [file join [file dirname [info script]] theme lightning-yellow_dark.tcl]
-source [file join [file dirname [info script]] theme lightning-yellow_light.tcl]
-source [file join [file dirname [info script]] theme mint_dark.tcl]
-source [file join [file dirname [info script]] theme mint_light.tcl]
-source [file join [file dirname [info script]] theme orange_dark.tcl]
-source [file join [file dirname [info script]] theme orange_light.tcl]
-source [file join [file dirname [info script]] theme pear_dark.tcl]
-source [file join [file dirname [info script]] theme pear_light.tcl]
-source [file join [file dirname [info script]] theme persian-red_dark.tcl]
-source [file join [file dirname [info script]] theme persian-red_light.tcl]
-source [file join [file dirname [info script]] theme pink_dark.tcl]
-source [file join [file dirname [info script]] theme pink_light.tcl]
-source [file join [file dirname [info script]] theme salmon_dark.tcl]
-source [file join [file dirname [info script]] theme salmon_light.tcl]
-source [file join [file dirname [info script]] theme sapphire_dark.tcl]
-source [file join [file dirname [info script]] theme sapphire_light.tcl]
-source [file join [file dirname [info script]] theme sea-green_dark.tcl]
-source [file join [file dirname [info script]] theme sea-green_light.tcl]
-source [file join [file dirname [info script]] theme seance_dark.tcl]
-source [file join [file dirname [info script]] theme seance_light.tcl]
+# Source theme files in a loop for efficiency and maintainability
+set themes [list light dark amaranth_dark amaranth_light amethyst_dark amethyst_light burnt-sienna_dark burnt-sienna_light dandelion_dark dandelion_light denim_dark denim_light fern_dark fern_light lemon-ginger_dark lemon-ginger_light lightning-yellow_dark lightning-yellow_light mint_dark mint_light orange_dark orange_light pear_dark pear_light persian-red_dark persian-red_light pink_dark pink_light salmon_dark salmon_light sapphire_dark sapphire_light sea-green_dark sea-green_light seance_dark seance_light]
+foreach theme $themes {
+    source [file join [file dirname [info script]] theme $theme.tcl]
+}
 
 if {[tk windowingsystem] == "win32"} {
   set static ""

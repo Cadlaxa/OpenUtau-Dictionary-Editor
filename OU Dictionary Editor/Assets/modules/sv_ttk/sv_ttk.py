@@ -6,6 +6,9 @@ from pathlib import Path
 from tkinter import ttk
 
 TCL_THEME_FILE_PATH = Path(__file__).with_name("sv.tcl").absolute()
+tcl_file_path = str(TCL_THEME_FILE_PATH)
+if not Path(tcl_file_path).exists():
+    raise FileNotFoundError(f"Tcl theme file not found at {tcl_file_path}")
 
 
 def _load_theme(style: ttk.Style) -> None:

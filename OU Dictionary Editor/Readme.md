@@ -1,5 +1,11 @@
 # Changelog
 ---
+**`(5/--/24)`**
+- Fix saving YAML bug
+- Add `copy`, `cut`, and paste function via `Ctrl + c`/`Command + c` `Ctrl + x`/`Command + x` `Ctrl + v`/`Command + v`
+- Treeview Selected can now handle multiple datas at once
+- Seudo OpenUtau plugin Feature
+
 **`(5/4/24)`**
 - Update `Chinese Simplified`,  `Chinese Traditional`, and `Cantonese` localizations (thanks to @Zout141)
 - Fixed `Lemon Ginger` theme font color on accented buttons for better contrast

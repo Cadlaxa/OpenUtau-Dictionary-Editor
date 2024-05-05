@@ -1,6 +1,7 @@
 import tkinter as tk
 from Assets.modules.sv_ttk import sv_ttk
 from tkinter import filedialog, messagebox, ttk, PhotoImage, BOTH
+from tkinterdnd2 import TkinterDnD, DND_FILES
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
@@ -33,6 +34,8 @@ def escape_grapheme(grapheme):
         # Check if the first character is a special character that might require quoting
         if grapheme[0] in r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・]+":
             return f'"{grapheme}"'
+        if re.search(r"\b(true|false|yes|no|on|off)\b", grapheme, re.IGNORECASE):
+            return f'"{grapheme}"'
         return grapheme
 
 class CustomToplevel(tk.Toplevel):
@@ -58,7 +61,8 @@ class Dictionary(tk.Tk):
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='Templates\Localizations\en_US.yaml')
         self.localization_var = tk.StringVar(value=selected_local)
-        self.current_version = "v0.3.9"
+        #self.current_version = "v0.3.9"
+        self.current_version = "v0.4.6 (beta)"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -79,6 +83,7 @@ class Dictionary(tk.Tk):
         self.symbols = {}
         self.undo_stack = []
         self.redo_stack = []
+        self.copy_stack = []
 
         # Fonts
         self.tree_font = tkFont.Font(family="Helvetica", size=10, weight="normal")
@@ -276,7 +281,7 @@ class Dictionary(tk.Tk):
                 ttk.Style().theme_use(theme_map[theme_key])
         except (configparser.NoSectionError, configparser.NoOptionError):
             sv_ttk.set_theme("dark")
-
+    
     def load_cmudict(self):
         filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
         if not filepath:
@@ -622,7 +627,16 @@ class Dictionary(tk.Tk):
             self.entries_window.bind('<Command-z>', lambda event: self.undo())
             # redo
             self.entries_window.bind('<Control-y>', lambda event: self.redo())
-            self.entries_window.bind('<Command-y>', lambda event: self.redo()) 
+            self.entries_window.bind('<Command-y>', lambda event: self.redo())
+            # copy
+            self.viewer_tree.bind("<Control-c>", lambda e: self.copy_entry())
+            self.viewer_tree.bind("<Command-c>", lambda e: self.copy_entry())
+            # cut
+            self.viewer_tree.bind("<Control-x>", lambda e: self.cut_entry())
+            self.viewer_tree.bind("<Command-x>", lambda e: self.cut_entry())
+            # paste
+            self.viewer_tree.bind("<Control-v>", lambda e: self.paste_entry())
+            self.viewer_tree.bind("<Command-v>", lambda e: self.paste_entry())
 
             # Buttons for saving or discarding changes
             button_frame = tk.Frame(self.entries_window)
@@ -880,6 +894,65 @@ class Dictionary(tk.Tk):
             self.refresh_treeview()
         else:
             messagebox.showinfo("Redo", "No more actions to redo.")
+    
+    def copy_entry(self):
+        selected_items = self.viewer_tree.selection()
+        if selected_items:
+            # Clear previous copies if you want to copy new entries only
+            self.copy_stack.clear()
+
+            # Iterate over all selected items to copy their data
+            for selected_id in selected_items:
+                item = self.viewer_tree.item(selected_id)
+                values = item['values']
+                if len(values) >= 2:
+                    grapheme = values[0]
+                    phonemes = values[1].split(', ')
+                    # Create a dictionary from each selected entry
+                    entry_dict = {
+                        'grapheme': grapheme,
+                        'phonemes': phonemes
+                    }
+                    # Append this dictionary to the copy_stack for later use
+                    self.copy_stack.append(entry_dict)
+        else:
+            messagebox.showinfo("Copy", "No entry selected.")
+
+    def cut_entry(self):
+        if self.viewer_tree.selection():
+            self.copy_entry()  # Copy entry first
+            self.delete_manual_entry()
+        else:
+            messagebox.showinfo("Cut", "No entry selected.")
+
+    def paste_entry(self):
+        if self.copy_stack:
+            for entry in self.copy_stack:  # Loop through all copied entries
+                if 'grapheme' in entry and 'phonemes' in entry:
+                    grapheme = entry['grapheme']
+                    phonemes = entry['phonemes']
+                    original_grapheme = grapheme
+                    count = 1
+                    
+                    # Extract the existing count from the grapheme (if any)
+                    match = re.match(r'^(.*)\((\d+)\)$', original_grapheme)
+                    if match:
+                        original_grapheme, count = match.groups()
+                        count = int(count) + 1
+                    
+                    while grapheme in self.dictionary:
+                        grapheme = f"{original_grapheme}({count})"
+                        count += 1
+
+                    # Use the helper function to add or update the entry
+                    self.add_entry_treeview(new_word=grapheme, new_phonemes=phonemes)
+                    
+                    # Notify the user of the action
+                else:
+                    messagebox.showinfo("Error", "Clipboard data is invalid.")
+        else:
+            messagebox.showinfo("Paste", "Clipboard is empty.")
+
 
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
@@ -958,6 +1031,7 @@ class Dictionary(tk.Tk):
                     self.viewer_tree.delete(item)
 
     def on_tree_selection(self, event):
+        # Reset styles for all items
         for item in self.viewer_tree.get_children():
             self.viewer_tree.item(item, tags=('normal',))
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
@@ -968,24 +1042,29 @@ class Dictionary(tk.Tk):
             self.viewer_tree.item(item, tags=('selected',))
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
         
-        selected_items = self.viewer_tree.selection()
+        # Handle multiple selections for displaying grapheme and phoneme data
         if selected_items:
-            selected_item_id = selected_items[0]
-            # Fetch the item data using the item ID, ensuring the tree structure corresponds to dictionary keys
-            item_data = self.viewer_tree.item(selected_item_id, 'values')
-            if item_data:
-                grapheme = item_data[0]
-                phonemes = self.dictionary.get(grapheme, [])
-                # Update the entries in the respective widgets
-                self.word_entry.delete(0, tk.END)
-                self.word_entry.insert(0, grapheme)
+            graphemes = []
+            phoneme_lists = []
 
-                self.phoneme_entry.delete(0, tk.END)
-                phoneme_text = ' '.join(str(phoneme) for phoneme in phonemes)
-                self.phoneme_entry.insert(0, phoneme_text)
-            else:
-                messagebox.showinfo("Error", "No data found for selected item.")
-    
+            for item_id in selected_items:
+                item_data = self.viewer_tree.item(item_id, 'values')
+                if item_data:
+                    grapheme, phonemes = item_data[0], self.dictionary.get(item_data[0], [])
+                    graphemes.append(grapheme)
+                    phoneme_lists.append(phonemes)
+
+            # Concatenate all graphemes and phonemes for display
+            graphemes_text = ', '.join(graphemes)
+            phonemes_text = '; '.join(', '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
+
+            # Update the entries in the respective widgets
+            self.word_entry.delete(0, tk.END)
+            self.word_entry.insert(0, graphemes_text)
+
+            self.phoneme_entry.delete(0, tk.END)
+            self.phoneme_entry.insert(0, phonemes_text)
+        
     def deselect_entry(self, event):
         # Check if there is currently a selection
         selected_items = self.viewer_tree.selection()
