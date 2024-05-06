@@ -1,14 +1,14 @@
 import tkinter as tk
 from Assets.modules.sv_ttk import sv_ttk
 from tkinter import filedialog, messagebox, ttk, PhotoImage, BOTH
-from tkinterdnd2 import TkinterDnD, DND_FILES
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
 from ruamel.yaml import YAML, YAMLError
 import tkinter.font as tkFont
 import configparser
-from Assets.modules import requests
+#from Assets.modules import requests
+import requests
 import zipfile
 import shutil
 import threading
@@ -1055,7 +1055,6 @@ class Dictionary(tk.Tk):
         if selected_items:
             graphemes = []
             phoneme_lists = []
-
             for item_id in selected_items:
                 item_data = self.viewer_tree.item(item_id, 'values')
                 if item_data:
@@ -1063,11 +1062,16 @@ class Dictionary(tk.Tk):
                     graphemes.append(grapheme)
                     phoneme_lists.append(phonemes)
 
-            # Concatenate all graphemes and phonemes for display
+            # Concatenate all graphemes for display
             graphemes_text = ', '.join(graphemes)
-            phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
 
-            # Update the entries in the respective widgets
+            # Formatting phonemes appropriately based on selection count
+            if len(phoneme_lists) > 1:
+                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
+                phonemes_text = f"[{phonemes_text}]"
+            else:
+                phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0])
+
             self.word_entry.delete(0, tk.END)
             self.word_entry.insert(0, graphemes_text)
 

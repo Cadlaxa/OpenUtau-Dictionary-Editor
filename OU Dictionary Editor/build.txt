@@ -1,0 +1,2 @@
+[windows]
+python -m PyInstaller -F --icon=Assets/icon.ico OpenUtau_Dictionary_Editor.pyw

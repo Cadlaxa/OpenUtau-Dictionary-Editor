@@ -1,3 +1,2 @@
-name=Dictionary Editor v.0.3.9
-execute=OpenUtau_Dictionary_Editor.pyw
-shell=use
+name=Dictionary Editor v.0.4.8 (beta)
+execute=OpenUtau_Dictionary_Editor.exe

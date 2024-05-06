@@ -5,7 +5,8 @@ from functools import partial
 from pathlib import Path
 from tkinter import ttk
 
-TCL_THEME_FILE_PATH = Path(__file__).with_name("sv.tcl").absolute()
+#TCL_THEME_FILE_PATH = Path(__file__).with_name("sv.tcl").absolute()
+TCL_THEME_FILE_PATH = Path("./Assets/modules/sv_ttk/sv.tcl")
 tcl_file_path = str(TCL_THEME_FILE_PATH)
 if not Path(tcl_file_path).exists():
     raise FileNotFoundError(f"Tcl theme file not found at {tcl_file_path}")
