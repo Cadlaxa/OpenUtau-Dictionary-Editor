@@ -55,13 +55,13 @@ class Dictionary(tk.Tk):
         config = configparser.ConfigParser()
         config.read('settings.ini')
         selected_theme = config.get('Settings', 'theme', fallback='Dark')
-        selected_accent = config.get('Settings', 'accent', fallback='Mint')
+        selected_accent = config.get('Settings', 'accent', fallback='Electric Blue')
         self.theme_var = tk.StringVar(value=selected_theme)
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='Templates\Localizations\en_US.yaml')
         self.localization_var = tk.StringVar(value=selected_local)
         #self.current_version = "v0.3.9"
-        self.current_version = "v0.4.6 (beta)"
+        self.current_version = "v0.4.6"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
