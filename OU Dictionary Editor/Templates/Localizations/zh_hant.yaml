@@ -38,11 +38,12 @@ def_theme: "選擇主題:"
 # Regex Dialog
 reg_pattern: "正規表示式:"
 replacement: "替換:"
-apply: "應用"
+apply: "替換"
+find: "尋找"
 
 # Settings (tab 2)
-select_local: "選擇語言在地化:"
-local_op: "語言在地化選項"
+select_local: "選擇在地化:"
+local_op: "在地化選項"
 
 # Updates (tab 3)
 update: "更新"
