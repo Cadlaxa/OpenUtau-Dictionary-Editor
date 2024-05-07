@@ -20,7 +20,6 @@ LOCAL = P('./Templates/Localizations')
 ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
 
-
 def escape_special_characters(text):
     # Convert non-string text to string
     if not isinstance(text, str):
@@ -56,7 +55,7 @@ class Dictionary(tk.Tk):
         config = configparser.ConfigParser()
         config.read('settings.ini')
         selected_theme = config.get('Settings', 'theme', fallback='Dark')
-        selected_accent = config.get('Settings', 'accent', fallback='Electric Blue')
+        selected_accent = config.get('Settings', 'accent', fallback='Mint')
         self.theme_var = tk.StringVar(value=selected_theme)
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='Templates\Localizations\en_US.yaml')
@@ -356,6 +355,8 @@ class Dictionary(tk.Tk):
                     if not stripped_line.startswith('#'):
                         comments.append(line)  # Add non-comment lines to the list
             data = yaml.load(''.join(comments))  # Parse the cleaned-up content
+            # Store comments for future use
+            self.comments[filepath] = data
             if data is None:
                 raise ValueError("The YAML file is empty or has an incorrect format.")
         except YAMLError as ye:

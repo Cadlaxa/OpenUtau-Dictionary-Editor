@@ -1,2 +1,2 @@
-name=Dictionary Editor v.0.4.8 (beta)
+name=Dictionary Editor v.0.4.6
 execute=OpenUtau_Dictionary_Editor.exe
