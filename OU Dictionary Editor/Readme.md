@@ -8,6 +8,8 @@
 - Utau/OpenUtau plugin Feature
 - Portable executables for `Windows`, for `MacOS` and `Linux` please use the `.pyw` script
 - Fixes to `tcl` not able to locate the themes making the application fail to lunch
+- Revamp Regex dialog
+- Fix save function on searched entries, only the search entries are saved but the rest is gone
 
 
 **`(5/4/24)`**
