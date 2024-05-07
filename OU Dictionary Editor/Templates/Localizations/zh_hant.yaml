@@ -38,7 +38,8 @@ def_theme: "選擇主題:"
 # Regex Dialog
 reg_pattern: "正規表示式:"
 replacement: "替換:"
-apply: "應用"
+apply: "替換"
+find: "尋找"
 
 # Settings (tab 2)
 select_local: "選擇在地化:"
