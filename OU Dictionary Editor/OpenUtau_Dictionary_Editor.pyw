@@ -13,6 +13,7 @@ import zipfile
 import shutil
 import threading
 import copy
+import re
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -781,42 +782,45 @@ class Dictionary(tk.Tk):
         if self.replace_window.winfo_exists():
             self.apply_localization()
 
-        # Button to execute the replace operation
         def apply_replace():
             pattern = regex_var.get()
             replacement = replace_var.get()
             target = target_var.get()
-            import re
 
-            items_to_keep = set()  # Store items that match the filter criteria
+            # Compile regex pattern to catch errors early
+            try:
+                compiled_pattern = re.compile(pattern)
+            except re.error as e:
+                print(f"Regex error: {e}")
+                return
+
+            # Prepare to track modifications
+            items_modified = 0
+
+            # Iterate over all items in the tree view
             for item in self.viewer_tree.get_children():
                 item_values = self.viewer_tree.item(item, "values")
-                # Graphemes target
-                if target == "Graphemes" and re.search(pattern, item_values[0]):
-                    items_to_keep.add(item)
-                # Phonemes target
-                elif target == "Phonemes":
-                    # String of phonemes separated by space
-                    phoneme_string = " ".join(item_values[1].split())
-                    if re.search(pattern, phoneme_string):
-                        items_to_keep.add(item)
-
-            for key in list(self.dictionary):
                 if target == "Graphemes":
-                    new_key = re.sub(pattern, replacement, key)
-                    if new_key != key:
-                        self.dictionary[new_key] = self.dictionary.pop(key)
+                    # Direct replacement for graphemes
+                    new_grapheme = compiled_pattern.sub(replacement, item_values[0])
+                    if new_grapheme != item_values[0]:
+                        self.viewer_tree.item(item, values=(new_grapheme, item_values[1]))
+                        if item_values[0] in self.dictionary:
+                            self.dictionary[new_grapheme] = self.dictionary.pop(item_values[0])
+                        items_modified += 1
                 elif target == "Phonemes":
-                    phonemes = self.dictionary[key]
-                    phoneme_string = " ".join(phonemes)
-                    # Replace sequences
-                    modified_phoneme_string = re.sub(pattern, replacement, phoneme_string)
-                    # Split back into list
-                    new_phonemes = modified_phoneme_string.split()
-                    self.dictionary[key] = new_phonemes
+                    # Handle phoneme list, considering sequences like 'ax, r'
+                    phonemes_string = item_values[1].strip()
+                    # Perform regex replacement directly on the whole phoneme string
+                    modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
+                    if modified_phoneme_string != phonemes_string:
+                        # Updating tree and dictionary
+                        self.viewer_tree.item(item, values=(item_values[0], modified_phoneme_string))
+                        # Update dictionary: Split to list, removing extra spaces
+                        new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
+                        self.dictionary[item_values[0]] = new_phoneme_list
+                        items_modified += 1
             self.refresh_treeview()
-            #self.update_entries_window() 
-            # Reapply filter if any
             if self.search_var.get():
                 self.filter_treeview()
             self.replace_window.destroy()
