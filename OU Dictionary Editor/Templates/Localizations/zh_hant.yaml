@@ -41,8 +41,8 @@ replacement: "替換:"
 apply: "應用"
 
 # Settings (tab 2)
-select_local: "選擇語言在地化:"
-local_op: "語言在地化選項"
+select_local: "選擇在地化:"
+local_op: "在地化選項"
 
 # Updates (tab 3)
 update: "更新"
