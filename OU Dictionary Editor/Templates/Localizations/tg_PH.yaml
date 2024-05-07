@@ -37,7 +37,8 @@ def_theme: "Pilin ang Tema:"
 # Regex Dialog
 reg_pattern: "Regex Pattern:"
 replacement: "Pagpapalitan:"
-apply: "Ilapat"
+apply: "Palitan"
+find: "Hanapin"
 
 # Settings (tab 2)
 select_local: "Piliin ang Lokalisasyon:"

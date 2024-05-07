@@ -38,7 +38,8 @@ def_theme: "Select Theme:"
 # Regex Dialog
 reg_pattern: "Regex Pattern:"
 replacement: "Replacement:"
-apply: "Apply"
+apply: "Replace"
+find: "Find"
 
 # Settings (tab 2)
 select_local: "Select Localization:"

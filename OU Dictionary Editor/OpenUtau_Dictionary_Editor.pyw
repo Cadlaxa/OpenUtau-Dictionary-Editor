@@ -60,8 +60,7 @@ class Dictionary(tk.Tk):
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='Templates\Localizations\en_US.yaml')
         self.localization_var = tk.StringVar(value=selected_local)
-        #self.current_version = "v0.3.9"
-        self.current_version = "v0.4.6"
+        self.current_version = "v0.4.8"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -588,8 +587,8 @@ class Dictionary(tk.Tk):
             self.localizable_widgets['search'] = search_label
             self.search_var = tk.StringVar()
             self.search_var.trace("w", lambda name, index, mode, sv=self.search_var: self.filter_treeview())
-            search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
-            search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+            self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
+            self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
             rep2 = ttk.Button(search_frame, text="Replace", style='Accent.TButton', command=self.regex_replace_dialog)
             rep2.pack(side=tk.LEFT, padx=(5,10), pady=10)
             self.localizable_widgets['rep_button'] = rep2
@@ -743,28 +742,45 @@ class Dictionary(tk.Tk):
             self.replace_window.grab_set()
             self.replace_window.transient(self.entries_window)
             self.save_state_before_change()
+
+            reg_frame = ttk.Frame(self.replace_window, style='Card.TFrame')
+            reg_frame.pack(fill=tk.X, padx=10, pady=10)
+            reg_frame.grid_columnconfigure(0, weight=1)
+            reg_frame.grid_columnconfigure(1, weight=1)
             
             # Fields for entering regex pattern and replacement text
-            reg_pat = ttk.Label(self.replace_window, text="Regex Pattern:")
+            reg_pat = ttk.Label(reg_frame, text="Regex Pattern:")
             reg_pat.grid(row=0, column=0, padx=10, pady=20)
             self.localizable_widgets['reg_pattern'] = reg_pat
             regex_var = tk.StringVar()
-            regex_entry = ttk.Entry(self.replace_window, textvariable=regex_var)
-            regex_entry.grid(row=0, column=1, padx=10, pady=5)
+            regex_entry = ttk.Entry(reg_frame, textvariable=regex_var, width=30)
+            regex_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
 
-            reg_rep = ttk.Label(self.replace_window, text="Replacement:")
+            reg_rep = ttk.Label(reg_frame, text="Replacement:")
             reg_rep.grid(row=1, column=0, padx=10, pady=5)
             self.localizable_widgets['replacement'] = reg_rep
             replace_var = tk.StringVar()
-            replace_entry = ttk.Entry(self.replace_window, textvariable=replace_var)
-            replace_entry.grid(row=1, column=1, padx=10, pady=5)
+            replace_entry = ttk.Entry(reg_frame, textvariable=replace_var, width=30)
+            replace_entry.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
             # Radio buttons to select target (graphemes or phonemes)
             target_var = tk.StringVar(value="Phonemes")
-            ttk.Radiobutton(self.replace_window, text="Graphemes", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-            ttk.Radiobutton(self.replace_window, text="Phonemes", variable=target_var, value="Phonemes").grid(row=3, column=0, padx=10, pady=5, sticky="w")
+            ttk.Radiobutton(reg_frame, text="Graphemes", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=(20, 5), sticky="w")
+            ttk.Radiobutton(reg_frame, text="Phonemes", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=10, pady=(20, 5), sticky="w")
+
+            # Button to execute the replace operation
+            apply_button = ttk.Button(reg_frame, text="Replace", style="Accent.TButton", command=lambda: apply_replace())
+            apply_button.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+            self.localizable_widgets['apply'] = apply_button
+
+            # Find button to highlight matching entries
+            find_button = ttk.Button(reg_frame, text="Find", command=lambda: self.find_matches(regex_var.get(), target_var.get()))
+            find_button.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
+            self.localizable_widgets['find'] = find_button
+
         if self.replace_window.winfo_exists():
             self.apply_localization()
+
         # Button to execute the replace operation
         def apply_replace():
             pattern = regex_var.get()
@@ -804,18 +820,30 @@ class Dictionary(tk.Tk):
             if self.search_var.get():
                 self.filter_treeview()
             self.replace_window.destroy()
-        apply = ttk.Button(self.replace_window, text="Apply", style='Accent.TButton', command=apply_replace)
-        apply.grid(row=4, column=1, padx=10, pady=10)
-        self.localizable_widgets['apply'] = apply
-
         # Keep the dialog window on top
         self.replace_window.transient(self.entries_window)
         self.replace_window.grab_set()
         self.apply_localization()
+
+    def find_matches(self, pattern, target):
+        items_to_highlight = []
+        for item in self.viewer_tree.get_children():
+            item_values = self.viewer_tree.item(item, "values")
+            if target == "Graphemes" and re.search(pattern, item_values[0]):
+                items_to_highlight.append(item)
+            elif target == "Phonemes":
+                phoneme_string = " ".join(item_values[1].split())
+                if re.search(pattern, phoneme_string):
+                    items_to_highlight.append(item)
+        # Clear the current selection to ensure only new results are highlighted
+        self.viewer_tree.selection_remove(self.viewer_tree.selection())
+        # Set the selection to the items found
+        self.viewer_tree.selection_set(items_to_highlight)
     
     def clear_entries(self):
         self.word_entry.delete(0, tk.END)
         self.phoneme_entry.delete(0, tk.END)
+        self.search_entry.delete(0, tk.END)
     
     def close(self):
         # Ensure the entries_window exists
@@ -1116,6 +1144,7 @@ class Dictionary(tk.Tk):
                     existing_data_text.append(line)
 
         # Prepare new entries as formatted strings
+        self.clear_entries()
         new_entries_text = []
         # Ensure the order of entries in the dictionary matches the order in the TreeView
         for item in self.viewer_tree.get_children():
@@ -1178,6 +1207,7 @@ class Dictionary(tk.Tk):
                     existing_data_text.append(line)
 
         # Prepare new entries as formatted strings
+        self.clear_entries()
         new_entries_text = []
         # Ensure the order of entries in the dictionary matches the order in the TreeView
         for item in self.viewer_tree.get_children():
@@ -1223,6 +1253,7 @@ class Dictionary(tk.Tk):
             messagebox.showinfo("Cancelled", "Save operation cancelled.")
             return
         # Prepare entries as formatted strings
+        self.clear_entries()
         entries_text = []
         for grapheme, phonemes in self.dictionary.items():
             formatted_phonemes = ' '.join(phonemes)
