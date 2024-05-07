@@ -10,6 +10,8 @@
 - Fixes to `tcl` not able to locate the themes making the application fail to lunch
 - Revamp Regex dialog
 - Fix save function on searched entries, only the search entries are saved but the rest is gone
+- Option to open file directory after download
+- Update `Chinese Simplified`,  `Chinese Traditional`, and `Cantonese` localizations (thanks to @Zout141)
 
 
 **`(5/4/24)`**

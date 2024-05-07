@@ -13,7 +13,7 @@ import zipfile
 import shutil
 import threading
 import copy
-import re
+import subprocess
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -61,7 +61,7 @@ class Dictionary(tk.Tk):
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='Templates\Localizations\en_US.yaml')
         self.localization_var = tk.StringVar(value=selected_local)
-        self.current_version = "v0.4.8"
+        self.current_version = "v0.4.9"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -1585,6 +1585,14 @@ class Dictionary(tk.Tk):
                     shutil.copytree(s, d, dirs_exist_ok=True)
                 else:
                     shutil.copy2(s, d)
+            
+            # Offer to open the directory
+            if messagebox.askyesno("Open Directory", "Do you want to open the update directory?"):
+                if os.name == 'nt':
+                    os.startfile(target_path)
+                else:
+                    opener = "open" if sys.platform == "darwin" else "xdg-open"
+                    subprocess.Popen([opener, target_path])
 
             # Inform user about the restart
             messagebox.showinfo("Application Close", "The application will now close. Please move the downloaded file manually.")
