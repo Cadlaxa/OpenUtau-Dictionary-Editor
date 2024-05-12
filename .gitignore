@@ -162,3 +162,4 @@ cython_debug/
 
 # Custom gitignore items for this repo
 */settings.ini
+*/OpenUtau_Dictionary_Editor.exe

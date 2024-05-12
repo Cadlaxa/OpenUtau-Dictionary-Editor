@@ -1,0 +1,60 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+# Translated from DeepL so there are might be mistranlation
+# DeepLからの翻訳なので、誤訳があるかもしれない。
+
+Language: Japanese
+File: ja-JP.yaml
+
+# Entry Editor (tab 1)
+# Entry Options
+entry_option: "エントリーオプション"
+select_template: "テンプレートを選択する："
+remove_accents: "数字のアクセントを消す"
+lowercase_phonemes: "音素を小文字にする"
+
+# Manual Entry
+man_entry: "マニュアルエントリー"
+delete_entry: "エントリーの削除"
+add_entry: "エントリーの追加"
+
+# Main Buttons UI
+convert_cmudict: "CMUDictのインポート"
+export_cmudict: "CMUDictをエクスポート"
+append_yaml: "YAMLファイルを追加する"
+open_yaml: "YAMLファイルを開く"
+save_ou: "OU辞書の保存"
+save_ds: "DS辞書の保存"
+edit_sym: "シンボルを見る"
+
+# Entry Viewer
+search: "検索："
+rep_button: "交換"
+close: "閉じる"
+refresh: "リフレッシュ"
+clear_all: "すべてのエントリーを消去"
+drag: "Aesthetic drag"
+
+# Themes
+theme: "テーマ"
+def_theme: "テーマを選ぶ："
+
+# Regex Dialog
+reg_pattern: "正規表現パターン："
+replacement: "交換："
+apply: "交換"
+find: "探す"
+
+# Settings (tab 2)
+select_local: "ローカライズを選択する："
+local_op: "ローカリゼーションオプション"
+
+# Updates (tab 3)
+update: "アップデート"
+update_b: "アップデートの確認"
+
+# Tab names
+tab1: "エントリー編集者"
+tab2: "セッティング"

@@ -1,5 +1,18 @@
 # Changelog
 ---
+**`(5/12/24)`**
+- Remove ask file dialog to find the `templates` folder and replace to automatically use the `templates` folder.
+- Fixed to TopLevel Window on Regex Dialog
+- Fixes to Icon did not apply to TopLevel Windows
+- Fixed delete entries also clears the entry box
+- Fixed loading YAML after loaded a CMUDict file causes `list indices must be integers or slices, not str` error
+- Add select all function via `Ctrl + a` or `Command + a`
+- fixed export CMUDict didn't export removed phoneme accents and lower-cased phonemes
+- Improved cut and delete entry performance
+- Fixed Localization combobox to update on the current local of the GUI and use a human readable option instead of the filename.
+- Added `Japanese` Localization (made with DeepL)
+- Added index header on treeview
+
 **`(5/7/24)`**
 - Fix saving YAML bug
 - Add `copy`, `cut`, and `paste` function via `Ctrl + c`/`Command + c` `Ctrl + x`/`Command + x` `Ctrl + v`/`Command + v`

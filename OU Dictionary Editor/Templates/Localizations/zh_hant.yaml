@@ -2,6 +2,9 @@
 # | in YAML allows for multi-line strings that retain linebreaks.
 # it doesn't use "" but it's still a string, so don't put many special characters in there.
 
+Language: Chinese (Traditional)
+File: zh_hant.yaml
+
 # Entry Editor (tab 1)
 # Entry Options
 entry_option: "條目選項"

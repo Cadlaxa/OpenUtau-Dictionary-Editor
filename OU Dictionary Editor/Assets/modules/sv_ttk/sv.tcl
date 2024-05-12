@@ -9,7 +9,7 @@ foreach theme $themes {
 if {[tk windowingsystem] == "win32"} {
   set static ""
 } elseif {[tk windowingsystem] == "x11"} {
-  set static " static"
+  set static "static"
 } else {
   set static ""  # macOS and other systems
 }
@@ -29,7 +29,7 @@ proc config_entry_font {w} {
   if {[lindex $font_config 3] != [lindex $font_config 4]} {
     return
   }
-  if {[ttk::style theme use] in {"sun-valley-dark", "sun-valley-light", "sun-valley-light", "amaranth_light", "amethyst_light", "burnt-sienna_light", "dandelion_light", , "denim_light", "fern_light", "lemon-ginger_light", "lightning-yellow_light", "mint_light", "orange_light", "pear_light", "persian-red_light", "pink_light", "salmon_light", "sapphire_light", "sea-green_light", "seance_light", "sun-valley-dark", "amaranth_dark", "amethyst_dark", "burnt-sienna_dark", "dandelion_dark", , "denim_dark", "fern_dark", "lemon-ginger_dark", "darkning-yellow_dark", "mint_dark", "orange_dark", "pear_dark", "persian-red_dark", "pink_dark", "salmon_dark", "sapphire_dark", "sea-green_dark", "seance_dark"}} {
+  if {[ttk::style theme use] in {"sun-valley-dark", "sun-valley-light", "sun-valley-light", "amaranth_light", "amethyst_light", "burnt-sienna_light", "dandelion_light", "denim_light", "fern_light", "lemon-ginger_light", "lightning-yellow_light", "mint_light", "orange_light", "pear_light", "persian-red_light", "pink_light", "salmon_light", "sapphire_light", "sea-green_light", "seance_light", "sun-valley-dark", "amaranth_dark", "amethyst_dark", "burnt-sienna_dark", "dandelion_dark", , "denim_dark", "fern_dark", "lemon-ginger_dark", "darkning-yellow_dark", "mint_dark", "orange_dark", "pear_dark", "persian-red_dark", "pink_dark", "salmon_dark", "sapphire_dark", "sea-green_dark", "seance_dark"}} {
     $w configure -font SunValleyBodyFont
   }
 }
