@@ -13,8 +13,8 @@ remove_accents: "刪除數字重音符號"
 lowercase_phonemes: "將音素改為小寫"
 
 # Manual Entry
-man_entry: "手工管理條目"
-delete_entry: "刪除條目"
+man_entry: "手工整理條目"
+delete_entry: "攋低條目"
 add_entry: "增加條目"
 
 # Main Buttons UI
@@ -32,7 +32,7 @@ rep_button: "替代"
 close: "關閉"
 refresh: "刷新"
 clear_all: "清除所有條目"
-drag: "美化拖曳"
+drag: "美化拖逳"
 
 # Themes
 theme: "主題"
@@ -42,7 +42,7 @@ def_theme: "選擇主題:"
 reg_pattern: "正則表達式:"
 replacement: "替換:"
 apply: "替換"
-find: "尋找"
+find: "搵找"
 
 # Settings (tab 2)
 select_local: "選擇本地化:"
