@@ -9,7 +9,7 @@ File: zh_hans.yaml
 # Entry Options
 entry_option: "条目选项"
 select_template: "选择模板:"
-remove_accents: "删除数字重音符号标识"
+remove_accents: "删除数字重音符号"
 lowercase_phonemes: "将音素改为小写"
 
 # Manual Entry
@@ -32,7 +32,7 @@ rep_button: "替代"
 close: "关闭"
 refresh: "刷新"
 clear_all: "清除所有条目"
-drag: "可以通过拖动提高辞典的美观程度"
+drag: "美化拖拽"
 
 # Themes
 theme: "主题"
