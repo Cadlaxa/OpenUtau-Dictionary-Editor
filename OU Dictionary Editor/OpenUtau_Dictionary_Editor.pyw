@@ -14,6 +14,7 @@ import threading
 import copy
 import subprocess
 import ctypes as ct
+import platform
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -54,7 +55,7 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=current_local)
-        self.current_version = "v0.6.1"
+        self.current_version = "v0.6.3"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -531,7 +532,7 @@ class Dictionary(tk.Tk):
         for item_id in selected_items:
             item_data = self.viewer_tree.item(item_id, 'values')
             if item_data:
-                grapheme = item_data[0]
+                grapheme = item_data[1]
                 if grapheme in self.dictionary:
                     del self.dictionary[grapheme]  # Delete the entry from the dictionary
                     self.viewer_tree.delete(item_id)  # Remove the item from the treeview
@@ -564,7 +565,7 @@ class Dictionary(tk.Tk):
         for item in selected_items:
             item_values = self.viewer_tree.item(item, 'values')
             if item_values:
-                key = item_values[0]  # Assuming the first column in tree view is the key for the dictionary
+                key = item_values[1]  # Assuming the first column in tree view is the key for the dictionary
                 if key in self.dictionary:
                     del self.dictionary[key]
         # Delete from the tree view
@@ -628,22 +629,27 @@ class Dictionary(tk.Tk):
             # keyboard entries
             self.viewer_tree.bind("<Delete>", lambda event: self.delete_manual_entry())
             self.entries_window.bind("<Escape>", lambda event: self.close())
-            # undo
-            self.entries_window.bind('<Control-z>', lambda event: self.undo())
-            self.entries_window.bind('<Command-z>', lambda event: self.undo())
-            # redo
-            self.entries_window.bind('<Control-y>', lambda event: self.redo())
-            self.entries_window.bind('<Command-y>', lambda event: self.redo())
-            # copy
-            self.entries_window.bind("<Control-c>", lambda e: self.copy_entry())
-            self.entries_window.bind("<Command-c>", lambda e: self.copy_entry())
-            # cut
-            self.entries_window.bind("<Control-x>", lambda e: self.cut_entry())
-            self.entries_window.bind("<Command-x>", lambda e: self.cut_entry())
-            # paste
-            self.entries_window.bind("<Control-v>", lambda e: self.paste_entry())
-            self.entries_window.bind("<Command-v>", lambda e: self.paste_entry())
-
+            os_name = platform.system()
+            if os_name == "Windows":
+                # Windows key bindings
+                self.entries_window.bind('<Control-z>', lambda event: self.undo())
+                self.entries_window.bind('<Control-y>', lambda event: self.redo())
+                self.entries_window.bind("<Control-c>", lambda event: self.copy_entry())
+                self.entries_window.bind("<Control-x>", lambda event: self.cut_entry())
+                self.entries_window.bind("<Control-v>", lambda event: self.paste_entry())
+            elif os_name == "Darwin":
+                # macOS key bindings (uses Command key)
+                self.entries_window.bind('<Command-z>', lambda event: self.undo())
+                self.entries_window.bind('<Command-y>', lambda event: self.redo())
+                self.entries_window.bind("<Command-c>", lambda event: self.copy_entry())
+                self.entries_window.bind("<Command-x>", lambda event: self.cut_entry())
+                self.entries_window.bind("<Command-v>", lambda event: self.paste_entry())
+            else:
+                self.entries_window.bind('<Control-z>', lambda event: self.undo())
+                self.entries_window.bind('<Control-y>', lambda event: self.redo())
+                self.entries_window.bind("<Control-c>", lambda event: self.copy_entry())
+                self.entries_window.bind("<Control-x>", lambda event: self.cut_entry())
+                self.entries_window.bind("<Control-v>", lambda event: self.paste_entry())
             # Buttons for saving or discarding changes
             button_frame = tk.Frame(self.entries_window)
             button_frame.pack(fill=tk.X, expand=False)
@@ -801,25 +807,27 @@ class Dictionary(tk.Tk):
                 item_values = self.viewer_tree.item(item, "values")
                 if target == "Graphemes":
                     # Direct replacement for graphemes
-                    new_grapheme = compiled_pattern.sub(replacement, item_values[0])
-                    if new_grapheme != item_values[0]:
-                        self.viewer_tree.item(item, values=(new_grapheme, item_values[1]))
-                        if item_values[0] in self.dictionary:
-                            self.dictionary[new_grapheme] = self.dictionary.pop(item_values[0])
+                    new_grapheme = compiled_pattern.sub(replacement, item_values[1])
+                    if new_grapheme != item_values[1]:
+                        self.viewer_tree.item(item, values=(new_grapheme, item_values[2]))
+                        if item_values[1] in self.dictionary:
+                            self.dictionary[new_grapheme] = self.dictionary.pop(item_values[1])
                         items_modified += 1
                 elif target == "Phonemes":
                     # Handle phoneme list, considering sequences like 'ax, r'
-                    phonemes_string = item_values[1].strip()
+                    phonemes_string = item_values[2].strip()
                     # Perform regex replacement directly on the whole phoneme string
                     modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
                     if modified_phoneme_string != phonemes_string:
                         # Updating tree and dictionary
-                        self.viewer_tree.item(item, values=(item_values[0], modified_phoneme_string))
+                        self.viewer_tree.item(item, values=(item_values[1], modified_phoneme_string))
                         # Update dictionary: Split to list, removing extra spaces
                         new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
-                        self.dictionary[item_values[0]] = new_phoneme_list
+                        self.dictionary[item_values[1]] = new_phoneme_list
                         items_modified += 1
             self.refresh_treeview()
+            self.word_entry.delete(0, tk.END)
+            self.phoneme_entry.delete(0, tk.END)
             if self.search_var.get():
                 self.filter_treeview()
             self.replace_window.destroy()
@@ -829,10 +837,10 @@ class Dictionary(tk.Tk):
         items_to_highlight = []
         for item in self.viewer_tree.get_children():
             item_values = self.viewer_tree.item(item, "values")
-            if target == "Graphemes" and re.search(pattern, item_values[0]):
+            if target == "Graphemes" and re.search(pattern, item_values[1]):
                 items_to_highlight.append(item)
             elif target == "Phonemes":
-                phoneme_string = " ".join(item_values[1].split())
+                phoneme_string = " ".join(item_values[2].split())
                 if re.search(pattern, phoneme_string):
                     items_to_highlight.append(item)
         # Clear the current selection to ensure only new results are highlighted
@@ -947,8 +955,8 @@ class Dictionary(tk.Tk):
                 item = self.viewer_tree.item(selected_id)
                 values = item['values']
                 if len(values) >= 2:
-                    grapheme = values[0]
-                    phonemes = values[1].split(', ')
+                    grapheme = values[1]
+                    phonemes = values[2].split(', ')
                     # Create a dictionary from each selected entry
                     entry_dict = {
                         'grapheme': grapheme,
@@ -969,6 +977,9 @@ class Dictionary(tk.Tk):
 
     def paste_entry(self):
         if self.copy_stack:
+            selected = self.viewer_tree.selection()
+            insert_index = self.viewer_tree.index(selected[-1]) + 1 if selected else 'end'
+
             for entry in self.copy_stack:  # Loop through all copied entries
                 if 'grapheme' in entry and 'phonemes' in entry:
                     grapheme = entry['grapheme']
@@ -987,9 +998,11 @@ class Dictionary(tk.Tk):
                         count += 1
 
                     # Use the helper function to add or update the entry
-                    self.add_entry_treeview(new_word=grapheme, new_phonemes=phonemes)
+                    self.add_entry_treeview(new_word=grapheme, new_phonemes=phonemes, insert_index=insert_index)
                     
-                    # Notify the user of the action
+                    # Update the insert index for sequential pasting
+                    if insert_index != 'end':
+                        insert_index += 1
                 else:
                     messagebox.showinfo("Error", "Clipboard data is invalid.")
         else:
@@ -1005,7 +1018,7 @@ class Dictionary(tk.Tk):
         if selected:
             selected_item_id = selected[0]
             selected_item_values = self.viewer_tree.item(selected_item_id, "values")
-            selected_grapheme = selected_item_values[0] if selected_item_values else None
+            selected_grapheme = selected_item_values[1] if selected_item_values else None
         
         # Disable the treeview update during data loading
         self.viewer_tree.configure(displaycolumns=())
@@ -1042,48 +1055,52 @@ class Dictionary(tk.Tk):
             self.viewer_tree.item(new_selection_id, tags=('selected',))
             self.viewer_tree.see(new_selection_id) 
 
-    def add_entry_treeview(self, new_word=None, new_phonemes=None):
+    def add_entry_treeview(self, new_word=None, new_phonemes=None, insert_index='end'):
         if new_word and new_phonemes:
             # Convert phonemes list to a string for display
             phoneme_display = ', '.join(new_phonemes)
 
-            selected = self.viewer_tree.selection()
-            insert_index = 'end'
-            if selected:
-                insert_index = self.viewer_tree.index(selected[-1]) + 1  # Adjust to insert after the last selected item
+            if insert_index == 'end' and self.viewer_tree.selection():
+                insert_index = self.viewer_tree.index(self.viewer_tree.selection()[-1]) + 1  # Adjust to insert after the last selected item
 
+            new_item_ids = [] 
             if new_word in self.dictionary:
                 # Update the existing item's phonemes
-                self.dictionary[new_word] = new_phonemes  # Update dictionary
+                self.dictionary[new_word] = new_phonemes
                 for idx, item in enumerate(self.viewer_tree.get_children()):
-                    if self.viewer_tree.item(item, 'values')[1] == new_word:  # Adjust index for values to match new format
+                    if self.viewer_tree.item(item, 'values')[1] == new_word:
                         self.viewer_tree.item(item, values=(idx + 1, new_word, phoneme_display))
                         break
             else:
                 # Insert new entry if the grapheme does not exist
                 if insert_index == 'end':
-                    self.viewer_tree.insert('', 'end', values=(len(self.dictionary) + 1, new_word, phoneme_display), tags=('normal',))
-                    self.dictionary[new_word] = new_phonemes  # Add to dictionary
+                    item_id = self.viewer_tree.insert('', 'end', values=(len(self.dictionary) + 1, new_word, phoneme_display), tags=('normal',))
+                    new_item_ids.append(item_id)  # Add the item ID to the list
+                    self.dictionary[new_word] = new_phonemes 
                 else:
-                    # More complex case: we need to insert at a specific position
+                    # Insert at the specific position
+                    item_id = self.viewer_tree.insert('', insert_index, values=(insert_index, new_word, phoneme_display), tags=('normal',))
+                    new_item_ids.append(item_id)
+                    # Update dictionary and increment insert_index for possible next insertions
                     items = list(self.dictionary.items())
                     items.insert(insert_index, (new_word, new_phonemes))
                     self.dictionary.clear()
                     self.dictionary.update(items)
-                    # Rebuild the tree view
-                    self.viewer_tree.delete(*self.viewer_tree.get_children())
-                    for idx, (word, phonemes) in enumerate(items):
-                        phoneme_display = ', '.join(phonemes)
-                        self.viewer_tree.insert('', 'end', values=(idx + 1, word, phoneme_display), tags=('normal',))
+                    insert_index += 1
+
+            # Select the newly added items
+            self.viewer_tree.selection_set(new_item_ids) 
+        self.refresh_treeview()
 
     def filter_treeview(self):
-        search_text = self.search_var.get().lower().replace(",", "")  # Remove commas from search text
+        search_text = self.search_var.get().replace(",", "")  # Remove commas from search text
         self.refresh_treeview()
         if search_text:
             for item in self.viewer_tree.get_children():
                 item_values = self.viewer_tree.item(item, "values")
                 if not (search_text in item_values[0].lower().replace(",", "") or
-                        search_text in item_values[1].lower().replace(",", "")):
+                        search_text in item_values[1].lower().replace(",", "") or
+                        search_text in item_values[2].replace(",", "")):
                     self.viewer_tree.delete(item)
     
     def filter_symbols_treeview(self):
@@ -1329,9 +1346,9 @@ class Dictionary(tk.Tk):
     def sort_entries(self, event):
         sort_by = self.sort_combobox.get()
         if sort_by == 'A-Z Sorting':
-            sorted_items = sorted(self.dictionary.items(), key=lambda item: item[0])
+            sorted_items = sorted(self.dictionary.items(), key=lambda item: item[1])
         elif sort_by == 'Z-A Sorting':
-            sorted_items = sorted(self.dictionary.items(), key=lambda item: item[0], reverse=True)
+            sorted_items = sorted(self.dictionary.items(), key=lambda item: item[1], reverse=True)
         else:
             # "Current Sorting" - Restore the manual order
             if self.current_order:

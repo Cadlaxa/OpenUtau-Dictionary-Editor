@@ -1,5 +1,9 @@
 # Changelog
 ---
+**`(5/13/24)`**
+- Fixed regex dialog, copy, cut, paste, delete, search broken on `v0.6.1`
+- changes to keybinds so that `windows` and `macos` doesn't overlap
+
 **`(5/12/24)`**
 - Remove ask file dialog to find the `templates` folder and replace to automatically use the `templates` folder.
 - Fixed to TopLevel Window on Regex Dialog
