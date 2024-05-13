@@ -9,7 +9,7 @@ File: zh_hant.yaml
 # Entry Options
 entry_option: "條目選項"
 select_template: "選擇模板:"
-remove_accents: "刪除數字重音符號標識"
+remove_accents: "刪除數字重音符號"
 lowercase_phonemes: "將音素改為小寫"
 
 # Manual Entry
@@ -22,8 +22,8 @@ convert_cmudict: "導入CMUDict"
 export_cmudict: "匯出CMUDict"
 append_yaml: "追加YAML檔"
 open_yaml: "開啟YAML檔案"
-save_ou: "儲存OU字典"
-save_ds: "儲存DS字典"
+save_ou: "儲存OU辭典"
+save_ds: "儲存DS辭典"
 edit_sym: "檢視符號"
 
 # Entry Viewer
@@ -32,7 +32,7 @@ rep_button: "替代"
 close: "關閉"
 refresh: "刷新"
 clear_all: "清除所有項目"
-drag: "可以透過拖曳來提高辭典的美觀程度"
+drag: "美化拖曳"
 
 # Themes
 theme: "主題"
