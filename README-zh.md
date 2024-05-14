@@ -2,7 +2,7 @@
 # OpenUtau辭典編輯器
 用於為 OpenUtau 建立和編輯 Aesthetic YAML 辭典的 python GUI 工具包 🥰😍
 ![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
-- 要使用此GUI 工具包，對於 **`Windows`** ，我建議使用便攜式 **`.exe`** 文件，對於 **`MacOs`** 和 **`Linux`** ，我建議使用 **`.pyw`** 檔案並使用 **`python 版本 3.10 及以上`** **`3.9 及以下版本`**未經測試，可能無法正常運作。
+- 要使用此GUI 工具包，對於 **`Windows`** ，我建議使用便攜式 **`.exe`** 文件，對於 **`MacOs`** 和 **`Linux`** ，我建議使用 **`.pyw`** 檔案並使用 **`python 版本 3.10 及以上`**  **`3.9 及以下版本`**未經測試，可能無法正常運作。
 - 在 **`MacOs`** 和 **`Linux`** 安裝必要組件：
   ```
   pip install ruamel.yaml tk requests
