@@ -1,4 +1,4 @@
-English(./README.md) Chinese
+[英文](./README.md) 中文
 # OpenUtau辭典編輯器
 用於為 OpenUtau 建立和編輯 Aesthetic YAML 辭典的 python GUI 工具包 🥰😍
 ![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
