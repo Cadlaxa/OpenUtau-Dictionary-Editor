@@ -18,7 +18,7 @@ delete_entry: "攋低條目"
 add_entry: "增加條目"
 
 # Main Buttons UI
-convert_cmudict: "引入CMUDict"
+convert_cmudict: "導入CMUDict"
 export_cmudict: "導出CMUDict"
 append_yaml: "追加YAML文件"
 open_yaml: "打開YAML文件"
