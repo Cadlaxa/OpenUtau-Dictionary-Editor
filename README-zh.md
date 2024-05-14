@@ -42,7 +42,7 @@
 - 使用者可以使用正規表示式搜尋和替換來取代字素或音素。
 ## Saving the YAML Dictionary
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/aed1949e-caa1-4eba-9633-5dcfdbf50d94)
-- 目前有 2 個儲存按鈕可將 YAML 字典儲存為以下格式：
+- 目前有 2 個儲存按鈕可將 YAML 辭典儲存為以下格式：
  - 普通 OU YAML
  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/fcf731ff-9d06-420e-8705-063314ceccc2)
  - Diffsinger 格式
