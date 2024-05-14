@@ -1,4 +1,4 @@
-**English** **[Chinese](./README-zh.md)**
+**English** *[Chinese](./README-zh.md)*
 # OpenUtau-Dictionary-Editor
 A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for OpenUtau 🥰😍
 ![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
