@@ -58,7 +58,7 @@
 # 變更日誌
 ---
 
-[English](/OU Dictionary Editor/Readme.md)
+*[English](OU Dictionary Editor/Readme.md)*
 
 **`(5/13/24)`**
 - 修正了「v0.6.1」上的正規表示式對話方塊、複製、剪下、貼上、刪除、搜尋損壞的問題
