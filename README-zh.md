@@ -53,3 +53,73 @@
 - 使用者可以隨意更改 GUI 工具包的主題和顏色。 目前有 **`18`** 顏色可供選擇，與其 **`淺色`** 和 **`深色`** 主題相對應。
 ---
 - 此 GUI 工具包的其他功能包括自動為字素和音素的特殊字元`' '`、淺色模式和深色模式主題、條目排序、刪除數字重音符號、使音素小寫等等。
+
+
+# 變更日誌
+---
+**`(5/13/24)`**
+- 修正了「v0.6.1」上的正規表示式對話方塊、複製、剪下、貼上、刪除、搜尋損壞的問題
+- 變更按鍵綁定，以便「windows」和「macos」不會重疊
+
+**`(5/12/24)`**
+- 刪除詢問檔案對話方塊以尋找「templates」資料夾並替換為自動使用「templates」資料夾。
+- 修正了正規表示式對話框上的頂級窗口
+- 修復圖示在Windows視窗頂部無法顯示的問題
+- 修正了刪除條目也會清除輸入框的問題
+- 修正了載入 CMUDict 檔案後載入 YAML 導致「list indices must be integers or slices, not str」錯誤
+- 新增透過「Ctrl + a」或「Command + a」選擇所有功能
+- 修正了匯出 CMUDict 未匯出已刪除音素重音和小寫音素的條目的問題
+- 改進了剪切和刪除條目性能
+- 修復了本地化組合框，以更新 GUI 的當前本地位置，並使用人類可讀的選項而不是檔案名稱。
+- 新增了「Japanese」本地化（使用 DeepL 製作）
+- 在樹狀圖檢視上新增了索引標題
+
+**`(5/7/24)`**
+- 修正儲存 YAML 的錯誤
+- 透過 `Ctrl + c`/`Command + c` `Ctrl + x`/`Command + x` `Ctrl + v`/`Command + v` 加入`複製`、`剪下`和`貼上`功能
+- 已選擇的樹視圖現在可以同時處理多個數據
+- 條目的多項選擇將在條目框中可見，而不僅僅是最後選擇的條目。
+- Utau/OpenUtau 外掛功能
+- 適用於「Windows」、「MacOS」和「Linux」的可移植可執行文件，請使用「.pyw」腳本
+- 修正了「tcl」無法找到主題導致應用程式無法啟動的問題
+- 修改正規表示式對話框
+- 修正搜尋條目的儲存功能，僅儲存搜尋條目，其餘條目消失
+- 下載後開啟檔案目錄的選項
+- 更新「Chinese Simplified」、「Chinese Traditional」和「Cantonese」在地化（感謝@Zout141）
+
+
+**`(5/4/24)`**
+- 更新「Chinese Simplified」、「Chinese Traditional」和「Cantonese」在地化（感謝 @Zout141 ）
+- 修復了重音按鈕上的「Lemon Ginger」主題字體顏色，以獲得更好的對比度
+- 新增條目功能現在將條目新增至所選條目下方而不是樹狀圖視圖的結尾，如果沒有所選條目，它將新增至樹狀圖視圖的末端。
+- 透過**`右鍵`**新增項目取消選擇功能
+- 修正了拖曳標籤在拖曳到條目以外的其他內容時卡住的問題
+- 新增匯出 CMUdict 文字檔的功能
+- 修正瞭如果互聯網暫時斷開並再次重新連接的情況下，更新按鈕無法檢查更新的問題
+- 搜尋功能現在忽略搜尋中的“,”，從“hh, eh, l, ow”到“hh eh l ow”，與正規表示式查找和取代功能相同。
+- 加入透過`Ctrl + z`/`Command + z`進行撤回和`Ctrl + y`/`Command + y`進行重做的功能
+- 更多修復
+
+**`(24/4/24)`**
+- 增加了更多主題和顏色色調 `["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", "Fern", "Lemon Ginger", "Lightning Yellow", "Mint", "Orange", "Pear", "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"]`
+- 自動滾動速度從“10”調整為“20”
+- 在樹狀檢視器上新增了字體重新縮放功能
+- 新增了「Chinese Simplified」、「Chinese Traditional」和「Cantonese」在地化（感謝@Zout141）
+- 新增了標準 Python .gitignore （感謝@oxygen-diicide）
+- 新增了自動更新程式功能
+- 新增了符號檢視器（有點問題且無法編輯符號）
+- 將 Windows 字型從 **Segoe UI** 改為 **Arial Rounded MT Bold**
+- 修復了 UI 元素
+- 更多修復
+
+**`(4/19/24)`**
+- 增加標籤欄
+- 允許透過 YAML 檔案進行在地化
+- 使用者介面更改
+- **`templates.ini`** 現已棄用並更改為 **`settings.ini`**，使用者現在可以刪除 **`templates.ini`**
+- 修復了樹視圖
+- 將主題移至「設定」選項卡，資料透過 **`settings.ini`** 存儲
+
+**`(24/4/15)`**
+- **V.01 發布**
+- **初始版本已發布，功能均在自述文件部分**
