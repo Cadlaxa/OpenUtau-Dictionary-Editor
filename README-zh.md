@@ -85,7 +85,7 @@
 - 修改正規表示式對話框
 - 修正搜尋條目的儲存功能，僅儲存搜尋條目，其餘條目消失
 - 下載後開啟檔案目錄的選項
-- 更新「Chinese Simplified」、「Chinese Traditional」和「Cantonese」在地化（感謝@Zout141）
+- 更新「Chinese Simplified」、「Chinese Traditional」和「Cantonese」在地化（感謝 @Zout141 ）
 
 
 **`(5/4/24)`**
@@ -104,8 +104,8 @@
 - 增加了更多主題和顏色色調 `["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", "Fern", "Lemon Ginger", "Lightning Yellow", "Mint", "Orange", "Pear", "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"]`
 - 自動滾動速度從“10”調整為“20”
 - 在樹狀檢視器上新增了字形重新縮放功能
-- 新增了「Chinese Simplified」、「Chinese Traditional」和「Cantonese」在地化（感謝@Zout141）
-- 新增了標準 Python .gitignore （感謝@oxygen-diicide）
+- 新增了「Chinese Simplified」、「Chinese Traditional」和「Cantonese」在地化（感謝 @Zout141 ）
+- 新增了標準 Python .gitignore （感謝 @oxygen-diicide ）
 - 新增了自動更新程式的功能
 - 新增了符號檢視器（有點問題且無法編輯符號）
 - 將 Windows 字型從 **Segoe UI** 改為 **Arial Rounded MT Bold**
