@@ -47,13 +47,21 @@ replacement: "交換："
 apply: "交換"
 find: "探す"
 
+# Symbol Editor
+del: "削除"
+add: "追加"
+save_templ: "テンプレートに保存"
+
 # Settings (tab 2)
 select_local: "ローカライズを選択する："
 local_op: "ローカリゼーションオプション"
-
-# Updates (tab 3)
 update: "アップデート"
 update_b: "アップデートの確認"
+
+# Others (tab 3)
+import: "インポート辞書"
+export: "輸出辞書"
+synthv: "SynthV"
 
 # Tab names
 tab1: "エントリー編集者"

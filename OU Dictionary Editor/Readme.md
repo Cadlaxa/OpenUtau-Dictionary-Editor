@@ -1,5 +1,12 @@
 # Changelog
 ---
+**`(5/--/24)`**
+- Fixed phonemes with special characters not adding quotes with the entire string.
+- Added Synthv Import and Export `json` dictionary files
+- Automatically add extension filenames when saving
+- Update `View Symbols` to `Edit Symbols` (functions limited to: add/delete symbols, select/deselect, search the symbols, and save symbols to template)
+- Update to Localizations
+
 **`(5/13/24)`**
 - Fixed regex dialog, copy, cut, paste, delete, search broken on `v0.6.1`
 - changes to keybinds so that `windows` and `macos` doesn't overlap

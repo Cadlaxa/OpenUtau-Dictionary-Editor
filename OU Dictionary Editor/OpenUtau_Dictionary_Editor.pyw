@@ -4,7 +4,7 @@ from tkinter import filedialog, messagebox, ttk, PhotoImage, BOTH
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
-from ruamel.yaml import YAML, YAMLError
+from ruamel.yaml import YAML, YAMLError, CommentedMap
 import tkinter.font as tkFont
 import configparser
 from Assets.modules import requests
@@ -15,6 +15,7 @@ import copy
 import subprocess
 import ctypes as ct
 import platform
+import json
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -22,21 +23,30 @@ LOCAL = P('./Templates/Localizations')
 ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
 
-def escape_special_characters(text):
-    # Convert non-string text to string
-    if not isinstance(text, str):
-        text = str(text)
-    special_characters = r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・]+"
-    # Use regex to find sequences of special characters and wrap them in single quotes
-    escaped_text = re.sub(special_characters, lambda match: "'" + match.group(0) + "'", text)
-    return escaped_text
+def escape_special_characters(phoneme):
+        # Check if the first character is a special character that might require quoting
+        if phoneme[0] in r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・:~]+":
+            return f"'{phoneme}'"
+        pattern = r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・:~]+$"
+        if re.search(pattern, phoneme):
+            return f"'{phoneme}'"
+        return phoneme
+
+def escape_symbols(symbol):
+    # Convert symbol to string in case it's not
+    symbol_str = str(symbol)
+    pattern1 = r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・:~]+$"
+    pattern2 = r"^[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・:~]+"
+    if re.search(pattern1, symbol_str) or re.search(pattern2, symbol_str):
+        return f"'{symbol_str}'"
+    return symbol_str
 
 def escape_grapheme(grapheme):
         # Check if the first character is a special character that might require quoting
         if grapheme[0] in r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・]+":
             return f'"{grapheme}"'
         if re.search(r"\b(true|false|yes|no|on|off)\b", grapheme, re.IGNORECASE):
-            return f'"{grapheme}"'
+            return f"'{grapheme}'"
         return grapheme
 
 class Dictionary(tk.Tk):
@@ -74,6 +84,7 @@ class Dictionary(tk.Tk):
         self.comments = {}
         self.localization = {}
         self.symbols = {}
+        self.symbols_list = []
         self.undo_stack = []
         self.redo_stack = []
         self.copy_stack = []
@@ -317,6 +328,45 @@ class Dictionary(tk.Tk):
 
     def remove_numbered_accents(self, phonemes):
         return [phoneme[:-1] if phoneme[-1].isdigit() else phoneme for phoneme in phonemes]
+    
+    def load_json_file(self):
+        filepath = filedialog.askopenfilename(title="Open JSON File", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if not filepath:
+            messagebox.showinfo("No File", "No file was selected.")
+            return
+
+        # Update title and file management details
+        self.current_filename = filepath
+        self.file_modified = False
+        self.update_title()
+        self.current_order = list(self.dictionary.keys())
+
+        # Load JSON data
+        try:
+            with open(filepath, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+                entries = data.get('data', [])
+                if not entries:
+                    messagebox.showinfo("Empty Data", "The JSON file contains no data.")
+                    return
+        except json.JSONDecodeError as je:
+            messagebox.showerror("JSON Syntax Error", f"An error occurred while parsing the JSON file: {str(je)}")
+            return
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while reading the JSON file: {str(e)}")
+            return
+
+        # Process entries
+        self.dictionary.clear()
+        for item in entries:
+            grapheme = item.get('w')
+            phonemes = item.get('p')
+            if not (isinstance(grapheme, str) and isinstance(phonemes, str)):
+                messagebox.showerror("Invalid Entry", "Each entry must have a 'w' key with a string value and a 'p' key with a string value.")
+                continue
+            phoneme_list = [phoneme.strip() for phoneme in phonemes.split()]
+            self.dictionary[grapheme] = phoneme_list
+        self.update_entries_window()
 
     def load_yaml_file(self):
         filepath = filedialog.askopenfilename(title="Open YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
@@ -331,6 +381,7 @@ class Dictionary(tk.Tk):
             self.current_order = list(self.dictionary.keys())
 
         yaml = YAML(typ='safe')
+        yaml.prefix_colon = True
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 data = yaml.load(file)
@@ -363,12 +414,13 @@ class Dictionary(tk.Tk):
         self.dictionary = {}
         self.data_list = []  # Initialize data_list
 
+        symbols = []
         if 'symbols' in data and isinstance(data['symbols'], list):
             symbols = data['symbols']
         else:
             messagebox.showerror("Error", "The 'symbols' key must be associated with a list.")
             return
-        
+
         self.symbols = {}
         self.symbols_list = []  # Initialize symbols_list
 
@@ -381,7 +433,7 @@ class Dictionary(tk.Tk):
             if symbol is None or type_ is None:
                 messagebox.showerror("Error", "Symbol entry is incomplete.")
                 return
-            if not isinstance(type_, str):  # Change to check if type is a string
+            if not isinstance(type_, str):  # Check if type is a string
                 messagebox.showerror("Error", "Type must be a string representing the category.")
                 return
             self.symbols[symbol] = [type_]  # Store type in a list for compatibility with other code parts
@@ -407,9 +459,7 @@ class Dictionary(tk.Tk):
         if not filepaths:
             messagebox.showinfo("No File", "No files were selected.")
             return
-        
         yaml = YAML(typ='safe')
-
         for filepath in filepaths:
             try:
                 with open(filepath, 'r', encoding='utf-8') as file:
@@ -465,59 +515,285 @@ class Dictionary(tk.Tk):
     def open_symbol_editor(self):
         if self.symbol_editor_window is None or not self.symbol_editor_window.winfo_exists():
             self.symbol_editor_window = tk.Toplevel(self)
-            self.symbol_editor_window.title("Symbols Viewer")
-            self.symbol_editor_window.protocol("WM_DELETE_WINDOW")
+            self.symbol_editor_window.title("Symbols Editor")
+            self.symbol_editor_window.protocol("WM_DELETE_WINDOW", self.symbol_editor_window.destroy)
+            self.save_state_before_change()
             self.icon(self.symbol_editor_window)
+
+            # Configure the window's grid layout to expand with resizing
+            self.symbol_editor_window.columnconfigure(0, weight=1)
+            self.symbol_editor_window.rowconfigure(1, weight=1)
+            self.symbol_editor_window.rowconfigure(2, weight=0)
+            self.symbol_editor_window.rowconfigure(3, weight=0)
 
             # Create a Frame for the search bar
             search_bar_frame = ttk.Frame(self.symbol_editor_window, style='Card.TFrame')
-            search_bar_frame.pack(fill=tk.X, padx=15, pady=10)
+            search_bar_frame.grid(row=0, column=0, padx=15, pady=10, sticky="nsew")
+            search_bar_frame.columnconfigure(1, weight=1)
+
             search_button = ttk.Button(search_bar_frame, text="Search:", style='Accent.TButton', command=self.filter_symbols_treeview)
-            search_button.pack(side=tk.LEFT, padx=(10), pady=10)
+            search_button.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
             self.localizable_widgets['search'] = search_button
+
             self.search_var = tk.StringVar()
             self.search_var.trace("w", lambda name, index, mode, sv=self.search_var: self.filter_symbols_treeview())
             search_entry = ttk.Entry(search_bar_frame, textvariable=self.search_var)
-            search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+            search_entry.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
 
             # Create a Frame to hold the Treeview and the Scrollbar
             treeview_frame = tk.Frame(self.symbol_editor_window)
-            treeview_frame.pack(fill=tk.BOTH, expand=True)
+            treeview_frame.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+            treeview_frame.columnconfigure(0, weight=1)
+            treeview_frame.rowconfigure(0, weight=1)
+
+            # Deselect
+            self.symbol_editor_window.bind("<Button-2>", self.deselect_symbols)
+            self.symbol_editor_window.bind("<Button-3>", self.deselect_symbols)
+            # Select
+            self.symbol_editor_window.bind("<<TreeviewSelect>>", self.on_tree_symbol_selection)
 
             # Create the Treeview
-            self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type'), show='headings', height=16)
+            self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type'), show='headings', height=14)
             self.symbol_treeview.heading('Symbol', text='Symbol')
             self.symbol_treeview.heading('Type', text='Type')
             self.symbol_treeview.column('Symbol', width=120, anchor='w')
             self.symbol_treeview.column('Type', width=180, anchor='w')
-            self.symbol_treeview.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
+            self.symbol_treeview.grid(row=0, column=0, padx=(10,0), pady=5, sticky="nsew")
 
             # Create and pack the Scrollbar
             treeview_scrollbar = ttk.Scrollbar(treeview_frame, orient=tk.VERTICAL, command=self.symbol_treeview.yview)
-            treeview_scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(5))
+            treeview_scrollbar.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ns")
+
             self.symbol_treeview.configure(yscrollcommand=treeview_scrollbar.set)
-            
-            # Keyboard entries
             self.symbol_treeview.bind("<Escape>", lambda event: self.close())
 
-            # Buttons for saving or discarding changes
-            action_button_frame = tk.Frame(self.symbol_editor_window)
-            action_button_frame.pack(fill=tk.X, expand=False)
-            refresh_button = ttk.Button(action_button_frame, text="Refresh", command=self.refresh_treeview_symbols)
-            refresh_button.pack(side=tk.RIGHT, padx=5, pady=10)
-            self.localizable_widgets['refresh'] = refresh_button
-            close_button = ttk.Button(action_button_frame, text="Close", command=self.close_sym)
-            close_button.pack(side=tk.RIGHT, padx=5, pady=10)
-            self.localizable_widgets['close'] = close_button
-            ttk.Button(action_button_frame, text="-", style='Accent.TButton', command=lambda: self.change_font_size(-1)).pack(side="left", padx=(15,5), pady=10)
-            ttk.Button(action_button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1)).pack(side="left", padx=5, pady=10)
+            # Frame for action buttons
+            action_button_frame = ttk.Frame(self.symbol_editor_window)
+            action_button_frame.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+            action_button_frame.grid_columnconfigure(0, weight=1)
+            action_button_frame.grid_columnconfigure(1, weight=1)
+
+            action_button_frame1 = ttk.Frame(self.symbol_editor_window)
+            action_button_frame1.grid(row=3, column=0, padx=10, pady=(0,15), sticky="nsew")
+            action_button_frame1.grid_columnconfigure(0, weight=1)
+
+            delete_button = ttk.Button(action_button_frame, text="Delete", command=self.delete_symbol_entry)
+            delete_button.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+            self.localizable_widgets['del'] = delete_button
+            self.word_edit = ttk.Entry(action_button_frame)
+            self.word_edit.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+
+            add_button = ttk.Button(action_button_frame, text="Add", command=self.add_symbol_entry)
+            add_button.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+            self.localizable_widgets['add'] = add_button
+            self.phoneme_edit = ttk.Entry(action_button_frame)
+            self.phoneme_edit.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+
+            save_templ = ttk.Button(action_button_frame1, style='Accent.TButton', text="Save to Templates", command=self.save_yaml_template)
+            save_templ.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
+            self.localizable_widgets['save_templ'] = save_templ
+
         self.refresh_treeview_symbols()
         if self.symbol_editor_window.winfo_exists():
             self.apply_localization()
 
+    
+    def save_yaml_template(self):
+        if not self.symbols:
+            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
+            return
+
+        # Ensure the templates directory exists
+        templates_dir = os.path.join(os.getcwd(), TEMPLATES)
+        if not os.path.exists(templates_dir):
+            os.makedirs(templates_dir)
+
+        # Prompt user for file path using a file dialog with the default directory set to 'templates'
+        template_path = filedialog.asksaveasfilename(
+            title="Saving symbols to Template YAML",
+            initialdir=templates_dir,
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
+        )
+        if not template_path:
+            return
+
+        # Ensure the file path ends with .yaml
+        if not template_path.endswith('.yaml'):
+            template_path += '.template.yaml'
+
+        # Read existing data from the template as text, ignoring the entries section
+        existing_data_text = []
+        if os.path.exists(template_path):
+            with open(template_path, 'r', encoding='utf-8') as file:
+                for line in file:
+                    if 'symbols:' in line.strip():
+                        break
+                    existing_data_text.append(line)
+
+        # Prepare new entries for symbols
+        escaped_symbols = [escape_symbols(symbol) for symbol in self.symbols.keys()]
+        symbols_entries = [
+            f"  - {{symbol: {escaped_symbol}, type: {', '.join(types)}}}\n"
+            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
+        ]
+        existing_data_text.append('symbols:\n')
+        existing_data_text.extend(symbols_entries)
+        existing_data_text.append('\n')
+        existing_data_text.append('entries:\n')
+
+        # Save changes if the user has selected a file path
+        with open(template_path, 'w', encoding='utf-8') as file:
+            file.writelines(existing_data_text)
+            self.update_template_combobox(self.template_combobox)
+        messagebox.showinfo("Success", f"Templates saved to {template_path}.")
+    
+    def deselect_symbols(self, event):
+        # Check if there is currently a selection
+        selected_items = self.symbol_treeview.selection()
+        if selected_items:
+            self.symbol_treeview.selection_remove(selected_items)
+
+            self.word_edit.delete(0, tk.END)
+            self.phoneme_edit.delete(0, tk.END)
+    
+    def add_symbol_entry(self):
+        symbol = self.word_edit.get().strip()
+        value = self.phoneme_edit.get().strip()
+        self.save_state_before_change()
+        if symbol and value:
+            if not self.symbol_editor_window or not self.symbol_editor_window.winfo_exists():
+                self.open_symbol_editor()
+            self.add_symbols_treeview(symbol, value.split())
+            self.phoneme_edit.delete(0, tk.END)
+            self.word_edit.delete(0, tk.END)
+        else:
+            messagebox.showinfo("Error", "Please provide both phonemes and its respective value for the entry.")
+
+    def delete_symbol_entry(self):
+        selected_items = self.symbol_treeview.selection()
+        for item_id in selected_items:
+            self.save_state_before_change()
+            item_data = self.symbol_treeview.item(item_id, 'values')
+            if item_data:
+                symbol = item_data[0]
+                if symbol in self.symbols:
+                    del self.symbols[symbol]  # Delete the entry from the symbols dictionary
+                    self.symbol_treeview.delete(item_id)  # Remove the item from the treeview
+                    self.phoneme_edit.delete(0, tk.END)
+                    self.word_edit.delete(0, tk.END)
+                else:
+                    messagebox.showinfo("Notice", f"Symbol: {symbol} not found in symbols.")
+            else:
+                messagebox.showinfo("Notice", f"No data found for item ID {item_id}.")
+
+    def add_symbols_treeview(self, word=None, value=None):
+        if word and value:
+            # Convert phonemes list to a string for display
+            phoneme_display = ', '.join(value)
+            new_item_ids = []
+            if word in self.symbols:
+                # Update the existing item's phonemes
+                self.symbols[word] = value
+                for item in self.symbol_treeview.get_children():
+                    if self.symbol_treeview.item(item, 'values')[1] == word:
+                        self.symbol_treeview.item(item, values=(self.symbol_treeview.index(item) + 1, word, phoneme_display))
+                        break
+            else:
+                # Insert new entry if the word does not exist
+                item_id = self.symbol_treeview.insert('', 'end', values=(len(self.symbols) + 1, word, phoneme_display), tags=('normal',))
+                new_item_ids.append(item_id)
+                self.symbols[word] = value
+            # Update symbols_list to reflect changes
+            self.symbols_list = [{'symbol': k, 'type': v} for k, v in self.symbols.items()]
+            # Select the newly added or updated items
+            self.symbol_treeview.selection_set(new_item_ids)
+            self.refresh_treeview_symbols()
+    
+    def filter_symbols_treeview(self):
+        search_symbol = self.search_var.get().lower().replace(",", "")
+        self.refresh_treeview_symbols()
+        if search_symbol:
+            for item in self.symbol_treeview.get_children():
+                item_sym_values = self.symbol_treeview.item(item, "values")
+                if not (search_symbol in item_sym_values[0].lower().replace(",", "") or
+                        search_symbol in item_sym_values[1].lower().replace(",", "")):
+                    self.symbol_treeview.delete(item)
+    
+    def refresh_treeview_symbols(self):
+        # Setup tag configurations for normal and bold fonts
+        self.symbol_treeview.tag_configure('normal', font=self.tree_font)
+        self.symbol_treeview.tag_configure('selected', font=self.tree_font_b)
+
+        # Capture the symbol of the currently selected item before clearing entries
+        selected = self.symbol_treeview.selection()
+        selected_symbol = None
+        if selected:
+            selected_item_id = selected[0]
+            selected_item_values = self.symbol_treeview.item(selected_item_id, "values")
+            selected_symbol = selected_item_values[0] if selected_item_values else None
+
+        # Clear all current entries from the treeview
+        self.symbol_treeview.delete(*self.symbol_treeview.get_children())
+
+        # Insert new entries into the treeview
+        new_selection_id = None
+        for entry in self.symbols_list:
+            symbol = entry['symbol']
+            type_list = entry['type']
+            item_id = self.symbol_treeview.insert('', 'end', values=(symbol, type_list), tags=('normal',))
+            # Check if this was the previously selected symbol
+            if symbol == selected_symbol:
+                new_selection_id = item_id
+
+        # If there was a previously selected symbol, reselect its new corresponding item ID
+        if new_selection_id:
+            self.symbol_treeview.selection_set(new_selection_id)
+            self.symbol_treeview.item(new_selection_id, tags=('selected',))
+            self.symbol_treeview.see(new_selection_id)
+    
+    def on_tree_symbol_selection(self, event):
+        # Reset styles for all items
+        for item in self.symbol_treeview.get_children():
+            self.symbol_treeview.item(item, tags=('normal',))
+        self.symbol_treeview.tag_configure('normal', font=self.tree_font)
+
+        # Apply bold font to selected items
+        selected_items = self.symbol_treeview.selection()
+        for item in selected_items:
+            self.symbol_treeview.item(item, tags=('selected',))
+        self.symbol_treeview.tag_configure('selected', font=self.tree_font_b)
+        
+        # Handle multiple selections for displaying grapheme and phoneme data
+        if selected_items:
+            graphemes = []
+            phoneme_lists = []
+            for item_id in selected_items:
+                item_data = self.symbol_treeview.item(item_id, 'values')
+                if item_data:
+                    grapheme, phonemes = item_data[0], self.symbols.get(item_data[0], [])
+                    graphemes.append(grapheme)
+                    phoneme_lists.append(phonemes)
+
+            # Concatenate all graphemes for display
+            graphemes_text = ', '.join(graphemes)
+
+            # Formatting phonemes appropriately based on selection count
+            if len(phoneme_lists) > 1:
+                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
+                phonemes_text = f"[{phonemes_text}]"
+            else:
+                phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0])
+
+            self.word_edit.delete(0, tk.END)
+            self.word_edit.insert(0, graphemes_text)
+
+            self.phoneme_edit.delete(0, tk.END)
+            self.phoneme_edit.insert(0, phonemes_text)
+
     def add_manual_entry(self):
         word = self.word_entry.get().strip()
         phonemes = self.phoneme_entry.get().strip()
+        self.save_state_before_change()
         if word and phonemes:
             if not self.entries_window or not self.entries_window.winfo_exists():
                 self.update_entries_window()
@@ -530,6 +806,7 @@ class Dictionary(tk.Tk):
     def delete_manual_entry(self):
         selected_items = self.viewer_tree.selection()
         for item_id in selected_items:
+            self.save_state_before_change()
             item_data = self.viewer_tree.item(item_id, 'values')
             if item_data:
                 grapheme = item_data[1]
@@ -549,6 +826,7 @@ class Dictionary(tk.Tk):
             return
 
         if messagebox.askyesno("Confirm", "Are you sure you want to delete all entries?"):
+            self.save_state_before_change()
             self.dictionary.clear()
             self.viewer_tree.delete(*self.viewer_tree.get_children())
             self.word_entry.delete(0, tk.END)
@@ -564,6 +842,7 @@ class Dictionary(tk.Tk):
         # Delete from the dictionary if you are syncing it with the tree view
         for item in selected_items:
             item_values = self.viewer_tree.item(item, 'values')
+            self.save_state_before_change()
             if item_values:
                 key = item_values[1]  # Assuming the first column in tree view is the key for the dictionary
                 if key in self.dictionary:
@@ -873,41 +1152,6 @@ class Dictionary(tk.Tk):
         else:
             return
     
-    def close_sym(self):
-        self.symbol_editor_window.destroy()
-              
-    def refresh_treeview_symbols(self):
-        # Setup tag configurations for normal and bold fonts
-        self.symbol_treeview.tag_configure('normal', font=self.tree_font)
-        self.symbol_treeview.tag_configure('selected', font=self.tree_font_b)
-
-        # Capture the symbol of the currently selected item before clearing entries
-        selected = self.symbol_treeview.selection()
-        selected_symbol = None
-        if selected:
-            selected_item_id = selected[0]
-            selected_item_values = self.symbol_treeview.item(selected_item_id, "values")
-            selected_symbol = selected_item_values[0] if selected_item_values else None
-
-        # Clear all current entries from the treeview
-        self.symbol_treeview.delete(*self.symbol_treeview.get_children())
-
-        # Insert new entries into the treeview
-        new_selection_id = None
-        for entry in self.symbols_list:
-            symbol = entry['symbol']
-            type_list = entry['type'] 
-            item_id = self.symbol_treeview.insert('', 'end', values=(symbol, type_list), tags=('normal',))
-            # Check if this was the previously selected symbol
-            if symbol == selected_symbol:
-                new_selection_id = item_id
-
-        # If there was a previously selected symbol, reselect its new corresponding item ID
-        if new_selection_id:
-            self.symbol_treeview.selection_set(new_selection_id)
-            self.symbol_treeview.item(new_selection_id, tags=('selected',))
-            self.symbol_treeview.see(new_selection_id) 
-    
     def save_state_before_change(self):
         # Saves the current state of the dictionary before making changes
         self.undo_stack.append(copy.deepcopy(self.dictionary))
@@ -1102,16 +1346,6 @@ class Dictionary(tk.Tk):
                         search_text in item_values[1].lower().replace(",", "") or
                         search_text in item_values[2].replace(",", "")):
                     self.viewer_tree.delete(item)
-    
-    def filter_symbols_treeview(self):
-        search_symbol = self.search_var.get().lower().replace(",", "")
-        self.refresh_treeview()
-        if search_symbol:
-            for item in self.symbol_treeview.get_children():
-                item_sym_values = self.viewer_tree.item(item, "values")
-                if not (search_symbol in item_sym_values[0].lower().replace(",", "") or
-                        search_symbol in item_sym_values[1].lower().replace(",", "")):
-                    self.viewer_tree.delete(item)
 
     def on_tree_selection(self, event):
         # Reset styles for all items
@@ -1179,12 +1413,12 @@ class Dictionary(tk.Tk):
         
         # Read existing data from the template as text, ignoring the entries section
         existing_data_text = []
-        entries_start = False
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as file:
                 for line in file:
                     if 'entries:' in line.strip():
-                        entries_start = True
+                        break
+                    if 'symbols:' in line.strip():
                         break
                     existing_data_text.append(line)
 
@@ -1207,7 +1441,17 @@ class Dictionary(tk.Tk):
                 grapheme = escape_grapheme(grapheme)
                 entry_text = f"  - grapheme: {grapheme}\n    phonemes: [{formatted_phonemes}]\n"
                 new_entries_text.append(entry_text)
-
+        
+        # Prepare new entries for symbols
+        escaped_symbols = [escape_symbols(symbol) for symbol in self.symbols.keys()]
+        symbols_entries = [
+            f"  - {{symbol: {escaped_symbol}, type: {', '.join(types)}}}\n"
+            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
+        ]
+        existing_data_text.append('symbols:\n')
+        existing_data_text.extend(symbols_entries)
+        existing_data_text.append('\n')
+        
         # Append the entries tag and new entries
         existing_data_text.append('entries:\n')
         existing_data_text.extend(new_entries_text)
@@ -1217,6 +1461,10 @@ class Dictionary(tk.Tk):
             output_file_path = template_path
         else:
             output_file_path = filedialog.asksaveasfilename(title="Save YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
+
+        # Ensure the file path ends with .yaml
+        if output_file_path and not output_file_path.endswith('.yaml'):
+            output_file_path += '.yaml'
 
         # Save changes if the user has selected a file path
         if output_file_path:
@@ -1244,12 +1492,12 @@ class Dictionary(tk.Tk):
         
         # Read existing data from the template as text, ignoring the entries section
         existing_data_text = []
-        entries_start = False
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as file:
                 for line in file:
                     if 'entries:' in line.strip():
-                        entries_start = True
+                        break
+                    if 'symbols:' in line.strip():
                         break
                     existing_data_text.append(line)
 
@@ -1271,6 +1519,16 @@ class Dictionary(tk.Tk):
                 formatted_phonemes = ", ".join(f'{phoneme}' for phoneme in escaped_phonemes)
                 entry_text = f"  - {{grapheme: \"{grapheme}\", phonemes: [{formatted_phonemes}]}}\n"
                 new_entries_text.append(entry_text)
+        
+        # Prepare new entries for symbols
+        escaped_symbols = [escape_symbols(symbol) for symbol in self.symbols.keys()]
+        symbols_entries = [
+            f"  - {{symbol: {escaped_symbol}, type: {', '.join(types)}}}\n"
+            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
+        ]
+        existing_data_text.append('symbols:\n')
+        existing_data_text.extend(symbols_entries)
+        existing_data_text.append('\n')
 
         # Append the entries tag and new entries
         existing_data_text.append('entries:\n')
@@ -1281,7 +1539,11 @@ class Dictionary(tk.Tk):
             output_file_path = template_path
         else:
             output_file_path = filedialog.asksaveasfilename(title="Save YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-
+        
+        # Ensure the file path ends with .yaml
+        if output_file_path and not output_file_path.endswith('.yaml'):
+            output_file_path += '.yaml'
+        
         # Save changes if the user has selected a file path
         if output_file_path:
             with open(output_file_path, 'w', encoding='utf-8') as file:
@@ -1289,6 +1551,37 @@ class Dictionary(tk.Tk):
             messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
         else:
             messagebox.showinfo("Cancelled", "Save operation cancelled.")
+    
+    def export_json(self):
+        if not self.dictionary:
+            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
+            return
+
+        # Prompt user for output file path using a file dialog
+        output_file_path = filedialog.asksaveasfilename(title="Save JSON File", defaultextension=".json", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if not output_file_path:
+            messagebox.showinfo("Cancelled", "Save operation cancelled.")
+            return
+
+        # Prepare data for JSON format
+        data = []
+        for grapheme, phonemes in self.dictionary.items():
+            if self.lowercase_phonemes_var.get():
+                phonemes = [phoneme.lower() for phoneme in phonemes]
+            if self.remove_numbered_accents_var.get():
+                phonemes = self.remove_numbered_accents(phonemes)
+            phoneme_str = ' '.join(phonemes)
+            data.append({"w": grapheme, "p": phoneme_str})
+        
+        # Ensure the file path ends with .json
+        if output_file_path and not output_file_path.endswith('.json'):
+            output_file_path += '.json'
+
+        json_data = {"data": data}
+        # Write JSON data to the selected file
+        with open(output_file_path, 'w', encoding='utf-8') as file:
+            json.dump(json_data, file, indent=2)  # Pretty print with indentation
+        messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
     
     def export_cmudict(self):
         if not self.dictionary:
@@ -1312,6 +1605,10 @@ class Dictionary(tk.Tk):
             entry_text = f"{grapheme}  {formatted_phonemes}\n"
             entries_text.append(entry_text)
 
+        # Ensure the file path ends with .txt
+        if output_file_path and not output_file_path.endswith('.txt'):
+            output_file_path += '.txt'
+
         # Write entries to the selected file
         with open(output_file_path, 'w', encoding='utf-8') as file:
             file.writelines(entries_text)
@@ -1332,16 +1629,49 @@ class Dictionary(tk.Tk):
     
     def update_template_combobox(self, combobox):
         try:
-            # List all files in the specified directory
-            files = os.listdir(TEMPLATES)
-            # Filter out files to include only .yaml files
-            yaml_files = [file for file in files if file.endswith('.yaml')]
+            yaml_files = [f for f in os.listdir(TEMPLATES) if f.endswith('.yaml')]
             options = ["Current Template"] + yaml_files
             combobox['values'] = options
-            # Set default selection to the first item
             self.template_var.set(options[0])
+            self.template_combobox.bind("<<ComboboxSelected>>", self.on_template_selected)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read the directory: {str(e)}")
+
+    def on_template_selected(self, event):
+        selected_template = self.template_var.get()
+        if selected_template == "Current Template":
+            self.clear_symbols_data()
+        else:
+            self.load_symbols_from_yaml(os.path.join(TEMPLATES, selected_template))
+    
+    def clear_symbols_data(self):
+        self.symbols.clear()
+        self.symbols_list = []
+        self.refresh_treeview_symbols()  # Update to reflect no data
+
+    def load_symbols_from_yaml(self, yaml_file):
+        yaml = YAML(typ='safe')
+        with open(yaml_file, 'r') as file:
+            data = yaml.load(file)
+            symbols = data.get('symbols', [])
+            self.process_symbols(symbols)
+            if self.symbol_editor_window:
+                self.refresh_treeview_symbols()
+
+    def process_symbols(self, symbols):
+        if not all(isinstance(item, dict) for item in symbols):
+            messagebox.showerror("Error", "All entries must be dictionaries.")
+            return
+        self.symbols.clear()
+        self.symbols_list = []
+        for item in symbols:
+            symbol = item.get('symbol')
+            type_ = item.get('type')
+            if symbol is None or type_ is None or not isinstance(type_, str):
+                messagebox.showerror("Error", "Each symbol entry must have a 'symbol' and a 'type' (string).")
+                return
+            self.symbols[symbol] = [type_]
+            self.symbols_list.append({'symbol': symbol, 'type': type_})
     
     def sort_entries(self, event):
         sort_by = self.sort_combobox.get()
@@ -1390,8 +1720,16 @@ class Dictionary(tk.Tk):
         self.additional_tab.grid_columnconfigure(0, weight=1)
         self.additional_tab.grid_rowconfigure(0, weight=1)
 
+        # Third Tab
+        self.others_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.others_tab, text='Others')
+        self.localizable_widgets['tab3'] = self.others_tab 
+        self.others_tab.grid_columnconfigure(0, weight=1)
+        self.others_tab.grid_rowconfigure(0, weight=1)
+
         self.main_editor_widgets()
         self.settings_widgets()
+        self.other_widgets()
     
     def main_editor_widgets(self):
         # Options Frame setup
@@ -1407,9 +1745,9 @@ class Dictionary(tk.Tk):
         template_label.grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.localizable_widgets['select_template'] = template_label
 
-        template_combobox = ttk.Combobox(options_frame, textvariable=self.template_var, state="readonly")
-        template_combobox.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
-        self.update_template_combobox(template_combobox)
+        self.template_combobox = ttk.Combobox(options_frame, textvariable=self.template_var, state="readonly")
+        self.template_combobox.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        self.update_template_combobox(self.template_combobox)
 
         # Add localizable Checkbuttons
         remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", variable=self.remove_numbered_accents_var)
@@ -1499,7 +1837,7 @@ class Dictionary(tk.Tk):
         self.rowconfigure(0, weight=1)
         self.rowconfigure(1, weight=2)
         self.columnconfigure(0, weight=1)
-
+    
     def settings_widgets(self):
         # LabelFrame for updates
         update_frame = ttk.LabelFrame(self.additional_tab, text="Updates")
@@ -1571,6 +1909,38 @@ class Dictionary(tk.Tk):
 
         localization_combobox.bind("<<ComboboxSelected>>", self.localization_selected)
         self.update_localization_combobox(localization_combobox)
+    
+    def other_widgets(self):
+        self.other_frame = ttk.Frame(self.others_tab)
+        self.other_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=10, sticky="nsew")
+        self.other_frame.columnconfigure(0, weight=1)
+        self.other_frame.columnconfigure(1, weight=1)
+
+        # Frame for Synthv controls
+        synthv_frame = ttk.LabelFrame(self.other_frame, text="Synthv")
+        synthv_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        synthv_frame.columnconfigure(0, weight=1)
+
+        # Synthv Import/Export
+        synthv_export = ttk.Button(synthv_frame, style='Accent.TButton', text="Export Dictionary", command=self.export_json)
+        synthv_export.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['export'] = synthv_export
+
+        synthv_import = ttk.Button(synthv_frame, text="Import Dictionary", command=self.load_json_file)
+        synthv_import.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['import'] = synthv_import
+
+        # Frame for UI controls (placeholder name)
+        ui_frame = ttk.LabelFrame(self.other_frame, text="Placeholder")
+        ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
+        ui_frame.columnconfigure(0, weight=1)
+
+        ui_export_button = ttk.Button(ui_frame, style='Accent.TButton', text="Export Dictionary", command=self.export_json)
+        ui_export_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+
+        ui_import_button = ttk.Button(ui_frame, text="Import Dictionary", command=self.load_json_file)
+        ui_import_button.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+
     
     def is_connected(self):
         # Check internet connection by trying to reach Google lmao
