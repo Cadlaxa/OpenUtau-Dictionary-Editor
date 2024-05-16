@@ -52,8 +52,6 @@ save_templ: "存至範本"
 # Settings (tab 2)
 select_local: "選擇本地化:"
 local_op: "本地化選項"
-
-# Updates (tab 3)
 update: "更新"
 update_b: "檢查更新"
 
