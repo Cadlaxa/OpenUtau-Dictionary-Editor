@@ -24,7 +24,7 @@ append_yaml: "追加YAML檔"
 open_yaml: "開啟YAML檔"
 save_ou: "儲存OU辭典"
 save_ds: "儲存DS辭典"
-edit_sym: "檢視符號"
+edit_sym: "修改符號"
 
 # Entry Viewer
 search: "搜尋:"
@@ -44,14 +44,23 @@ replacement: "替換:"
 apply: "替換"
 find: "尋找"
 
+# Symbol Editor
+del: "刪除"
+add: "新增"
+save_templ: "保存至範本"
+
 # Settings (tab 2)
 select_local: "選擇在地化:"
 local_op: "在地化選項"
-
-# Updates (tab 3)
 update: "更新"
 update_b: "檢查更新"
+
+# Others (tab 3)
+import: "匯入辭典"
+export: "匯出辭典"
+synthv: "SynthV"
 
 # Tab names
 tab1: "條目編輯器"
 tab2: "設定"
+tab3: "其他"
