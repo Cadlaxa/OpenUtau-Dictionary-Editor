@@ -47,7 +47,7 @@ find: "尋找"
 # Symbol Editor
 del: "刪除"
 add: "新增"
-save_templ: "保存至範本"
+save_templ: "儲存至範本"
 
 # Settings (tab 2)
 select_local: "選擇在地化:"
