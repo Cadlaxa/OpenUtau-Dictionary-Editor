@@ -24,7 +24,7 @@ append_yaml: "Append YAML File"
 open_yaml: "Open YAML File"
 save_ou: "Save OU Dictionary"
 save_ds: "Save DS Dictionary"
-edit_sym: "View Symbols"
+edit_sym: "Edit Symbols"
 
 # Entry Viewer
 search: "Search:"
@@ -44,14 +44,23 @@ replacement: "Replacement:"
 apply: "Replace"
 find: "Find"
 
+# Symbol Editor
+del: "Delete"
+add: "Add"
+save_templ: "Save to Templates"
+
 # Settings (tab 2)
 select_local: "Select Localization:"
 local_op: "Localization Options"
-
-# Updates (tab 3)
 update: "Updates"
 update_b: "Check for Updates"
+
+# Others (tab 3)
+import: "Import Dictionary"
+export: "Export Dictionary"
+synthv: "SynthV"
 
 # Tab names
 tab1: "Entry Editor"
 tab2: "Settings"
+tab3: "Others"

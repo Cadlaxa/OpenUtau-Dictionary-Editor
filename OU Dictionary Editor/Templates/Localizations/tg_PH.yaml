@@ -24,6 +24,7 @@ append_yaml: "Dugtungan ang YAML File"
 open_yaml: "Buksan ang YAML File"
 save_ou: "I-save sa OU Dictionary"
 save_ds: "I-save sa DS Dictionary"
+edit_sym: "I-edit ang mga Simbolo"
 
 # Entry Viewer
 search: "Hanapin:"
@@ -43,13 +44,21 @@ replacement: "Pagpapalitan:"
 apply: "Palitan"
 find: "Hanapin"
 
+# Symbol Editor
+del: "Burahin"
+add: "Ilagay"
+save_templ: "I-save sa Templates"
+
 # Settings (tab 2)
 select_local: "Piliin ang Lokalisasyon:"
 local_op: "Opsyons para sa Lokalisasyon:"
-
-# Updates (tab 3)
 update: "Mga Update"
 update_b: "Tignan para sa Updates"
+
+# Others (tab 3)
+import: "I-import ang Diksyonaryo"
+export: "I-export ang Diksyonaryo"
+synthv: "SynthV"
 
 # Tab names
 tab1: "Entry Editor"
