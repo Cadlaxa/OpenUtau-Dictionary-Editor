@@ -14,8 +14,8 @@ lowercase_phonemes: "將音素改為小寫"
 
 # Manual Entry
 man_entry: "手工整理條目"
-delete_entry: "攋低條目"
-add_entry: "增加條目"
+delete_entry: "攋條目"
+add_entry: "增條目"
 
 # Main Buttons UI
 convert_cmudict: "導入CMUDict"
@@ -24,7 +24,7 @@ append_yaml: "追加YAML文件"
 open_yaml: "打開YAML文件"
 save_ou: "保存嘅OU辭典"
 save_ds: "保存嘅DS辭典"
-edit_sym: "檢視符號"
+edit_sym: "改符號"
 
 # Entry Viewer
 search: "搜尋:"
@@ -42,7 +42,12 @@ def_theme: "選擇主題:"
 reg_pattern: "正則表達式:"
 replacement: "替換:"
 apply: "替換"
-find: "搵找"
+find: "搵"
+
+# Symbol Editor
+del: "攋"
+add: "加"
+save_templ: "存至範本"
 
 # Settings (tab 2)
 select_local: "選擇本地化:"
@@ -52,6 +57,12 @@ local_op: "本地化選項"
 update: "更新"
 update_b: "檢查更新"
 
+# Others (tab 3)
+import: "導入辭典"
+export: "導出辭典"
+synthv: "SynthV"
+
 # Tab names
 tab1: "條目編輯器"
 tab2: "設定"
+tab3: "其他"
