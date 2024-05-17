@@ -59,7 +59,6 @@ update_b: "检查更新"
 # Others (tab 3)
 import: "导入辞典"
 export: "导出辞典"
-synthv: "SynthV"
 
 # Tab names
 tab1: "条目编辑器"
