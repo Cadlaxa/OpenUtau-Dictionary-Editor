@@ -11,41 +11,42 @@ File: ja-JP.yaml
 # Entry Editor (tab 1)
 # Entry Options
 entry_option: "エントリーオプション"
-select_template: "テンプレートを選択する："
-remove_accents: "数字のアクセントを消す"
+select_template: "テンプレートを選択:"
+remove_accents: "数字アクセントを削除"
 lowercase_phonemes: "音素を小文字にする"
 
 # Manual Entry
-man_entry: "マニュアルエントリー"
-delete_entry: "エントリーの削除"
-add_entry: "エントリーの追加"
+man_entry: "手動入力"
+delete_entry: "エントリーを削除"
+add_entry: "エントリーを追加"
 
 # Main Buttons UI
-convert_cmudict: "CMUDictのインポート"
+convert_cmudict: "CMUDictをインポート"
 export_cmudict: "CMUDictをエクスポート"
-append_yaml: "YAMLファイルを追加する"
+append_yaml: "YAMLファイルを追加"
 open_yaml: "YAMLファイルを開く"
-save_ou: "OU辞書の保存"
-save_ds: "DS辞書の保存"
-edit_sym: "シンボルを見る"
+save_ou: "OU辞書を保存"
+save_ds: "DS辞書を保存"
+edit_sym: "シンボルを編集"
 
 # Entry Viewer
-search: "検索："
-rep_button: "交換"
+search: "検索:"
+rep_button: "置換"
 close: "閉じる"
-refresh: "リフレッシュ"
-clear_all: "すべてのエントリーを消去"
-drag: "Aesthetic drag"
+refresh: "更新"
+clear_all: "すべてのエントリーをクリア"
+drag: "美的ドラッグ"
 
 # Themes
 theme: "テーマ"
-def_theme: "テーマを選ぶ："
+def_theme: "テーマを選択:"
 
 # Regex Dialog
-reg_pattern: "正規表現パターン："
-replacement: "交換："
-apply: "交換"
-find: "探す"
+reg_pattern: "正規表現パターン:"
+replacement: "置換:"
+apply: "置換"
+apply1: "すべて置換"
+find: "検索"
 
 # Symbol Editor
 del: "削除"
@@ -53,16 +54,16 @@ add: "追加"
 save_templ: "テンプレートに保存"
 
 # Settings (tab 2)
-select_local: "ローカライズを選択する："
-local_op: "ローカリゼーションオプション"
+select_local: "ローカライズを選択:"
+local_op: "ローカライズオプション"
 update: "アップデート"
-update_b: "アップデートの確認"
+update_b: "アップデートを確認"
 
 # Others (tab 3)
-import: "インポート辞書"
-export: "輸出辞書"
-synthv: "SynthV"
+import: "辞書をインポート"
+export: "辞書をエクスポート"
 
 # Tab names
-tab1: "エントリー編集者"
-tab2: "セッティング"
+tab1: "エントリーエディター"
+tab2: "設定"
+tab3: "その他"

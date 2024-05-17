@@ -4,7 +4,7 @@ from tkinter import filedialog, messagebox, ttk, PhotoImage, BOTH
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
-from ruamel.yaml import YAML, YAMLError, CommentedMap
+from ruamel.yaml import YAML, YAMLError
 import tkinter.font as tkFont
 import configparser
 from Assets.modules import requests
@@ -65,7 +65,7 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=current_local)
-        self.current_version = "v0.6.3"
+        self.current_version = "v0.7.1"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -140,7 +140,7 @@ class Dictionary(tk.Tk):
             new_size = max(10, current_size + delta)
             font.configure(size=new_size)
     
-    # Directory for the YAML Templates via templae.ini
+    # Directory for the YAML Templates via settings.ini
     def read_template_directory(self, config_file="settings.ini"):
         config = configparser.ConfigParser()
         # Check if the config file exists
@@ -885,8 +885,8 @@ class Dictionary(tk.Tk):
             self.viewer_tree.heading('Grapheme', text='Grapheme')
             self.viewer_tree.heading('Phonemes', text='Phonemes')
             self.viewer_tree.column('Index', width=50, anchor='center')
-            self.viewer_tree.column('Grapheme', width=180, anchor='w')
-            self.viewer_tree.column('Phonemes', width=240, anchor='w')
+            self.viewer_tree.column('Grapheme', width=170, anchor='w')
+            self.viewer_tree.column('Phonemes', width=230, anchor='w')
             self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
 
             # Create and pack the Scrollbar
@@ -1029,7 +1029,7 @@ class Dictionary(tk.Tk):
             self.save_state_before_change()
 
             reg_frame = ttk.Frame(self.replace_window, style='Card.TFrame')
-            reg_frame.pack(fill=tk.X, padx=10, pady=10)
+            reg_frame.pack(padx=10, pady=10, fill="x")
             reg_frame.grid_columnconfigure(0, weight=1)
             reg_frame.grid_columnconfigure(1, weight=1)
             
@@ -1053,34 +1053,51 @@ class Dictionary(tk.Tk):
             ttk.Radiobutton(reg_frame, text="Graphemes", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=(20, 5), sticky="w")
             ttk.Radiobutton(reg_frame, text="Phonemes", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=10, pady=(20, 5), sticky="w")
 
+            rep_frame = ttk.Frame(reg_frame)
+            rep_frame.grid(padx=10, pady=10, sticky="nsew", row=3, column=1)
+            rep_frame.grid_columnconfigure(0, weight=1)
+            rep_frame.grid_columnconfigure(1, weight=3)
+
             # Button to execute the replace operation
-            apply_button = ttk.Button(reg_frame, text="Replace", style="Accent.TButton", command=lambda: apply_replace())
-            apply_button.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+            apply_button = ttk.Button(rep_frame, text="Replace", style="Accent.TButton", command=lambda: replace_selected())
+            apply_button.grid(row=0, column=0, padx=(0,3), pady=10, sticky="ew")
             self.localizable_widgets['apply'] = apply_button
 
-            # Find button to highlight matching entries
-            find_button = ttk.Button(reg_frame, text="Find", command=lambda: self.find_matches(regex_var.get(), target_var.get()))
-            find_button.grid(row=3, column=0, padx=10, pady=10, sticky="ew")
+            apply_button1 = ttk.Button(rep_frame, text="Replace All", style="Accent.TButton", command=lambda: apply_replace())
+            apply_button1.grid(row=0, column=1, padx=(3,0), sticky="ew")
+            self.localizable_widgets['apply1'] = apply_button1
+
+            find_frame = ttk.Frame(reg_frame)
+            find_frame.grid(padx=(10,0), pady=10, sticky="nsew", row=3, column=0)
+            find_frame.grid_columnconfigure(0, weight=0)
+            find_frame.grid_columnconfigure(1, weight=0)
+            find_frame.grid_columnconfigure(2, weight=5)
+
+            # Find buttons to highlight matching entries
+            self.up = ttk.Button(find_frame, text="▲", command=lambda: self.find_next("▲", regex_var.get(), target_var.get()))
+            self.up.grid(row=0, column=0, padx=(5,0), pady=10, sticky="ew")
+            self.down = ttk.Button(find_frame, text="▼", command=lambda: self.find_next("▼", regex_var.get(), target_var.get()))
+            self.down.grid(row=0, column=1, padx=6, pady=10, sticky="ew")
+            find_button = ttk.Button(find_frame, text="Find", command=lambda: self.find_matches(regex_var.get(), target_var.get()))
+            find_button.grid(row=0, column=2, padx=(0,5), pady=10, sticky="ew")
             self.localizable_widgets['find'] = find_button
 
         if self.replace_window.winfo_exists():
             self.apply_localization()
 
         def apply_replace():
+            self.save_state_before_change()
             pattern = regex_var.get()
             replacement = replace_var.get()
             target = target_var.get()
-
             # Compile regex pattern to catch errors early
             try:
                 compiled_pattern = re.compile(pattern)
             except re.error as e:
                 print(f"Regex error: {e}")
                 return
-
             # Prepare to track modifications
             items_modified = 0
-
             # Iterate over all items in the tree view
             for item in self.viewer_tree.get_children():
                 item_values = self.viewer_tree.item(item, "values")
@@ -1107,6 +1124,42 @@ class Dictionary(tk.Tk):
             self.refresh_treeview()
             self.word_entry.delete(0, tk.END)
             self.phoneme_entry.delete(0, tk.END)
+        def replace_selected():
+            self.save_state_before_change()
+            selected_items = self.viewer_tree.selection()
+            if selected_items:
+                pattern = regex_var.get()
+                replacement = replace_var.get()
+                target = target_var.get()
+
+                # Same mechanics to replace all but only on the selected entries
+                try:
+                    compiled_pattern = re.compile(pattern)
+                except re.error as e:
+                    print(f"Regex error: {e}")
+                    return
+
+                items_modified = 0
+                for item in selected_items:
+                    item_values = self.viewer_tree.item(item, "values")
+                    if target == "Graphemes":
+                        new_grapheme = compiled_pattern.sub(replacement, item_values[1])
+                        if new_grapheme != item_values[1]:
+                            self.viewer_tree.item(item, values=(new_grapheme, item_values[2]))
+                            if item_values[1] in self.dictionary:
+                                self.dictionary[new_grapheme] = self.dictionary.pop(item_values[1])
+                            items_modified += 1
+                    elif target == "Phonemes":
+                        phonemes_string = item_values[2].strip()
+                        modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
+                        if modified_phoneme_string != phonemes_string:
+                            self.viewer_tree.item(item, values=(item_values[1], modified_phoneme_string))
+                            new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
+                            self.dictionary[item_values[1]] = new_phoneme_list
+                            items_modified += 1
+                self.refresh_treeview()
+                self.word_entry.delete(0, tk.END)
+                self.phoneme_entry.delete(0, tk.END)
             if self.search_var.get():
                 self.filter_treeview()
             self.replace_window.destroy()
@@ -1126,6 +1179,62 @@ class Dictionary(tk.Tk):
         self.viewer_tree.selection_remove(self.viewer_tree.selection())
         # Set the selection to the items found
         self.viewer_tree.selection_set(items_to_highlight)
+        if not items_to_highlight:
+            messagebox.showinfo("No Matches", "No matches found.")
+    
+    def find_next(self, direction=None, pattern=None, target=None):
+        items = self.viewer_tree.get_children()
+        current_selection = self.viewer_tree.selection()
+        start_index = 0
+
+        if direction is not None:
+            if direction == "▼":
+                direction_multiplier = 1
+            elif direction == "▲":
+                direction_multiplier = -1
+
+        if current_selection:
+            try:
+                start_index = items.index(current_selection[0]) + direction_multiplier
+            except ValueError:
+                pass
+        # Wrap around if going beyond the last item or before the first item
+        if start_index >= len(items) and direction == "▼":
+            start_index = 0
+        elif start_index < 0 and direction == "▲":
+            start_index = len(items) - 1
+        # Iterate from the start index to the end if going down
+        if direction == "▼":
+            for index in range(start_index, len(items)):
+                item = items[index]
+                item_values = self.viewer_tree.item(item, "values")
+                if target == "Graphemes" and re.search(pattern, item_values[1]):
+                    self.viewer_tree.selection_set(item)
+                    self.viewer_tree.see(item)
+                    return
+                elif target == "Phonemes":
+                    phoneme_string = " ".join(item_values[2].split())
+                    if re.search(pattern, phoneme_string):
+                        self.viewer_tree.selection_set(item)
+                        self.viewer_tree.see(item)
+                        return
+        # Iterate from the start index to the beginning if going up
+        elif direction == "▲":
+            for index in range(start_index, -1, -1):
+                item = items[index]
+                item_values = self.viewer_tree.item(item, "values")
+                if target == "Graphemes" and re.search(pattern, item_values[1]):
+                    self.viewer_tree.selection_set(item)
+                    self.viewer_tree.see(item)
+                    return
+                elif target == "Phonemes":
+                    phoneme_string = " ".join(item_values[2].split())
+                    if re.search(pattern, phoneme_string):
+                        self.viewer_tree.selection_set(item)
+                        self.viewer_tree.see(item)
+                        return
+        # If no match found, inform the user
+        messagebox.showinfo("No Match", "No matching entry found.")
     
     def clear_entries(self):
         self.word_entry.delete(0, tk.END)
@@ -1356,7 +1465,7 @@ class Dictionary(tk.Tk):
         # Apply bold font to selected items
         selected_items = self.viewer_tree.selection()
         for item in selected_items:
-            self.viewer_tree.item(item, tags=('selected',))
+            self.viewer_tree.item(item, tags=('selected'))
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
         
         # Handle multiple selections for displaying grapheme and phoneme data
@@ -1709,7 +1818,7 @@ class Dictionary(tk.Tk):
         # Create the first tab which will contain existing widgets
         self.options_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.options_tab, text='Entry Editor')
-        self.localizable_widgets['tab1'] = self.notebook 
+        self.localizable_widgets['tab1'] = self.options_tab
         self.options_tab.grid_columnconfigure(0, weight=1)
         self.options_tab.grid_rowconfigure(0, weight=1)
 
@@ -1931,16 +2040,17 @@ class Dictionary(tk.Tk):
         self.localizable_widgets['import'] = synthv_import
 
         # Frame for UI controls (placeholder name)
-        ui_frame = ttk.LabelFrame(self.other_frame, text="Placeholder")
+        ui_frame = ttk.LabelFrame(self.other_frame, text="Adding more in the future")
         ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
         ui_frame.columnconfigure(0, weight=1)
 
-        ui_export_button = ttk.Button(ui_frame, style='Accent.TButton', text="Export Dictionary", command=self.export_json)
+        ui_export_button = ttk.Button(ui_frame, state="disabled", style='Accent.TButton', text="Export Dictionary", command=self.export_json)
         ui_export_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        #self.localizable_widgets['export'] = ui_export_button
 
-        ui_import_button = ttk.Button(ui_frame, text="Import Dictionary", command=self.load_json_file)
+        ui_import_button = ttk.Button(ui_frame, state="disabled", text="Import Dictionary", command=self.load_json_file)
         ui_import_button.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-
+        #self.localizable_widgets['import'] = ui_import_button
     
     def is_connected(self):
         # Check internet connection by trying to reach Google lmao
@@ -2142,7 +2252,6 @@ class Dictionary(tk.Tk):
             for key, widget in self.localizable_widgets.items():
                 # Retrieve text from current localization or fall back to default localization
                 text = self.localization.get(key, self.default_localization.get(key))
-                
                 if widget.winfo_exists():
                     if isinstance(widget, ttk.LabelFrame):
                         widget.config(text=text)

@@ -5,7 +5,10 @@
 - Added Synthv Import and Export `json` dictionary files
 - Automatically add extension filenames when saving
 - Update `View Symbols` to `Edit Symbols` (functions limited to: add/delete symbols, select/deselect, search the symbols, and save symbols to template)
-- Update to Localizations
+- Added `save symbols to template` yaml file and update templates combobox reads the `Templates` folder when new file is saved through `save symbols to template`
+- Update to all Localizations + `Cebuano`, `Spanish (Latin America)` localizations
+- Added `Find next` and `Find previous` entries on regex dialog
+- Split `Replace` button to `Replace` and `Replace All`
 
 **`(5/13/24)`**
 - Fixed regex dialog, copy, cut, paste, delete, search broken on `v0.6.1`

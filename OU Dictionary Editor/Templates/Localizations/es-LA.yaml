@@ -1,0 +1,66 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+Language: Spanish (Latin America)
+File: es-LA.yaml
+
+# Entry Editor (tab 1)
+# Entry Options
+entry_option: "Opciones de Entrada"
+select_template: "Seleccionar Plantilla:"
+remove_accents: "Eliminar Acentos Numéricos"
+lowercase_phonemes: "Minúsculas en Fonemas"
+
+# Manual Entry
+man_entry: "Entrada Manual"
+delete_entry: "Eliminar Entrada"
+add_entry: "Agregar Entrada"
+
+# Main Buttons UI
+convert_cmudict: "Importar CMUDict"
+export_cmudict: "Exportar CMUDict"
+append_yaml: "Agregar Archivo YAML"
+open_yaml: "Abrir Archivo YAML"
+save_ou: "Guardar Diccionario OU"
+save_ds: "Guardar Diccionario DS"
+edit_sym: "Editar Símbolos"
+
+# Entry Viewer
+search: "Buscar:"
+rep_button: "Reemplazar"
+close: "Cerrar"
+refresh: "Actualizar"
+clear_all: "Borrar todas las entradas"
+drag: "Arrastrar estético"
+
+# Themes
+theme: "Temas"
+def_theme: "Seleccionar Tema:"
+
+# Regex Dialog
+reg_pattern: "Patrón Regex:"
+replacement: "Reemplazo:"
+apply: "Reemplazar"
+apply1: "Reemplazar Todo"
+find: "Buscar"
+
+# Symbol Editor
+del: "Eliminar"
+add: "Agregar"
+save_templ: "Guardar en Plantillas"
+
+# Settings (tab 2)
+select_local: "Seleccionar Localización:"
+local_op: "Opciones de Localización"
+update: "Actualizaciones"
+update_b: "Buscar Actualizaciones"
+
+# Others (tab 3)
+import: "Importar Diccionario"
+export: "Exportar Diccionario"
+
+# Tab names
+tab1: "Editor de Entrada"
+tab2: "Configuraciones"
+tab3: "Otros"

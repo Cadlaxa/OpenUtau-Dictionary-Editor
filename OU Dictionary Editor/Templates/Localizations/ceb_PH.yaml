@@ -1,0 +1,66 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+Language: Cebuano
+File: ceb_PH.yaml
+
+# Entry Editor (tab 1)
+# Entry Options
+entry_option: "Mga Kapilian sa Entry"
+select_template: "Pili-a ang Template:"
+remove_accents: "Kuhaa ang Mga Accent sa Numero"
+lowercase_phonemes: "Himua nga Gamay ang Mga Ponema"
+
+# Manual Entry
+man_entry: "Manwal nga Entry"
+delete_entry: "Kuhaa ang Entry"
+add_entry: "Idugang ang Entry"
+
+# Main Buttons UI
+convert_cmudict: "I-import ang CMUDict"
+export_cmudict: "I-eksport ang CMUDict"
+append_yaml: "Idugang ang YAML File"
+open_yaml: "Ablihi ang YAML File"
+save_ou: "I-save ang OU Dictionary"
+save_ds: "I-save ang DS Dictionary"
+edit_sym: "Usba ang Mga Simbolo"
+
+# Entry Viewer
+search: "Pangitaa:"
+rep_button: "Ilisdi"
+close: "Sirado"
+refresh: "Pagbag-o"
+clear_all: "Kuhaa ang tanang entry"
+drag: "Pagdala nga aesthetic"
+
+# Themes
+theme: "Mga Tema"
+def_theme: "Pili-a ang Tema:"
+
+# Regex Dialog
+reg_pattern: "Regex Pattern:"
+replacement: "Puli:"
+apply: "Ilisdi"
+apply1: "Ilisdi Tanan"
+find: "Pangitaa"
+
+# Symbol Editor
+del: "Kuhaa"
+add: "Idugang"
+save_templ: "I-save sa Mga Template"
+
+# Settings (tab 2)
+select_local: "Pili-a ang Lokalisasyon:"
+local_op: "Mga Kapilian sa Lokalisasyon"
+update: "Mga Update"
+update_b: "Tan-awa ang Mga Update"
+
+# Others (tab 3)
+import: "I-import ang Diksyunaryo"
+export: "I-eksport ang Diksyunaryo"
+
+# Tab names
+tab1: "Entry Editor"
+tab2: "Mga Setting"
+tab3: "Ubang Mga Butang"
