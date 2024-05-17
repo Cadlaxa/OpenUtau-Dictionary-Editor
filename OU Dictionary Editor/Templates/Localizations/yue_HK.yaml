@@ -42,6 +42,7 @@ def_theme: "選擇主題:"
 reg_pattern: "正則表達式:"
 replacement: "替換:"
 apply: "替換"
+apply1: "全部替換"
 find: "搵"
 
 # Symbol Editor
@@ -58,7 +59,6 @@ update_b: "檢查更新"
 # Others (tab 3)
 import: "導入辭典"
 export: "導出辭典"
-synthv: "SynthV"
 
 # Tab names
 tab1: "條目編輯器"
