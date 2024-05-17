@@ -1,5 +1,5 @@
-⚠華語版本的README内容并不一定是最新的而且翻譯可能有誤，如果華語版本與英文原版有什麽出入的話以英文原版爲準
 *[English](./README.md)* **華語**
+⚠華語版本的README内容并不一定是最新的而且翻譯可能有誤，如果華語版本與英文原版有什麽出入的話以英文原版爲準
 # OpenUtau辭典編輯器
 用於為 OpenUtau 建立和編輯美感的 YAML 辭典的 python GUI 工具包 🥰😍
 ![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
