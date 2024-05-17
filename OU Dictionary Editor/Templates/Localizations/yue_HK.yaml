@@ -9,22 +9,22 @@ File: yue_HK.yaml
 # Entry Options
 entry_option: "條目選項"
 select_template: "選擇範本:"
-remove_accents: "刪除數字重音符號標識"
+remove_accents: "刪除數字重音符號"
 lowercase_phonemes: "將音素改為小寫"
 
 # Manual Entry
-man_entry: "手工管理條目"
-delete_entry: "刪除條目"
-add_entry: "增加條目"
+man_entry: "手工整理條目"
+delete_entry: "攋條目"
+add_entry: "增條目"
 
 # Main Buttons UI
-convert_cmudict: "引入CMUDict"
+convert_cmudict: "導入CMUDict"
 export_cmudict: "導出CMUDict"
 append_yaml: "追加YAML文件"
 open_yaml: "打開YAML文件"
-save_ou: "保存嘅OU詞典"
-save_ds: "保存嘅DS詞典"
-edit_sym: "檢視符號"
+save_ou: "保存嘅OU辭典"
+save_ds: "保存嘅DS辭典"
+edit_sym: "改符號"
 
 # Entry Viewer
 search: "搜尋:"
@@ -32,7 +32,7 @@ rep_button: "替代"
 close: "關閉"
 refresh: "刷新"
 clear_all: "清除所有條目"
-drag: "可以透過拖動提高字典美觀嘅程度"
+drag: "美化拖逳"
 
 # Themes
 theme: "主題"
@@ -42,16 +42,25 @@ def_theme: "選擇主題:"
 reg_pattern: "正則表達式:"
 replacement: "替換:"
 apply: "替換"
-find: "尋找"
+find: "搵"
+
+# Symbol Editor
+del: "攋"
+add: "加"
+save_templ: "存至範本"
 
 # Settings (tab 2)
 select_local: "選擇本地化:"
 local_op: "本地化選項"
-
-# Updates (tab 3)
 update: "更新"
 update_b: "檢查更新"
+
+# Others (tab 3)
+import: "導入辭典"
+export: "導出辭典"
+synthv: "SynthV"
 
 # Tab names
 tab1: "條目編輯器"
 tab2: "設定"
+tab3: "其他"

@@ -9,7 +9,7 @@ File: zh_hans.yaml
 # Entry Options
 entry_option: "条目选项"
 select_template: "选择模板:"
-remove_accents: "删除数字重音符号标识"
+remove_accents: "删除数字重音符号"
 lowercase_phonemes: "将音素改为小写"
 
 # Manual Entry
@@ -24,7 +24,7 @@ append_yaml: "追加YAML文件"
 open_yaml: "打开YAML文件"
 save_ou: "保存OU辞典"
 save_ds: "保存DS辞典"
-edit_sym: "检视符号"
+edit_sym: "修改符号"
 
 # Entry Viewer
 search: "搜索:"
@@ -32,7 +32,7 @@ rep_button: "替代"
 close: "关闭"
 refresh: "刷新"
 clear_all: "清除所有条目"
-drag: "可以通过拖动提高辞典的美观程度"
+drag: "美化拖拽"
 
 # Themes
 theme: "主题"
@@ -44,14 +44,23 @@ replacement: "替换:"
 apply: "替换"
 find: "查找"
 
+# Symbol Editor
+del: "删除"
+add: "增加"
+save_templ: "保存至模板"
+
 # Settings (tab 2)
 select_local: "选择本地化:"
 local_op: "本地化选项"
-
-# Updates (tab 3)
 update: "更新"
 update_b: "检查更新"
+
+# Others (tab 3)
+import: "导入辞典"
+export: "导出辞典"
+synthv: "SynthV"
 
 # Tab names
 tab1: "条目编辑器"
 tab2: "设置"
+tab3: "其他"
