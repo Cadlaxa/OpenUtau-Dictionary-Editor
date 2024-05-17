@@ -1,6 +1,6 @@
 # Changelog
 ---
-**`(5/--/24)`**
+**`(5/17/24)`**
 - Fixed phonemes with special characters not adding quotes with the entire string.
 - Added Synthv Import and Export `json` dictionary files
 - Automatically add extension filenames when saving
