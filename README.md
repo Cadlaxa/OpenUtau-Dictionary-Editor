@@ -26,11 +26,14 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 - Using the combobox picker, users can choose their OpenUtau YAML template to create their dictionary. Also, users can add their own templates by placing them in the **`[Templates]`** folder so the GUI toolkit will recognize the files via the templates.ini and use them for dictionary creation.
 - `Tip: if you're creating a custom dict from scratch, add your template from the templates folder so that you can use it on the picker and add your entries, if you have already made a custom dict, just import them to the editor then use 'Current Template' so that it add the entries to the current imported yaml file and still preserve the custom symbols`
 ## Sorting the Entries
-![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/86e65879-9af1-4cda-af37-70b8c1cc40a6)
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/532b16b8-eebf-423a-b974-9460e577831e)
 - Users can sort their entries alphabetically either **`A-Z`** or **`Z-A`**
 ## Converting CMUdict to OU YAML dictionary
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/2ecf2317-435b-427a-8535-c53dc83150cd)
 - Function to convert the CMUdict.txt into a functional OpenUTAU dictionary. Note that the CMUdict mustn't have a **`;;;`** or the GUI toolkit will throw an error.
+## Editing the Symbols and saving them as a Template
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6cde7d0b-1ad2-457d-9170-ae9d3ca2aa96)
+- Users can edit the symbols of the yaml dictionary by clicking the **`Edit symbols`**, add or delete the symbols (phonemes and phoneme type) and saving them for future use.
 ## Using the Entries Viewer
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6f37b8d4-dff0-4408-9a20-954a245eeeea)
 - In the Entries Viewer, users can interact with the entries by clicking, deleting, adding, and arranging the entries.
@@ -41,7 +44,7 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/470c74b9-aa64-4048-8ed2-6d29086ab50f)
  - Users can drag and drop the entries to change their positions manually.
 ## Using the Regex Function
-![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/65e78088-d2fe-4d32-9663-f1b0dc42d083)
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/8623971c-fcd2-42ff-83a7-5cce092e9123)
 - Users can use the Regex search and replace to replace the grapheme or the phonemes.
 ## Saving the YAML Dictionary
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/aed1949e-caa1-4eba-9633-5dcfdbf50d94)
