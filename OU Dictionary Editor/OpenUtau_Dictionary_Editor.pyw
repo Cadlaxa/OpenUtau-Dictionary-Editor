@@ -1,10 +1,11 @@
 import tkinter as tk
 from Assets.modules.sv_ttk import sv_ttk
-from tkinter import filedialog, messagebox, ttk, PhotoImage, BOTH
+from tkinter import filedialog, messagebox, ttk, PhotoImage, Toplevel, BOTH
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
 from ruamel.yaml import YAML, YAMLError
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
 import tkinter.font as tkFont
 import configparser
 from Assets.modules import requests
@@ -23,6 +24,7 @@ LOCAL = P('./Templates/Localizations')
 ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
 
+# for treeview only but ruamel.yaml will handle them automatically
 def escape_special_characters(phoneme):
         # Check if the first character is a special character that might require quoting
         if phoneme[0] in r"[{}\@#\$%\^&\*\(\)\+=<>\|\[\\\];'\",\./\?・:~]+":
@@ -65,7 +67,7 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=current_local)
-        self.current_version = "v0.7.1"
+        self.current_version = "v0.7.7"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -286,7 +288,8 @@ class Dictionary(tk.Tk):
             self.file_modified = False  # Reset modification status
             self.update_title()
             self.current_order = list(self.dictionary.keys())
-
+        self.load_window()
+        self.loading_window.update_idletasks()
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
@@ -295,9 +298,11 @@ class Dictionary(tk.Tk):
                 with open(filepath, 'r', encoding='ANSI') as file:
                     lines = file.readlines()
             except Exception as e:
+                self.loading_window.destroy()
                 messagebox.showerror("Error", f"Error occurred while reading file with alternate encoding: {e}")
                 return
         except Exception as e:
+            self.loading_window.destroy()
             messagebox.showerror("Error", f"Error occurred while reading file: {e}")
             return
 
@@ -315,13 +320,16 @@ class Dictionary(tk.Tk):
                     grapheme, phonemes = parts[0], parts[1].split()
                     dictionary[grapheme] = phonemes
                 else:
+                    self.loading_window.destroy()
                     raise ValueError(f"Invalid format in line: {line.strip()}")
             except Exception as e:
+                self.loading_window.destroy()
                 messagebox.showerror("Error", f"Error occurred while processing line '{line.strip()}'")
                 error_occurred = True
                 break
 
         if not error_occurred:
+            self.loading_window.destroy()
             self.dictionary = dictionary  # Update the main dictionary only if no errors occurred
             self.comments = comments
             self.update_entries_window()
@@ -344,15 +352,19 @@ class Dictionary(tk.Tk):
         # Load JSON data
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
+                self.load_window()
                 data = json.load(file)
                 entries = data.get('data', [])
                 if not entries:
+                    self.loading_window.destroy()
                     messagebox.showinfo("Empty Data", "The JSON file contains no data.")
                     return
         except json.JSONDecodeError as je:
+            self.loading_window.destroy()
             messagebox.showerror("JSON Syntax Error", f"An error occurred while parsing the JSON file: {str(je)}")
             return
         except Exception as e:
+            self.loading_window.destroy()
             messagebox.showerror("Error", f"An error occurred while reading the JSON file: {str(e)}")
             return
 
@@ -371,88 +383,91 @@ class Dictionary(tk.Tk):
     def load_yaml_file(self):
         filepath = filedialog.askopenfilename(title="Open YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
         if not filepath:
+            self.loading_window.destroy()
             messagebox.showinfo("No File", "No file was selected.")
             return
-        # Handle file opening to update title
-        if filepath:
+        self.load_window()
+        self.loading_window.update_idletasks()
+        try:
+            # Handle file opening to update title
             self.current_filename = filepath
             self.file_modified = False  # Reset modification status
             self.update_title()
             self.current_order = list(self.dictionary.keys())
 
-        yaml = YAML(typ='safe')
-        yaml.prefix_colon = True
-        try:
+            yaml = YAML(typ='safe')
+            yaml.prefix_colon = True
+            yaml.preserve_quotes = True
+
             with open(filepath, 'r', encoding='utf-8') as file:
                 data = yaml.load(file)
                 if data is None:
+                    self.loading_window.destroy()
                     raise ValueError("The YAML file is empty or has an incorrect format.")
-        except YAMLError as ye:
-            messagebox.showerror("YAML Syntax Error", f"An error occurred while parsing the YAML file: {str(ye)}")
-            return
+            
+            entries = []
+            if 'entries' in data and isinstance(data['entries'], list):
+                entries = data['entries']
+            else:
+                # Attempt to collect entries as a list of entries
+                if isinstance(data, list):
+                    for item in data:
+                        if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item:
+                            entries.append(item)
+                elif isinstance(data, dict):
+                    if 'grapheme' in data and 'phonemes' in data:
+                        entries.append(data)
+            if not isinstance(entries, list):
+                self.loading_window.destroy()
+                raise ValueError("The 'entries' key must be associated with a list.")
+
+            self.dictionary = {}
+            self.data_list = []  # Initialize data_list
+            symbols = []
+            if 'symbols' in data and isinstance(data['symbols'], list):
+                symbols = data['symbols']
+            else:
+                self.loading_window.destroy()
+                raise ValueError("The 'symbols' key must be associated with a list.")
+            self.symbols = {}
+            self.symbols_list = []  # Initialize symbols_list
+
+            for item in symbols:
+                if not isinstance(item, dict):
+                    self.loading_window.destroy()
+                    raise ValueError("Entry format incorrect. Each entry must be a dictionary.")
+                symbol = item.get('symbol')
+                type_ = item.get('type')
+                if symbol is None or type_ is None:
+                    self.loading_window.destroy()
+                    raise ValueError("Symbol entry is incomplete.")
+                if not isinstance(type_, str):  # Check if type is a string
+                    self.loading_window.destroy()
+                    raise ValueError("Type must be a string representing the category.")
+                self.symbols[symbol] = [type_]  # Store type in a list for compatibility with other code parts
+                # Append the loaded data to symbols_list
+                self.symbols_list.append({'symbol': symbol, 'type': [type_]})
+
+            for item in entries:
+                if not isinstance(item, dict):
+                    raise ValueError("Entry format incorrect. Each entry must be a dictionary.")
+                grapheme = item.get('grapheme')
+                phonemes = item.get('phonemes', [])
+                if grapheme is None or not isinstance(phonemes, list):
+                    self.loading_window.destroy()
+                    raise ValueError("Each entry must have a 'grapheme' key and a list of 'phonemes'.")
+                self.dictionary[grapheme] = phonemes
+                # Append the loaded data to data_list
+                self.data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
+            self.update_entries_window()
+        except (YAMLError, ValueError) as e:
+            self.loading_window.destroy()
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred while reading the YAML file: {str(e)}")
-            return
-
-        entries = []
-        if 'entries' in data and isinstance(data['entries'], list):
-            entries = data['entries']
-        else:
-            # Attempt to collect entries as a list of entries
-            if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item:
-                        entries.append(item)
-            elif isinstance(data, dict):
-                if 'grapheme' in data and 'phonemes' in data:
-                    entries.append(data)
-
-        if not isinstance(entries, list):
-            messagebox.showerror("Error", "The 'entries' key must be associated with a list.")
-            return
-
-        self.dictionary = {}
-        self.data_list = []  # Initialize data_list
-
-        symbols = []
-        if 'symbols' in data and isinstance(data['symbols'], list):
-            symbols = data['symbols']
-        else:
-            messagebox.showerror("Error", "The 'symbols' key must be associated with a list.")
-            return
-
-        self.symbols = {}
-        self.symbols_list = []  # Initialize symbols_list
-
-        for item in symbols:
-            if not isinstance(item, dict):
-                messagebox.showerror("Error", "Entry format incorrect. Each entry must be a dictionary.")
-                return
-            symbol = item.get('symbol')
-            type_ = item.get('type')
-            if symbol is None or type_ is None:
-                messagebox.showerror("Error", "Symbol entry is incomplete.")
-                return
-            if not isinstance(type_, str):  # Check if type is a string
-                messagebox.showerror("Error", "Type must be a string representing the category.")
-                return
-            self.symbols[symbol] = [type_]  # Store type in a list for compatibility with other code parts
-            # Append the loaded data to symbols_list
-            self.symbols_list.append({'symbol': symbol, 'type': [type_]})
-
-        for item in entries:
-            if not isinstance(item, dict):
-                messagebox.showerror("Error", "Entry format incorrect. Each entry must be a dictionary.")
-                return
-            grapheme = item.get('grapheme')
-            phonemes = item.get('phonemes', [])
-            if grapheme is None or not isinstance(phonemes, list):
-                messagebox.showerror("Error", "Each entry must have a 'grapheme' key and a list of 'phonemes'.")
-                return
-            self.dictionary[grapheme] = phonemes
-            # Append the loaded data to data_list
-            self.data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
-        self.update_entries_window()
+            self.loading_window.destroy()
+            messagebox.showerror("Error", f"An unexpected error occurred: {str(e)}")
+        finally:
+            self.loading_window.destroy()
 
     def merge_yaml_files(self):
         filepaths = filedialog.askopenfilenames(title="Open YAML Files", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
@@ -463,8 +478,10 @@ class Dictionary(tk.Tk):
         for filepath in filepaths:
             try:
                 with open(filepath, 'r', encoding='utf-8') as file:
+                    self.load_window()
                     data = yaml.load(file)
                     if data is None:
+                        self.loading_window.destory()
                         raise ValueError("The YAML file is empty or has an incorrect format.")
 
                     entries = []
@@ -481,6 +498,7 @@ class Dictionary(tk.Tk):
 
                     for item in entries:
                         if not isinstance(item, dict):
+                            self.loading_window.destory()
                             messagebox.showerror(
                                 "Error",
                                 "Entry format incorrect in file: {}. Each entry must be a dictionary.".format(filepath)
@@ -490,6 +508,7 @@ class Dictionary(tk.Tk):
                         grapheme = item.get('grapheme')
                         phonemes = item.get('phonemes', [])
                         if grapheme is None or not isinstance(phonemes, list):
+                            self.loading_window.destory()
                             messagebox.showerror(
                                 "Error",
                                 "Each entry must have a 'grapheme' key and a list of 'phonemes' in file: {}".format(filepath)
@@ -504,9 +523,11 @@ class Dictionary(tk.Tk):
                             self.dictionary[grapheme] = phonemes
 
             except YAMLError as ye:
+                self.loading_window.destory()
                 messagebox.showerror("YAML Syntax Error", f"An error occurred while parsing the YAML file {filepath}: {str(ye)}")
                 continue
             except Exception as e:
+                self.loading_window.destory()
                 messagebox.showerror("Error", f"An error occurred while reading the YAML file {filepath}: {str(e)}")
                 continue
 
@@ -561,10 +582,10 @@ class Dictionary(tk.Tk):
             self.symbol_treeview.grid(row=0, column=0, padx=(10,0), pady=5, sticky="nsew")
 
             # Create and pack the Scrollbar
-            treeview_scrollbar = ttk.Scrollbar(treeview_frame, orient=tk.VERTICAL, command=self.symbol_treeview.yview)
-            treeview_scrollbar.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ns")
+            self.treeview_scrollbar = ttk.Scrollbar(treeview_frame, orient=tk.VERTICAL, command=self.symbol_treeview.yview)
+            self.treeview_scrollbar.grid(row=0, column=1, padx=(5, 0), pady=5, sticky="ns")
 
-            self.symbol_treeview.configure(yscrollcommand=treeview_scrollbar.set)
+            self.symbol_treeview.configure(yscrollcommand=self.treeview_scrollbar.set)
             self.symbol_treeview.bind("<Escape>", lambda event: self.close())
 
             # Frame for action buttons
@@ -597,6 +618,66 @@ class Dictionary(tk.Tk):
         if self.symbol_editor_window.winfo_exists():
             self.apply_localization()
 
+    def save_yaml_template_beta(self):
+        if not self.symbols:
+            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
+            return
+
+        # Ensure the templates directory exists
+        templates_dir = os.path.join(os.getcwd(), TEMPLATES)
+        if not os.path.exists(templates_dir):
+            os.makedirs(templates_dir)
+
+        # Prompt user for file path using a file dialog with the default directory set to 'templates'
+        template_path = filedialog.asksaveasfilename(
+            title="Saving symbols to Template YAML",
+            initialdir=templates_dir,
+            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
+        )
+        if not template_path:
+            return
+
+        # Ensure the file path ends with .yaml
+        if not template_path.endswith('.yaml'):
+            template_path += '.template.yaml'
+
+        yaml = YAML()
+        yaml.preserve_quotes = True
+        existing_data = CommentedMap()
+
+        # Prepare new symbols entries
+        escaped_symbols = [(symbol) for symbol in self.symbols.keys()]
+        symbols_entries = CommentedSeq([
+            CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(types))])
+            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
+        ])
+
+        existing_data['symbols'] = symbols_entries
+
+        # Configure YAML instance to use flow style for specific parts
+        def compact_representation(dumper, data):
+            return dumper.represent_mapping(
+                'tag:yaml.org,2002:map', data, flow_style=True
+            )
+        yaml.representer.add_representer(CommentedMap, compact_representation)
+
+
+        # Custom representation for YAML header
+        def yaml_header():
+            return "%YAML 1.2\n---\n"
+
+        # Save changes if the user has selected a file path
+        if template_path:
+            try:
+                with open(template_path, 'w', encoding='utf-8') as file:
+                    file.write(yaml_header())
+                    yaml.dump(existing_data, file)
+                messagebox.showinfo("Success", f"Template saved to {template_path}.")
+                self.update_template_combobox(self.template_combobox)
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save the file: {e}")
+        else:
+            messagebox.showinfo("Cancelled", "Save operation cancelled.")
     
     def save_yaml_template(self):
         if not self.symbols:
@@ -641,12 +722,20 @@ class Dictionary(tk.Tk):
         existing_data_text.append('\n')
         existing_data_text.append('entries:\n')
 
+        # Validate the YAML data
+        yaml = YAML()
+        try:
+            yaml.load('\n'.join(existing_data_text))
+        except YAMLError as exc:
+            messagebox.showerror("Error", f"Invalid YAML data: {exc}")
+            return
+
         # Save changes if the user has selected a file path
         with open(template_path, 'w', encoding='utf-8') as file:
             file.writelines(existing_data_text)
             self.update_template_combobox(self.template_combobox)
         messagebox.showinfo("Success", f"Templates saved to {template_path}.")
-    
+
     def deselect_symbols(self, event):
         # Check if there is currently a selection
         selected_items = self.symbol_treeview.selection()
@@ -666,6 +755,7 @@ class Dictionary(tk.Tk):
             self.add_symbols_treeview(symbol, value.split())
             self.phoneme_edit.delete(0, tk.END)
             self.word_edit.delete(0, tk.END)
+            self.symbol_treeview.yview_moveto(1)
         else:
             messagebox.showinfo("Error", "Please provide both phonemes and its respective value for the entry.")
 
@@ -1366,8 +1456,8 @@ class Dictionary(tk.Tk):
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
         # Capture the grapheme of the currently selected item before clearing entries
-        selected = self.viewer_tree.selection()
         selected_grapheme = None
+        selected = self.viewer_tree.selection()
         if selected:
             selected_item_id = selected[0]
             selected_item_values = self.viewer_tree.item(selected_item_id, "values")
@@ -1380,7 +1470,6 @@ class Dictionary(tk.Tk):
         self.viewer_tree.delete(*self.viewer_tree.get_children())
 
         # Insert new entries into the treeview
-        new_selection_id = None
         items = []
         for index, (grapheme, phonemes) in enumerate(self.dictionary.items(), start=1):
             if self.lowercase_phonemes_var.get():
@@ -1389,24 +1478,19 @@ class Dictionary(tk.Tk):
                 phonemes = self.remove_numbered_accents(phonemes)
             escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
             item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
-            # Check if this was the previously selected grapheme
-            if grapheme == selected_grapheme:
-                new_selection_id = item_id
-        
-        # Bulk insert for performance
-        for item in items:
-            iid = self.viewer_tree.insert('', 'end', values=item, tags=('normal',))
-            if item == new_selection_id:
-                new_selection_id = iid
-        
+            items.append(item_id)
+
         # Re-enable the treeview
         self.viewer_tree.configure(displaycolumns="#all")
 
         # If there was a previously selected grapheme, reselect its new corresponding item ID
-        if new_selection_id:
-            self.viewer_tree.selection_set(new_selection_id)
-            self.viewer_tree.item(new_selection_id, tags=('selected',))
-            self.viewer_tree.see(new_selection_id) 
+        if selected_grapheme:
+            for item_id in items:
+                if self.viewer_tree.item(item_id, "values")[1] == selected_grapheme:
+                    self.viewer_tree.selection_set(item_id)
+                    self.viewer_tree.item(item_id, tags=('selected',))
+                    self.viewer_tree.see(item_id)
+                    break
 
     def add_entry_treeview(self, new_word=None, new_phonemes=None, insert_index='end'):
         if new_word and new_phonemes:
@@ -1503,8 +1587,46 @@ class Dictionary(tk.Tk):
 
             self.word_entry.delete(0, tk.END)
             self.phoneme_entry.delete(0, tk.END)
+    
+    def save_window(self):
+        # Create a toplevel window to inform the user that the file is being saved
+        self.saving_window = Toplevel()
+        self.saving_window.overrideredirect(True)  # Remove window decorations
+        self.saving_window.attributes("-topmost", True)
+        # Set the desired width and height
+        window_width = 200
+        window_height = 100
+        # Calculate the position to center the window
+        screen_width = self.saving_window.winfo_screenwidth()
+        screen_height = self.saving_window.winfo_screenheight()
+        position_x = (screen_width // 2) - (window_width // 2)
+        position_y = (screen_height // 2) - (window_height // 2)
+        # Set the geometry with the calculated position
+        self.saving_window.geometry(f"{window_width}x{window_height}+{position_x}+{position_y}")
+        # Create a frame to act as the border and background
+        frame = ttk.Frame(self.saving_window, borderwidth=2, relief="solid")
+        frame.pack(fill="both", expand=True)
+        # Add a label inside the frame
+        label = ttk.Label(frame, text="Saving, please wait...")
+        label.pack(expand=True)
 
-    def save_as_yaml(self):
+    def load_window(self):
+        self.loading_window = Toplevel()
+        self.loading_window.overrideredirect(True)
+        self.loading_window.attributes("-topmost", True)
+        window_width = 200
+        window_height = 100
+        screen_width = self.loading_window.winfo_screenwidth()
+        screen_height = self.loading_window.winfo_screenheight()
+        position_x = (screen_width // 2) - (window_width // 2)
+        position_y = (screen_height // 2) - (window_height // 2)
+        self.loading_window.geometry(f"{window_width}x{window_height}+{position_x}+{position_y}")
+        frame = ttk.Frame(self.loading_window, borderwidth=2, relief="solid")
+        frame.pack(fill="both", expand=True)
+        label = ttk.Label(frame, text="Loading, please wait...")
+        label.pack(expand=True)
+
+    def save_as_ou_yaml(self):
         selected_template = self.template_var.get()
         # If "Current Template" is selected, ask the user to select a file to load and save.
         if not self.dictionary:
@@ -1512,58 +1634,64 @@ class Dictionary(tk.Tk):
             return
 
         if selected_template == "Current Template":
+            #self.save_window()
+            #self.saving_window.update_idletasks()
             template_path = filedialog.askopenfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
+            self.saving_window.destroy()
             if not template_path:
+                self.saving_window.destroy()
                 return
         else:
             # Define the base directory for templates and construct the file path
             data_folder = self.Templates
             template_path = os.path.join(data_folder, selected_template)
-        
-        # Read existing data from the template as text, ignoring the entries section
-        existing_data_text = []
+
+        yaml = YAML()
+        yaml.preserve_quotes = True
+        existing_data = CommentedMap()
+
+        # Read existing data from the template, preserving comments
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as file:
-                for line in file:
-                    if 'entries:' in line.strip():
-                        break
-                    if 'symbols:' in line.strip():
-                        break
-                    existing_data_text.append(line)
+                existing_data = yaml.load(file)
 
-        # Prepare new entries as formatted strings
+        # Clear existing entries
         self.clear_entries()
-        new_entries_text = []
-        # Ensure the order of entries in the dictionary matches the order in the TreeView
+
+        # Prepare new entries
+        new_entries = CommentedSeq()
         for item in self.viewer_tree.get_children():
             item_values = self.viewer_tree.item(item, 'values')
             if len(item_values) >= 3:
                 grapheme = item_values[1]
-                phonemes = self.dictionary[grapheme]
-                # Apply transformations such as lowercase and removing accents if needed
+                phonemes = self.dictionary.get(grapheme, [])
                 if self.lowercase_phonemes_var.get():
                     phonemes = [phoneme.lower() for phoneme in phonemes]
                 if self.remove_numbered_accents_var.get():
                     phonemes = self.remove_numbered_accents(phonemes)
-                escaped_phonemes = [escape_special_characters(phoneme) for phoneme in phonemes]
-                formatted_phonemes = ", ".join(f'{phoneme}' for phoneme in escaped_phonemes)
-                grapheme = escape_grapheme(grapheme)
-                entry_text = f"  - grapheme: {grapheme}\n    phonemes: [{formatted_phonemes}]\n"
-                new_entries_text.append(entry_text)
-        
-        # Prepare new entries for symbols
-        escaped_symbols = [escape_symbols(symbol) for symbol in self.symbols.keys()]
-        symbols_entries = [
-            f"  - {{symbol: {escaped_symbol}, type: {', '.join(types)}}}\n"
+                entry = CommentedMap([('grapheme', grapheme), ('phonemes', phonemes)])
+                new_entries.append(entry)
+
+        existing_data['entries'] = new_entries
+
+        # Prepare new symbols entries
+        escaped_symbols = [(symbol) for symbol in self.symbols.keys()]
+        symbols_entries = CommentedSeq([
+            CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(types))])
             for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
-        ]
-        existing_data_text.append('symbols:\n')
-        existing_data_text.extend(symbols_entries)
-        existing_data_text.append('\n')
-        
-        # Append the entries tag and new entries
-        existing_data_text.append('entries:\n')
-        existing_data_text.extend(new_entries_text)
+        ])
+
+        existing_data['symbols'] = symbols_entries
+
+        # Configure YAML instance to use flow style for specific parts
+        def compact_representation(dumper, data):
+            return dumper.represent_mapping(
+                'tag:yaml.org,2002:map', data, flow_style=True
+            )
+        yaml.representer.add_representer(CommentedMap, compact_representation)
+
+        #self.save_window()
+        #self.saving_window.update_idletasks()
 
         # Prompt user for output file path using a file dialog if not chosen already
         if selected_template == "Current Template":
@@ -1577,88 +1705,16 @@ class Dictionary(tk.Tk):
 
         # Save changes if the user has selected a file path
         if output_file_path:
-            with open(output_file_path, 'w', encoding='utf-8') as file:
-                file.writelines(existing_data_text)
-            messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
+            try:
+                with open(output_file_path, 'w', encoding='utf-8') as file:
+                    yaml.dump(existing_data, file)
+                self.saving_window.destroy()
+                messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
+            except Exception as e:
+                self.saving_window.destroy()
+                messagebox.showerror("Error", f"Failed to save the file: {e}")
         else:
-            messagebox.showinfo("Cancelled", "Save operation cancelled.")
-
-    def save_as_ds_yaml(self):
-        selected_template = self.template_var.get()
-        # If "Current Template" is selected, ask the user to select a file to load and save.
-        if not self.dictionary:
-            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
-            return
-
-        if selected_template == "Current Template":
-            template_path = filedialog.askopenfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-            if not template_path:
-                return
-        else:
-            # Define the base directory for templates and construct the file path
-            data_folder = self.Templates
-            template_path = os.path.join(data_folder, selected_template)
-        
-        # Read existing data from the template as text, ignoring the entries section
-        existing_data_text = []
-        if os.path.exists(template_path):
-            with open(template_path, 'r', encoding='utf-8') as file:
-                for line in file:
-                    if 'entries:' in line.strip():
-                        break
-                    if 'symbols:' in line.strip():
-                        break
-                    existing_data_text.append(line)
-
-        # Prepare new entries as formatted strings
-        self.clear_entries()
-        new_entries_text = []
-        # Ensure the order of entries in the dictionary matches the order in the TreeView
-        for item in self.viewer_tree.get_children():
-            item_values = self.viewer_tree.item(item, 'values')
-            if len(item_values) >= 3:
-                grapheme = item_values[1]
-                phonemes = self.dictionary[grapheme]
-                # Apply transformations such as lowercase and removing accents if needed
-                if self.lowercase_phonemes_var.get():
-                    phonemes = [phoneme.lower() for phoneme in phonemes]
-                if self.remove_numbered_accents_var.get():
-                    phonemes = self.remove_numbered_accents(phonemes)
-                escaped_phonemes = [escape_special_characters(phoneme) for phoneme in phonemes]
-                formatted_phonemes = ", ".join(f'{phoneme}' for phoneme in escaped_phonemes)
-                entry_text = f"  - {{grapheme: \"{grapheme}\", phonemes: [{formatted_phonemes}]}}\n"
-                new_entries_text.append(entry_text)
-        
-        # Prepare new entries for symbols
-        escaped_symbols = [escape_symbols(symbol) for symbol in self.symbols.keys()]
-        symbols_entries = [
-            f"  - {{symbol: {escaped_symbol}, type: {', '.join(types)}}}\n"
-            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
-        ]
-        existing_data_text.append('symbols:\n')
-        existing_data_text.extend(symbols_entries)
-        existing_data_text.append('\n')
-
-        # Append the entries tag and new entries
-        existing_data_text.append('entries:\n')
-        existing_data_text.extend(new_entries_text)
-
-        # Prompt user for output file path using a file dialog if not chosen already
-        if selected_template == "Current Template":
-            output_file_path = template_path
-        else:
-            output_file_path = filedialog.asksaveasfilename(title="Save YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-        
-        # Ensure the file path ends with .yaml
-        if output_file_path and not output_file_path.endswith('.yaml'):
-            output_file_path += '.yaml'
-        
-        # Save changes if the user has selected a file path
-        if output_file_path:
-            with open(output_file_path, 'w', encoding='utf-8') as file:
-                file.writelines(existing_data_text)
-            messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
-        else:
+            self.saving_window.destroy()
             messagebox.showinfo("Cancelled", "Save operation cancelled.")
     
     def export_json(self):
@@ -1671,6 +1727,11 @@ class Dictionary(tk.Tk):
         if not output_file_path:
             messagebox.showinfo("Cancelled", "Save operation cancelled.")
             return
+        
+        if output_file_path:
+            # Create and show the saving window
+            self.save_window()
+            self.saving_window.update_idletasks()
 
         # Prepare data for JSON format
         data = []
@@ -1681,16 +1742,20 @@ class Dictionary(tk.Tk):
                 phonemes = self.remove_numbered_accents(phonemes)
             phoneme_str = ' '.join(phonemes)
             data.append({"w": grapheme, "p": phoneme_str})
-        
-        # Ensure the file path ends with .json
-        if output_file_path and not output_file_path.endswith('.json'):
-            output_file_path += '.json'
 
-        json_data = {"data": data}
-        # Write JSON data to the selected file
-        with open(output_file_path, 'w', encoding='utf-8') as file:
-            json.dump(json_data, file, indent=2)  # Pretty print with indentation
-        messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
+        try:
+            if output_file_path and not output_file_path.endswith('.json'):
+                output_file_path += '.json'
+
+            json_data = {"data": data}
+            # Write JSON data to the selected file
+            with open(output_file_path, 'w', encoding='utf-8') as file:
+                json.dump(json_data, file, indent=2)  # Pretty print with indentation
+                self.saving_window.destroy()
+            messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
+        except Exception as e:
+            self.saving_window.destroy()
+            messagebox.showerror("Error", f"An error occurred while saving the JSON file: {str(e)}")
     
     def export_cmudict(self):
         if not self.dictionary:
@@ -1713,6 +1778,8 @@ class Dictionary(tk.Tk):
             formatted_phonemes = ' '.join(phonemes)
             entry_text = f"{grapheme}  {formatted_phonemes}\n"
             entries_text.append(entry_text)
+        
+        self.save_window()
 
         # Ensure the file path ends with .txt
         if output_file_path and not output_file_path.endswith('.txt'):
@@ -1721,6 +1788,7 @@ class Dictionary(tk.Tk):
         # Write entries to the selected file
         with open(output_file_path, 'w', encoding='utf-8') as file:
             file.writelines(entries_text)
+            self.saving_window.destroy()
         messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
 
     def load_template(self, selection):
@@ -1930,12 +1998,9 @@ class Dictionary(tk.Tk):
         self.localizable_widgets['open_yaml'] = open_yaml
         
         # For saving, you might want distinct actions for each button, so specify them if they differ
-        ou_save = ttk.Button(save_frame, text="Save OU Dictionary", style='Accent.TButton', command=self.save_as_yaml)
-        ou_save.pack(side=tk.LEFT, expand=True, fill="x", padx=(5), pady=(0,5))
-        self.localizable_widgets['save_ou'] = ou_save
-        ds_save = ttk.Button(save_frame, text="Save DS Dictionary", style='Accent.TButton', command=self.save_as_ds_yaml)
-        ds_save.pack(side=tk.LEFT, expand=True, fill="x", padx=(5), pady=(0,5))
-        self.localizable_widgets['save_ds'] = ds_save
+        ds_save = ttk.Button(save_frame, text="Save OU Dictionary", style='Accent.TButton', command=self.save_as_ou_yaml)
+        ds_save.pack(expand=True, fill="x", padx=(5), pady=(0,5))
+        self.localizable_widgets['save_ou'] = ds_save
         label = ttk.Label(cad_frame, text=f"© Cadlaxa | OU Dictionary Editor {self.current_version}", font=label_font, foreground=label_color)
         label.grid(row=0, column=1, sticky="ew", pady=(0,10))
         cad_frame.columnconfigure(0, weight=1)

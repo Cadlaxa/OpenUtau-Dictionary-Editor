@@ -1,5 +1,13 @@
 # Changelog
 ---
+**`(5/20/24)`**
+- Reworked YAML saving function to use `Ruamel.yaml` yaml.dump
+- Merged 2 YAML saving buttons into 1 main button (standard banks and diffsinger banks both supports the `yaml.org,2002:map` yaml map formats)
+- Add YAML validation when saving symbols as a template
+- preparation for saving/loading message window when saving files
+- Code optimizations and fixes
+- Update to Localizations
+
 **`(5/17/24)`**
 - Fixed phonemes with special characters not adding quotes with the entire string.
 - Added Synthv Import and Export `json` dictionary files
