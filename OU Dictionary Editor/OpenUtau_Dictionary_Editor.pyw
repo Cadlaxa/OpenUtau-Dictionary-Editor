@@ -67,7 +67,7 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=current_local)
-        self.current_version = "v0.7.7"
+        self.current_version = "v0.7.8"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -1637,9 +1637,9 @@ class Dictionary(tk.Tk):
             #self.save_window()
             #self.saving_window.update_idletasks()
             template_path = filedialog.askopenfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-            self.saving_window.destroy()
+            #self.saving_window.destroy()
             if not template_path:
-                self.saving_window.destroy()
+                #self.saving_window.destroy()
                 return
         else:
             # Define the base directory for templates and construct the file path
@@ -1708,13 +1708,13 @@ class Dictionary(tk.Tk):
             try:
                 with open(output_file_path, 'w', encoding='utf-8') as file:
                     yaml.dump(existing_data, file)
-                self.saving_window.destroy()
+                #self.saving_window.destroy()
                 messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
             except Exception as e:
-                self.saving_window.destroy()
+                #self.saving_window.destroy()
                 messagebox.showerror("Error", f"Failed to save the file: {e}")
         else:
-            self.saving_window.destroy()
+            #self.saving_window.destroy()
             messagebox.showinfo("Cancelled", "Save operation cancelled.")
     
     def export_json(self):
