@@ -7,6 +7,7 @@
 - preparation for saving/loading message window when saving files
 - Code optimizations and fixes
 - Update to Localizations
+- Fix saving bug
 
 **`(5/17/24)`**
 - Fixed phonemes with special characters not adding quotes with the entire string.
