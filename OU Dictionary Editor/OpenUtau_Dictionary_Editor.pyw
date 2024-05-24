@@ -1,11 +1,12 @@
 import tkinter as tk
 from Assets.modules.sv_ttk import sv_ttk
-from tkinter import filedialog, messagebox, ttk, PhotoImage, Toplevel, BOTH
+from tkinter import filedialog, messagebox, ttk, Toplevel, BOTH
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
 from ruamel.yaml import YAML, YAMLError
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from ruamel.yaml.compat import StringIO
 import tkinter.font as tkFont
 import configparser
 from Assets.modules import requests
@@ -17,12 +18,16 @@ import subprocess
 import ctypes as ct
 import platform
 import json
+import pickle
+from collections import defaultdict, OrderedDict
+import gzip
 
 # Directories
 TEMPLATES = P('./Templates')
 LOCAL = P('./Templates/Localizations')
 ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
+CACHE = P('./Cache')
 
 # for treeview only but ruamel.yaml will handle them automatically
 def escape_special_characters(phoneme):
@@ -82,10 +87,10 @@ class Dictionary(tk.Tk):
         self.load_last_theme()
 
         # Dictionary to hold the data
-        self.dictionary = {}
+        self.dictionary = OrderedDict()
         self.comments = {}
         self.localization = {}
-        self.symbols = {}
+        self.symbols = defaultdict(tuple)
         self.symbols_list = []
         self.undo_stack = []
         self.redo_stack = []
@@ -283,13 +288,36 @@ class Dictionary(tk.Tk):
         if not filepath:
             messagebox.showinfo("No File", "No file was selected.")
             return
+        
+        self.load_window()
+        self.loading_window.update_idletasks()
+        
         if filepath:
             self.current_filename = filepath
             self.file_modified = False  # Reset modification status
             self.update_title()
             self.current_order = list(self.dictionary.keys())
-        self.load_window()
-        self.loading_window.update_idletasks()
+
+        # Ensure Cache directory exists
+        cache_dir = CACHE
+        os.makedirs(cache_dir, exist_ok=True)
+
+        # Create a unique cache file path
+        cache_filename = (filepath).replace('/', '-').replace(':', '') + '.y\'all'
+        cache_filepath = os.path.join(cache_dir, cache_filename)
+
+        # Check if the cache file exists and is up-to-date
+        if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+            try:
+                with gzip.open(cache_filepath, 'rb') as cache_file:
+                    self.dictionary, self.comments = pickle.load(cache_file)
+                    self.update_entries_window()
+                    self.loading_window.destroy()
+                    return
+            except Exception as e:
+                messagebox.showerror("Error", f"Error occurred while reading from cache: {e}")
+
+        # Load from original file if cache is not available or outdated
         try:
             with open(filepath, 'r', encoding='utf-8') as file:
                 lines = file.readlines()
@@ -329,10 +357,18 @@ class Dictionary(tk.Tk):
                 break
 
         if not error_occurred:
-            self.loading_window.destroy()
             self.dictionary = dictionary  # Update the main dictionary only if no errors occurred
             self.comments = comments
             self.update_entries_window()
+
+            # Save to cache (regardless of whether it was updated from the file or not)
+            try:
+                with gzip.open(cache_filepath, 'wb') as cache_file:
+                    pickle.dump((self.dictionary, self.comments), cache_file)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error occurred while saving to cache: {e}")
+
+        self.loading_window.destroy()
 
     def remove_numbered_accents(self, phonemes):
         return [phoneme[:-1] if phoneme[-1].isdigit() else phoneme for phoneme in phonemes]
@@ -342,8 +378,8 @@ class Dictionary(tk.Tk):
         if not filepath:
             messagebox.showinfo("No File", "No file was selected.")
             return
-
-        # Update title and file management details
+        self.load_window()
+        self.loading_window.update_idletasks()
         self.current_filename = filepath
         self.file_modified = False
         self.update_title()
@@ -351,39 +387,62 @@ class Dictionary(tk.Tk):
 
         # Load JSON data
         try:
-            with open(filepath, 'r', encoding='utf-8') as file:
-                self.load_window()
-                data = json.load(file)
-                entries = data.get('data', [])
-                if not entries:
+            cache_dir = CACHE
+            os.makedirs(cache_dir, exist_ok=True)
+            
+            # Create a unique cache file path
+            cache_filename = (filepath).replace('/', '-').replace(':', '') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
+
+            # Check if the cache file exists and is up-to-date
+            if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+                try:
+                    with gzip.open(cache_filepath, 'rb') as cache_file:
+                        entries = pickle.load(cache_file)
+                        self.loading_window.destroy()
+                except Exception as e:
                     self.loading_window.destroy()
-                    messagebox.showinfo("Empty Data", "The JSON file contains no data.")
+                    messagebox.showerror("Error", f"Error occurred while reading from cache: {e}")
                     return
+            else:
+                with open(filepath, 'r', encoding='utf-8') as file:
+                    data = json.load(file)
+                    entries = data.get('data', [])
+                    self.loading_window.destroy()
+                    if not entries:
+                        self.loading_window.destroy()
+                        messagebox.showinfo("Empty Data", "The JSON file contains no data.")
+                        return
+                # Save to cache
+                try:
+                    with gzip.open(cache_filepath, 'wb') as cache_file:
+                        pickle.dump(entries, cache_file)
+                except Exception as e:
+                    self.loading_window.destroy()
+                    messagebox.showerror("Error", f"Error occurred while saving to cache: {e}")
+
+            # Process entries
+            self.dictionary.clear()
+            for item in entries:
+                grapheme = item.get('w')
+                phonemes = item.get('p')
+                if not (isinstance(grapheme, str) and isinstance(phonemes, str)):
+                    self.loading_window.destroy()
+                    messagebox.showerror("Invalid Entry", "Each entry must have a 'w' key with a string value and a 'p' key with a string value.")
+                    continue
+                phoneme_list = [phoneme.strip() for phoneme in phonemes.split()]
+                self.dictionary[grapheme] = phoneme_list
+            self.update_entries_window()
         except json.JSONDecodeError as je:
             self.loading_window.destroy()
             messagebox.showerror("JSON Syntax Error", f"An error occurred while parsing the JSON file: {str(je)}")
-            return
         except Exception as e:
             self.loading_window.destroy()
             messagebox.showerror("Error", f"An error occurred while reading the JSON file: {str(e)}")
-            return
-
-        # Process entries
-        self.dictionary.clear()
-        for item in entries:
-            grapheme = item.get('w')
-            phonemes = item.get('p')
-            if not (isinstance(grapheme, str) and isinstance(phonemes, str)):
-                messagebox.showerror("Invalid Entry", "Each entry must have a 'w' key with a string value and a 'p' key with a string value.")
-                continue
-            phoneme_list = [phoneme.strip() for phoneme in phonemes.split()]
-            self.dictionary[grapheme] = phoneme_list
-        self.update_entries_window()
 
     def load_yaml_file(self):
         filepath = filedialog.askopenfilename(title="Open YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
         if not filepath:
-            self.loading_window.destroy()
             messagebox.showinfo("No File", "No file was selected.")
             return
         self.load_window()
@@ -391,20 +450,42 @@ class Dictionary(tk.Tk):
         try:
             # Handle file opening to update title
             self.current_filename = filepath
-            self.file_modified = False  # Reset modification status
+            self.file_modified = False
             self.update_title()
             self.current_order = list(self.dictionary.keys())
+            cache_dir = CACHE
+            os.makedirs(cache_dir, exist_ok=True)
 
-            yaml = YAML(typ='safe')
-            yaml.prefix_colon = True
-            yaml.preserve_quotes = True
+            # Create a unique cache file path
+            cache_filename = (filepath).replace('/', '-').replace(':', '') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
 
-            with open(filepath, 'r', encoding='utf-8') as file:
-                data = yaml.load(file)
-                if data is None:
+            # Check if the cache file exists and is up-to-date
+            if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+                try:
+                    with gzip.open(cache_filepath, 'rb') as cache_file:
+                        data = pickle.load(cache_file)
+                except Exception as e:
                     self.loading_window.destroy()
-                    raise ValueError("The YAML file is empty or has an incorrect format.")
-            
+                    raise ValueError(f"Error occurred while reading from cache: {e}")
+            else:
+                yaml = YAML(typ='safe')
+                yaml.prefix_colon = True
+                yaml.preserve_quotes = True
+                with open(filepath, 'r', encoding='utf-8') as file:
+                    data = yaml.load(file)
+                    if data is None:
+                        self.loading_window.destroy()
+                        raise ValueError("The YAML file is empty or has an incorrect format.")
+                        
+                # Save to cache
+                try:
+                    with gzip.open(cache_filepath, 'wb') as cache_file:
+                        pickle.dump(data, cache_file)
+                except Exception as e:
+                    self.loading_window.destroy()
+                    raise ValueError(f"Error occurred while saving to cache: {e}")
+
             entries = []
             if 'entries' in data and isinstance(data['entries'], list):
                 entries = data['entries']
@@ -441,10 +522,10 @@ class Dictionary(tk.Tk):
                 if symbol is None or type_ is None:
                     self.loading_window.destroy()
                     raise ValueError("Symbol entry is incomplete.")
-                if not isinstance(type_, str):  # Check if type is a string
+                if not isinstance(type_, str): 
                     self.loading_window.destroy()
                     raise ValueError("Type must be a string representing the category.")
-                self.symbols[symbol] = [type_]  # Store type in a list for compatibility with other code parts
+                self.symbols[symbol] = [type_]
                 # Append the loaded data to symbols_list
                 self.symbols_list.append({'symbol': symbol, 'type': [type_]})
 
@@ -453,9 +534,9 @@ class Dictionary(tk.Tk):
                     raise ValueError("Entry format incorrect. Each entry must be a dictionary.")
                 grapheme = item.get('grapheme')
                 phonemes = item.get('phonemes', [])
-                if grapheme is None or not isinstance(phonemes, list):
-                    self.loading_window.destroy()
-                    raise ValueError("Each entry must have a 'grapheme' key and a list of 'phonemes'.")
+                #if grapheme is None or not isinstance(phonemes, list):
+                #    self.loading_window.destroy()
+                #    raise ValueError("Each entry must have a 'grapheme' key and a list of 'phonemes'.")
                 self.dictionary[grapheme] = phonemes
                 # Append the loaded data to data_list
                 self.data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
@@ -481,7 +562,7 @@ class Dictionary(tk.Tk):
                     self.load_window()
                     data = yaml.load(file)
                     if data is None:
-                        self.loading_window.destory()
+                        self.loading_window.destroy()
                         raise ValueError("The YAML file is empty or has an incorrect format.")
 
                     entries = []
@@ -498,7 +579,7 @@ class Dictionary(tk.Tk):
 
                     for item in entries:
                         if not isinstance(item, dict):
-                            self.loading_window.destory()
+                            self.loading_window.destroy()
                             messagebox.showerror(
                                 "Error",
                                 "Entry format incorrect in file: {}. Each entry must be a dictionary.".format(filepath)
@@ -508,7 +589,7 @@ class Dictionary(tk.Tk):
                         grapheme = item.get('grapheme')
                         phonemes = item.get('phonemes', [])
                         if grapheme is None or not isinstance(phonemes, list):
-                            self.loading_window.destory()
+                            self.loading_window.destroy()
                             messagebox.showerror(
                                 "Error",
                                 "Each entry must have a 'grapheme' key and a list of 'phonemes' in file: {}".format(filepath)
@@ -523,15 +604,15 @@ class Dictionary(tk.Tk):
                             self.dictionary[grapheme] = phonemes
 
             except YAMLError as ye:
-                self.loading_window.destory()
+                self.loading_window.destroy()
                 messagebox.showerror("YAML Syntax Error", f"An error occurred while parsing the YAML file {filepath}: {str(ye)}")
                 continue
             except Exception as e:
-                self.loading_window.destory()
+                self.loading_window.destroy()
                 messagebox.showerror("Error", f"An error occurred while reading the YAML file {filepath}: {str(e)}")
                 continue
-
         self.update_entries_window()
+        self.loading_window.destroy()
     
     def open_symbol_editor(self):
         if self.symbol_editor_window is None or not self.symbol_editor_window.winfo_exists():
@@ -979,11 +1060,22 @@ class Dictionary(tk.Tk):
             self.viewer_tree.column('Phonemes', width=230, anchor='w')
             self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
 
+            # Insert entries in batches
+            batch_size = 1000
+            entries = list(self.dictionary.items())
+            for i in range(0, len(entries), batch_size):
+                batch = entries[i:i+batch_size]
+                for index, (grapheme, phonemes) in enumerate(batch, start=i):
+                    self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
+
+            # Refresh the Treeview
+            self.viewer_tree.update()
+
             # Create and pack the Scrollbar
             scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=self.viewer_tree.yview)
             scrollbar.pack(side=tk.RIGHT, fill=tk.Y, padx=(5))
             self.viewer_tree.configure(yscrollcommand=scrollbar.set)
-            
+
             # deselect
             self.viewer_tree.bind("<Button-2>", self.deselect_entry)
             self.viewer_tree.bind("<Button-3>", self.deselect_entry)
@@ -1036,7 +1128,7 @@ class Dictionary(tk.Tk):
         self.refresh_treeview()
         if self.entries_window.winfo_exists():
             self.apply_localization()
-    
+
     def start_drag(self, event):
         self.drag_start_x = event.x
         self.drag_start_y = event.y
@@ -1341,7 +1433,6 @@ class Dictionary(tk.Tk):
                 if response:
                     self.title(self.base_title)
                     self.viewer_tree.delete(*self.viewer_tree.get_children())
-                    self.update_entries_window()
                     self.entries_window.destroy()
                     self.word_entry.delete(0, tk.END)
                     self.phoneme_entry.delete(0, tk.END)
@@ -1450,7 +1541,7 @@ class Dictionary(tk.Tk):
                     messagebox.showinfo("Error", "Clipboard data is invalid.")
         else:
             messagebox.showinfo("Paste", "Clipboard is empty.")
-
+    
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
@@ -1469,16 +1560,21 @@ class Dictionary(tk.Tk):
         # Clear all current entries from the treeview
         self.viewer_tree.delete(*self.viewer_tree.get_children())
 
-        # Insert new entries into the treeview
+        # Insert new entries into the treeview in chunks
+        chunk_size = 1000
         items = []
-        for index, (grapheme, phonemes) in enumerate(self.dictionary.items(), start=1):
-            if self.lowercase_phonemes_var.get():
-                phonemes = [phoneme.lower() for phoneme in phonemes]
-            if self.remove_numbered_accents_var.get():
-                phonemes = self.remove_numbered_accents(phonemes)
-            escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
-            item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
-            items.append(item_id)
+        for start in range(0, len(self.dictionary), chunk_size):
+            end = min(start + chunk_size, len(self.dictionary))
+            chunk_items = []
+            for index, (grapheme, phonemes) in enumerate(list(self.dictionary.items())[start:end], start=start + 1):
+                if self.lowercase_phonemes_var.get():
+                    phonemes = [phoneme.lower() for phoneme in phonemes]
+                if self.remove_numbered_accents_var.get():
+                    phonemes = self.remove_numbered_accents(phonemes)
+                escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
+                item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
+                chunk_items.append(item_id)
+            items.extend(chunk_items)
 
         # Re-enable the treeview
         self.viewer_tree.configure(displaycolumns="#all")
@@ -1491,7 +1587,62 @@ class Dictionary(tk.Tk):
                     self.viewer_tree.item(item_id, tags=('selected',))
                     self.viewer_tree.see(item_id)
                     break
+    
+    def on_tree_selection(self, event):
+        # Get the selected items and all items once
+        selected_items = set(self.viewer_tree.selection())
+        all_items = set(self.viewer_tree.get_children())
+        items_to_reset = all_items - selected_items
 
+        # Configure the 'normal' tag only once
+        self.viewer_tree.tag_configure('normal', font=self.tree_font)
+        self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
+
+        # Apply 'normal' tag to all non-selected items
+        for item in items_to_reset:
+            self.viewer_tree.item(item, tags=('normal',))
+
+        # Apply 'selected' tag to all selected items
+        for item in selected_items:
+            self.viewer_tree.item(item, tags=('selected',))
+
+        # Handle multiple selections for displaying grapheme and phoneme data
+        if selected_items:
+            graphemes = []
+            phoneme_lists = []
+            for item_id in selected_items:
+                item_data = self.viewer_tree.item(item_id, 'values')
+                if item_data:
+                    grapheme = item_data[1]
+                    phonemes = self.dictionary.get(grapheme, [])
+                    graphemes.append(grapheme)
+                    phoneme_lists.append(phonemes)
+
+            # Concatenate all graphemes for display
+            graphemes_text = ', '.join(graphemes)
+
+            # Formatting phonemes appropriately based on selection count
+            if len(phoneme_lists) > 1:
+                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
+                phonemes_text = f"[{phonemes_text}]"
+            else:
+                phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0])
+
+            # Update the word_entry and phoneme_entry fields
+            self.word_entry.delete(0, tk.END)
+            self.word_entry.insert(0, graphemes_text)
+            self.phoneme_entry.delete(0, tk.END)
+            self.phoneme_entry.insert(0, phonemes_text)
+        
+    def deselect_entry(self, event):
+        # Check if there is currently a selection
+        selected_items = self.viewer_tree.selection()
+        if selected_items:
+            self.viewer_tree.selection_remove(selected_items)
+
+            self.word_entry.delete(0, tk.END)
+            self.phoneme_entry.delete(0, tk.END)
+    
     def add_entry_treeview(self, new_word=None, new_phonemes=None, insert_index='end'):
         if new_word and new_phonemes:
             # Convert phonemes list to a string for display
@@ -1524,7 +1675,6 @@ class Dictionary(tk.Tk):
                     self.dictionary.clear()
                     self.dictionary.update(items)
                     insert_index += 1
-
             # Select the newly added items
             self.viewer_tree.selection_set(new_item_ids) 
         self.refresh_treeview()
@@ -1538,61 +1688,14 @@ class Dictionary(tk.Tk):
                 if not (search_text in item_values[0].lower().replace(",", "") or
                         search_text in item_values[1].lower().replace(",", "") or
                         search_text in item_values[2].replace(",", "")):
-                    self.viewer_tree.delete(item)
-
-    def on_tree_selection(self, event):
-        # Reset styles for all items
-        for item in self.viewer_tree.get_children():
-            self.viewer_tree.item(item, tags=('normal',))
-        self.viewer_tree.tag_configure('normal', font=self.tree_font)
-
-        # Apply bold font to selected items
-        selected_items = self.viewer_tree.selection()
-        for item in selected_items:
-            self.viewer_tree.item(item, tags=('selected'))
-        self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
-        
-        # Handle multiple selections for displaying grapheme and phoneme data
-        if selected_items:
-            graphemes = []
-            phoneme_lists = []
-            for item_id in selected_items:
-                item_data = self.viewer_tree.item(item_id, 'values')
-                if item_data:
-                    grapheme, phonemes = item_data[1], self.dictionary.get(item_data[1], [])
-                    graphemes.append(grapheme)
-                    phoneme_lists.append(phonemes)
-
-            # Concatenate all graphemes for display
-            graphemes_text = ', '.join(graphemes)
-
-            # Formatting phonemes appropriately based on selection count
-            if len(phoneme_lists) > 1:
-                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
-                phonemes_text = f"[{phonemes_text}]"
-            else:
-                phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0])
-
-            self.word_entry.delete(0, tk.END)
-            self.word_entry.insert(0, graphemes_text)
-
-            self.phoneme_entry.delete(0, tk.END)
-            self.phoneme_entry.insert(0, phonemes_text)
-        
-    def deselect_entry(self, event):
-        # Check if there is currently a selection
-        selected_items = self.viewer_tree.selection()
-        if selected_items:
-            self.viewer_tree.selection_remove(selected_items)
-
-            self.word_entry.delete(0, tk.END)
-            self.phoneme_entry.delete(0, tk.END)
+                    # Detach items that don't match the search criteria
+                    self.viewer_tree.detach(item)
     
     def save_window(self):
         # Create a toplevel window to inform the user that the file is being saved
         self.saving_window = Toplevel()
         self.saving_window.overrideredirect(True)  # Remove window decorations
-        self.saving_window.attributes("-topmost", True)
+        #self.saving_window.attributes("-topmost", True)
         # Set the desired width and height
         window_width = 200
         window_height = 100
@@ -1634,12 +1737,12 @@ class Dictionary(tk.Tk):
             return
 
         if selected_template == "Current Template":
-            #self.save_window()
-            #self.saving_window.update_idletasks()
             template_path = filedialog.askopenfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-            #self.saving_window.destroy()
+            self.save_window()
+            self.saving_window.update_idletasks()
+            self.saving_window.destroy()
             if not template_path:
-                #self.saving_window.destroy()
+                self.saving_window.destroy()
                 return
         else:
             # Define the base directory for templates and construct the file path
@@ -1647,6 +1750,7 @@ class Dictionary(tk.Tk):
             template_path = os.path.join(data_folder, selected_template)
 
         yaml = YAML()
+        yaml.width = 4096
         yaml.preserve_quotes = True
         existing_data = CommentedMap()
 
@@ -1690,8 +1794,8 @@ class Dictionary(tk.Tk):
             )
         yaml.representer.add_representer(CommentedMap, compact_representation)
 
-        #self.save_window()
-        #self.saving_window.update_idletasks()
+        self.save_window()
+        self.saving_window.update_idletasks()
 
         # Prompt user for output file path using a file dialog if not chosen already
         if selected_template == "Current Template":
@@ -1708,13 +1812,22 @@ class Dictionary(tk.Tk):
             try:
                 with open(output_file_path, 'w', encoding='utf-8') as file:
                     yaml.dump(existing_data, file)
-                #self.saving_window.destroy()
+                self.saving_window.destroy()
+                # Update cache file
+                cache_dir = CACHE
+                cache_filename = (output_file_path).replace('/', '-').replace(':', '') + '.y\'all'
+                cache_filepath = os.path.join(cache_dir, cache_filename)
+                try:
+                    with gzip.open(cache_filepath, 'wb') as cache_file:
+                        pickle.dump(existing_data, cache_file)
+                except Exception as e:
+                    messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
                 messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
             except Exception as e:
-                #self.saving_window.destroy()
+                self.saving_window.destroy()
                 messagebox.showerror("Error", f"Failed to save the file: {e}")
         else:
-            #self.saving_window.destroy()
+            self.saving_window.destroy()
             messagebox.showinfo("Cancelled", "Save operation cancelled.")
     
     def export_json(self):
@@ -1729,7 +1842,6 @@ class Dictionary(tk.Tk):
             return
         
         if output_file_path:
-            # Create and show the saving window
             self.save_window()
             self.saving_window.update_idletasks()
 
@@ -1752,6 +1864,18 @@ class Dictionary(tk.Tk):
             with open(output_file_path, 'w', encoding='utf-8') as file:
                 json.dump(json_data, file, indent=2)  # Pretty print with indentation
                 self.saving_window.destroy()
+
+            # Update cache file
+            cache_dir = CACHE
+            cache_filename = (output_file_path).replace('/', '-').replace(':', '') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
+            try:
+                with gzip.open(cache_filepath, 'wb') as cache_file:
+                    pickle.dump(data, cache_file)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
+
+
             messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
         except Exception as e:
             self.saving_window.destroy()
@@ -1788,6 +1912,17 @@ class Dictionary(tk.Tk):
         # Write entries to the selected file
         with open(output_file_path, 'w', encoding='utf-8') as file:
             file.writelines(entries_text)
+
+            # Update cache file
+            cache_dir = CACHE
+            cache_filename = (output_file_path).replace('/', '-').replace(':', '') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
+            try:
+                with gzip.open(cache_filepath, 'wb') as cache_file:
+                    pickle.dump((self.dictionary, self.comments), cache_file)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
+
             self.saving_window.destroy()
         messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
 

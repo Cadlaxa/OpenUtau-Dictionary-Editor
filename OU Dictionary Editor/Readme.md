@@ -1,5 +1,12 @@
 # Changelog
 ---
+**`(5/--/24)`**
+- Use compressed cache for loading dictionary files for better performance (startup will be slow on big files cuz of loading the file itself + creating the cache for the first time)
+- Update cache files when saving the dictionary files
+- Improved treeviewer performance (somewhat)...
+- Fixed opening `YAML` files throwing no `grapheme` entry error when there's a blank line
+- Fixed `ruamel.yaml` yaml width to prevent line breaks on long entries
+
 **`(5/20/24)`**
 - Reworked YAML saving function to use `Ruamel.yaml` yaml.dump
 - Merged 2 YAML saving buttons into 1 main button (standard banks and diffsinger banks both supports the `yaml.org,2002:map` yaml map formats)
