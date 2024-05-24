@@ -13,6 +13,8 @@
 ---
 ## 📍 在這裏下載最新版本:
 [![Download Latest Release](https://img.shields.io/github/v/release/Cadlaxa/OpenUtau-Dictionary-Editor?style=for-the-badge&label=Download&kill_cache=1)](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases)
+## 📍 語言支持
+- OpenUtau 字典編輯器使用預先格式化的 yaml 檔案進行 GUI 翻譯。 歡迎所有使用者將 `Templates/Localizations/en_US.yaml` 中找到的文字翻譯為其他語言並提交拉取請求。
 ---
 # 功能
 ## 開啟/附加 YAML 辭典
@@ -27,11 +29,14 @@
 - 使用 [選擇模板] ，使用者可以選擇 OpenUtau YAML 模板來建立辭典。 此外，使用者還可以新增自己的模板，將其放置在 **`[Templates]`** 資料夾中，以便 GUI 工具包將透過 templates.ini 識別這些檔案並使用它們來建立辭典。
 - `提示：如果您要從頭開始建立自訂辭典，請從模板資料夾新增模板，以便您可以在[模板選擇]上使用它並新增條目，如果您已經建立了自訂辭典，只需將它們匯入編輯器即可使用 'Current Template' ，以便將條目新增至目前匯入的 yaml 檔案中，並仍保留自訂符號`
 ## 對條目進行排序
-![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/86e65879-9af1-4cda-af37-70b8c1cc40a6)
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/532b16b8-eebf-423a-b974-9460e577831e)
 - 使用者可以按字母順序對條目進行排序 **`A-Z`** 或 **`Z-A`**
 ## 將 CMUdict 轉換為 OU YAML 辭典
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/2ecf2317-435b-427a-8535-c53dc83150cd)
 - 將 CMUdict.txt 轉換為功能性 OpenUTAU 詞典的函數。 請注意，CMUdict 不得有 **`;;;`**，否則 GUI 工具包會引發錯誤。
+## 編輯符號並將其儲存為模板
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6cde7d0b-1ad2-457d-9170-ae9d3ca2aa96)
+- 使用者可以透過點擊 **`編輯符號`** 來編輯yaml字典的符號，新增或刪除符號（音素和音素類型）並儲存以供將來使用。
 ## 使用條目檢視器
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6f37b8d4-dff0-4408-9a20-954a245eeeea)
 - 在條目檢視器中，使用者可以透過點擊、刪除、新增和排列條目來與條目互動。
@@ -42,7 +47,7 @@
 - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/470c74b9-aa64-4048-8ed2-6d29086ab50f)
  - 使用者可以拖放條目以手動更改其位置。
 ## 使用正規表示式函數
-![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/65e78088-d2fe-4d32-9663-f1b0dc42d083)
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/8623971c-fcd2-42ff-83a7-5cce092e9123)
 - 使用者可以使用正規表示式搜尋和替換來取代字素或音素。
 ## Saving the YAML Dictionary
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/aed1949e-caa1-4eba-9633-5dcfdbf50d94)
