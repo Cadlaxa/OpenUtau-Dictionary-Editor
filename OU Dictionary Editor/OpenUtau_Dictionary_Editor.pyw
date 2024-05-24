@@ -72,7 +72,7 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=current_local)
-        self.current_version = "v0.7.8"
+        self.current_version = "v0.8.5"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -113,10 +113,9 @@ class Dictionary(tk.Tk):
         self.lowercase_phonemes_var = tk.BooleanVar()
         self.lowercase_phonemes_var.set(False)  # Default is off
         self.current_order = [] # To store the manual order of entries
-        self.icon()
         self.create_widgets()
         self.init_localization()
-
+        self.icon()
         # Start update check in a non-blocking way
         threading.Thread(target=self.bg_updates, daemon=True).start()
     
@@ -378,6 +377,7 @@ class Dictionary(tk.Tk):
         if not filepath:
             messagebox.showinfo("No File", "No file was selected.")
             return
+
         self.load_window()
         self.loading_window.update_idletasks()
         self.current_filename = filepath
@@ -399,7 +399,6 @@ class Dictionary(tk.Tk):
                 try:
                     with gzip.open(cache_filepath, 'rb') as cache_file:
                         entries = pickle.load(cache_file)
-                        self.loading_window.destroy()
                 except Exception as e:
                     self.loading_window.destroy()
                     messagebox.showerror("Error", f"Error occurred while reading from cache: {e}")
@@ -408,7 +407,6 @@ class Dictionary(tk.Tk):
                 with open(filepath, 'r', encoding='utf-8') as file:
                     data = json.load(file)
                     entries = data.get('data', [])
-                    self.loading_window.destroy()
                     if not entries:
                         self.loading_window.destroy()
                         messagebox.showinfo("Empty Data", "The JSON file contains no data.")
@@ -427,18 +425,18 @@ class Dictionary(tk.Tk):
                 grapheme = item.get('w')
                 phonemes = item.get('p')
                 if not (isinstance(grapheme, str) and isinstance(phonemes, str)):
-                    self.loading_window.destroy()
                     messagebox.showerror("Invalid Entry", "Each entry must have a 'w' key with a string value and a 'p' key with a string value.")
                     continue
                 phoneme_list = [phoneme.strip() for phoneme in phonemes.split()]
                 self.dictionary[grapheme] = phoneme_list
+
             self.update_entries_window()
         except json.JSONDecodeError as je:
-            self.loading_window.destroy()
             messagebox.showerror("JSON Syntax Error", f"An error occurred while parsing the JSON file: {str(je)}")
         except Exception as e:
-            self.loading_window.destroy()
             messagebox.showerror("Error", f"An error occurred while reading the JSON file: {str(e)}")
+        finally:
+            self.loading_window.destroy()
 
     def load_yaml_file(self):
         filepath = filedialog.askopenfilename(title="Open YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
@@ -1030,7 +1028,6 @@ class Dictionary(tk.Tk):
             self.entries_window.title("Entries Viewer")
             self.entries_window.protocol("WM_DELETE_WINDOW", self.close)
             self.save_state_before_change()
-            self.icon(self.entries_window)
 
             # Create a Frame for the search bar
             search_frame = ttk.Frame(self.entries_window, style='Card.TFrame')
@@ -1058,18 +1055,6 @@ class Dictionary(tk.Tk):
             self.viewer_tree.column('Index', width=50, anchor='center')
             self.viewer_tree.column('Grapheme', width=170, anchor='w')
             self.viewer_tree.column('Phonemes', width=230, anchor='w')
-            self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
-
-            # Insert entries in batches
-            batch_size = 1000
-            entries = list(self.dictionary.items())
-            for i in range(0, len(entries), batch_size):
-                batch = entries[i:i+batch_size]
-                for index, (grapheme, phonemes) in enumerate(batch, start=i):
-                    self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
-
-            # Refresh the Treeview
-            self.viewer_tree.update()
 
             # Create and pack the Scrollbar
             scrollbar = ttk.Scrollbar(frame, orient=tk.VERTICAL, command=self.viewer_tree.yview)
@@ -1125,6 +1110,19 @@ class Dictionary(tk.Tk):
             self.localizable_widgets['close'] = close
             ttk.Button(button_frame, text="-", style='Accent.TButton', command=lambda: self.change_font_size(-1)).pack(side="left", padx=(15,5), pady=10)
             ttk.Button(button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1)).pack(side="left", padx=5, pady=10)
+
+            # Insert entries in batches
+            batch_size = 3000
+            entries = list(self.dictionary.items())
+            for i in range(0, len(entries), batch_size):
+                batch = entries[i:i+batch_size]
+                for index, (grapheme, phonemes) in enumerate(batch, start=i):
+                    self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
+            # Refresh the Treeview
+            self.viewer_tree.update()
+            self.icon(self.entries_window)
+            self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
+
         self.refresh_treeview()
         if self.entries_window.winfo_exists():
             self.apply_localization()
@@ -1207,7 +1205,6 @@ class Dictionary(tk.Tk):
         if self.replace_window is None or not self.replace_window.winfo_exists():
             self.replace_window = tk.Toplevel(self)
             self.replace_window.title("Regex Replace")
-            self.icon(self.replace_window)
             self.save_state_before_change()
 
             reg_frame = ttk.Frame(self.replace_window, style='Card.TFrame')
@@ -1345,6 +1342,7 @@ class Dictionary(tk.Tk):
             if self.search_var.get():
                 self.filter_treeview()
             self.replace_window.destroy()
+        self.icon(self.replace_window)
         self.apply_localization()
 
     def find_matches(self, pattern, target):
@@ -1695,7 +1693,7 @@ class Dictionary(tk.Tk):
         # Create a toplevel window to inform the user that the file is being saved
         self.saving_window = Toplevel()
         self.saving_window.overrideredirect(True)  # Remove window decorations
-        #self.saving_window.attributes("-topmost", True)
+        self.saving_window.attributes("-topmost", True)
         # Set the desired width and height
         window_width = 200
         window_height = 100
@@ -1735,20 +1733,14 @@ class Dictionary(tk.Tk):
         if not self.dictionary:
             messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
             return
-
         if selected_template == "Current Template":
             template_path = filedialog.askopenfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-            self.save_window()
-            self.saving_window.update_idletasks()
-            self.saving_window.destroy()
             if not template_path:
-                self.saving_window.destroy()
                 return
         else:
             # Define the base directory for templates and construct the file path
             data_folder = self.Templates
             template_path = os.path.join(data_folder, selected_template)
-
         yaml = YAML()
         yaml.width = 4096
         yaml.preserve_quotes = True
@@ -1761,7 +1753,8 @@ class Dictionary(tk.Tk):
 
         # Clear existing entries
         self.clear_entries()
-
+        self.save_window()
+        self.saving_window.update_idletasks()
         # Prepare new entries
         new_entries = CommentedSeq()
         for item in self.viewer_tree.get_children():
@@ -1784,7 +1777,6 @@ class Dictionary(tk.Tk):
             CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(types))])
             for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
         ])
-
         existing_data['symbols'] = symbols_entries
 
         # Configure YAML instance to use flow style for specific parts
@@ -1794,15 +1786,11 @@ class Dictionary(tk.Tk):
             )
         yaml.representer.add_representer(CommentedMap, compact_representation)
 
-        self.save_window()
-        self.saving_window.update_idletasks()
-
         # Prompt user for output file path using a file dialog if not chosen already
         if selected_template == "Current Template":
             output_file_path = template_path
         else:
             output_file_path = filedialog.asksaveasfilename(title="Save YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-
         # Ensure the file path ends with .yaml
         if output_file_path and not output_file_path.endswith('.yaml'):
             output_file_path += '.yaml'
@@ -1812,9 +1800,9 @@ class Dictionary(tk.Tk):
             try:
                 with open(output_file_path, 'w', encoding='utf-8') as file:
                     yaml.dump(existing_data, file)
-                self.saving_window.destroy()
                 # Update cache file
                 cache_dir = CACHE
+                os.makedirs(cache_dir, exist_ok=True)
                 cache_filename = (output_file_path).replace('/', '-').replace(':', '') + '.y\'all'
                 cache_filepath = os.path.join(cache_dir, cache_filename)
                 try:
@@ -1822,10 +1810,12 @@ class Dictionary(tk.Tk):
                         pickle.dump(existing_data, cache_file)
                 except Exception as e:
                     messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
+                self.saving_window.destroy()
                 messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
             except Exception as e:
-                self.saving_window.destroy()
                 messagebox.showerror("Error", f"Failed to save the file: {e}")
+            finally:
+                self.saving_window.destroy()
         else:
             self.saving_window.destroy()
             messagebox.showinfo("Cancelled", "Save operation cancelled.")
@@ -1874,7 +1864,6 @@ class Dictionary(tk.Tk):
                     pickle.dump(data, cache_file)
             except Exception as e:
                 messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
-
 
             messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
         except Exception as e:

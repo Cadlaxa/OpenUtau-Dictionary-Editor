@@ -1,11 +1,13 @@
 # Changelog
 ---
-**`(5/--/24)`**
+**`(5/24/24)`**
 - Use compressed cache for loading dictionary files for better performance (startup will be slow on big files cuz of loading the file itself + creating the cache for the first time)
 - Update cache files when saving the dictionary files
 - Improved treeviewer performance (somewhat)...
 - Fixed opening `YAML` files throwing no `grapheme` entry error when there's a blank line
 - Fixed `ruamel.yaml` yaml width to prevent line breaks on long entries
+- Performance fixes
+- Added loading message when loading files
 
 **`(5/20/24)`**
 - Reworked YAML saving function to use `Ruamel.yaml` yaml.dump
