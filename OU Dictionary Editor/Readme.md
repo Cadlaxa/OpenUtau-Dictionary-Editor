@@ -1,5 +1,8 @@
 # Changelog
 ---
+**`(6/6/24)`**
+- Fixed security issue with the executable file
+
 **`(5/24/24)`**
 - Use compressed cache for loading dictionary files for better performance (startup will be slow on big files cuz of loading the file itself + creating the cache for the first time)
 - Update cache files when saving the dictionary files
