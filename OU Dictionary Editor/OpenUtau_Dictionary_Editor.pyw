@@ -72,7 +72,7 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=current_local)
-        self.current_version = "v0.8.5"
+        self.current_version = "v0.8.6"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
