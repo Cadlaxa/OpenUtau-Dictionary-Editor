@@ -21,6 +21,7 @@ import json
 import pickle
 from collections import defaultdict, OrderedDict
 import gzip
+import pyglet
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -101,6 +102,16 @@ class Dictionary(tk.Tk):
         self.tree_font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
         self.font = tkFont.Font(family="Helvetica", size=10, weight="normal")
         self.font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
+        
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/Montserrat-Bold.ttf"))
+        font_en = 'Montserrat Bold'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansJP-Bold.ttf"))
+        font_jp = 'NotoSansJP Bold'
+        
+        if current_local == "English":
+            self.font = tkFont.Font(family=font_en, size = 10)
+        elif current_local == "Japanese":
+            self.font = tkFont.Font(family=font_jp, size = 10)
         
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
@@ -2042,7 +2053,7 @@ class Dictionary(tk.Tk):
 
         # Populate the Options frame
         self.template_var = tk.StringVar()
-        template_label = ttk.Label(options_frame, text="Select Template:")  # Default text
+        template_label = ttk.Label(options_frame, text="Select Template:", font = self.font)  # Default text
         template_label.grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.localizable_widgets['select_template'] = template_label
 
@@ -2054,6 +2065,7 @@ class Dictionary(tk.Tk):
         remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", variable=self.remove_numbered_accents_var)
         remove_accents_cb.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['remove_accents'] = remove_accents_cb
+        #ttk.Checkbutton.configure(font = self.font)
 
         lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", variable=self.lowercase_phonemes_var)
         lowercase_phonemes_cb.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
