@@ -8,9 +8,11 @@ from ruamel.yaml import YAML, YAMLError
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.compat import StringIO
 import tkinter.font as tkFont
+from tkinter import font
 import configparser
 from Assets.modules import requests
 import zipfile
+from zipfile import ZipFile
 import shutil
 import threading
 import copy
@@ -21,6 +23,7 @@ import json
 import pickle
 from collections import defaultdict, OrderedDict
 import gzip
+import pyglet
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -56,6 +59,42 @@ def escape_grapheme(grapheme):
             return f"'{grapheme}'"
         return grapheme
 
+class DownloadProgressDialog:
+    def __init__(self, parent, max_value):
+        self.parent = parent
+        self.progress_window = Toplevel(parent)
+        self.progress_window.title("Downloading Update")
+        
+        self.progress = ttk.Progressbar(self.progress_window, orient="horizontal", length=300, mode='determinate')
+        self.progress.pack(padx=20, pady=20)
+        self.progress['maximum'] = max_value
+        
+        self.icon()
+        self.center_window()
+        self.progress_window.resizable(False, False)
+
+    def set_progress(self, value):
+        self.progress['value'] = value
+        self.progress_window.update_idletasks()
+
+    def close(self):
+        self.progress_window.destroy()
+    
+    def icon(self, window=None):
+        if window is None:
+            window = self.progress_window
+        if os.path.exists(ICON):
+            img = tk.PhotoImage(file=ICON)
+            window.tk.call('wm', 'iconphoto', window._w, img)
+    
+    def center_window(self):
+        self.progress_window.update_idletasks()
+        width = self.progress_window.winfo_width()
+        height = self.progress_window.winfo_height()
+        x = (self.progress_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.progress_window.winfo_screenheight() // 2) - (height // 2) - 30
+        self.progress_window.geometry(f'{width}x{height}+{x}+{y}')
+
 class Dictionary(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
@@ -70,9 +109,9 @@ class Dictionary(tk.Tk):
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='English')
         self.localization_var = tk.StringVar(value=selected_local)
-        current_local = config.get('Settings', 'current_local', fallback='English')
-        self.local_var = tk.StringVar(value=current_local)
-        self.current_version = "v0.8.6"
+        self.current_local = config.get('Settings', 'current_local', fallback='English')
+        self.local_var = tk.StringVar(value=self.current_local)
+        self.current_version = "v0.9.0"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -101,7 +140,7 @@ class Dictionary(tk.Tk):
         self.tree_font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
         self.font = tkFont.Font(family="Helvetica", size=10, weight="normal")
         self.font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
-        
+
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
         self.text_widget = None
@@ -113,6 +152,7 @@ class Dictionary(tk.Tk):
         self.lowercase_phonemes_var = tk.BooleanVar()
         self.lowercase_phonemes_var.set(False)  # Default is off
         self.current_order = [] # To store the manual order of entries
+        self.styling()
         self.create_widgets()
         self.init_localization()
         self.icon()
@@ -139,6 +179,43 @@ class Dictionary(tk.Tk):
             window = self
         img = tk.PhotoImage(file=ICON)
         window.tk.call('wm', 'iconphoto', window._w, img)
+
+    def styling(self):
+        pyglet.options['win32_gdi_font'] = True
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSans-Bold.ttf"))
+        self.font_en = 'Noto Sans Bold'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansJP-Bold.ttf"))
+        self.font_jp = 'Noto Sans JP Bold'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansHK-Bold.ttf"))
+        self.font_hk = 'Noto Sans HK Bold'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansSC-Bold.ttf"))
+        self.font_sc = 'Noto Sans SC Bold'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansTC-Bold.ttf"))
+        self.font_tc = 'Noto Sans TC Bold'
+
+        # Define fonts for different languages
+        if self.current_local.lower() == 'english':
+            self.font = tkFont.Font(family=self.font_en, size=10)
+        elif self.current_local.lower() == 'japanese':
+            self.font = tkFont.Font(family=self.font_jp, size=10)
+        elif self.current_local.lower() == 'chinese (traditional)':
+            self.font = tkFont.Font(family=self.font_tc, size=10)
+        elif self.current_local.lower() == 'chinese (simplified)':
+            self.font = tkFont.Font(family=self.font_sc, size=10)
+        elif self.current_local.lower() == 'cantonese':
+            self.font = tkFont.Font(family=self.font_hk, size=10)
+        else:
+            self.font = tkFont.Font(family=self.font_en, size=10)
+        self.widget_style()
+    
+    def widget_style(self):
+        self.style = ttk.Style()
+        self.style.configure("Accent.TButton", font=self.font)
+        self.style.configure("TButton", font=self.font)
+        self.style.configure("TCheckbutton", font=self.font)
+        self.style.configure("TRadiobutton", font=self.font)
+        if hasattr(self, 'ttk.Button'):
+            ttk.Button.config(style="Accent.TButton")
 
     def change_font_size(self, delta):
         for font in [self.tree_font, self.tree_font_b]:
@@ -677,13 +754,13 @@ class Dictionary(tk.Tk):
             action_button_frame1.grid(row=3, column=0, padx=10, pady=(0,15), sticky="nsew")
             action_button_frame1.grid_columnconfigure(0, weight=1)
 
-            delete_button = ttk.Button(action_button_frame, text="Delete", command=self.delete_symbol_entry)
+            delete_button = ttk.Button(action_button_frame, style='TButton', text="Delete", command=self.delete_symbol_entry)
             delete_button.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
             self.localizable_widgets['del'] = delete_button
             self.word_edit = ttk.Entry(action_button_frame)
             self.word_edit.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
 
-            add_button = ttk.Button(action_button_frame, text="Add", command=self.add_symbol_entry)
+            add_button = ttk.Button(action_button_frame, style='TButton', text="Add", command=self.add_symbol_entry)
             add_button.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
             self.localizable_widgets['add'] = add_button
             self.phoneme_edit = ttk.Entry(action_button_frame)
@@ -1102,10 +1179,10 @@ class Dictionary(tk.Tk):
             clear = ttk.Button(button_frame, text="Clear all entries", style='Accent.TButton', command=self.delete_all_entries)
             clear.pack(side=tk.RIGHT, padx=(5,25), pady=10)
             self.localizable_widgets['clear_all'] = clear
-            ref = ttk.Button(button_frame, text="Refresh", command=self.update_entries_window)
+            ref = ttk.Button(button_frame, text="Refresh", style='TButton', command=self.update_entries_window)
             ref.pack(side=tk.RIGHT, padx=5, pady=10)
             self.localizable_widgets['refresh'] = ref
-            close = ttk.Button(button_frame, text="Close", command=self.close)
+            close = ttk.Button(button_frame, text="Close", style='TButton', command=self.close)
             close.pack(side=tk.RIGHT, padx=5, pady=10)
             self.localizable_widgets['close'] = close
             ttk.Button(button_frame, text="-", style='Accent.TButton', command=lambda: self.change_font_size(-1)).pack(side="left", padx=(15,5), pady=10)
@@ -1122,10 +1199,9 @@ class Dictionary(tk.Tk):
             self.viewer_tree.update()
             self.icon(self.entries_window)
             self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
-
-        self.refresh_treeview()
         if self.entries_window.winfo_exists():
             self.apply_localization()
+        self.refresh_treeview()
 
     def start_drag(self, event):
         self.drag_start_x = event.x
@@ -1213,14 +1289,14 @@ class Dictionary(tk.Tk):
             reg_frame.grid_columnconfigure(1, weight=1)
             
             # Fields for entering regex pattern and replacement text
-            reg_pat = ttk.Label(reg_frame, text="Regex Pattern:")
+            reg_pat = ttk.Label(reg_frame, text="Regex Pattern:", font=self.font)
             reg_pat.grid(row=0, column=0, padx=10, pady=20)
             self.localizable_widgets['reg_pattern'] = reg_pat
             regex_var = tk.StringVar()
             regex_entry = ttk.Entry(reg_frame, textvariable=regex_var, width=30)
             regex_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
 
-            reg_rep = ttk.Label(reg_frame, text="Replacement:")
+            reg_rep = ttk.Label(reg_frame, text="Replacement:", font=self.font)
             reg_rep.grid(row=1, column=0, padx=10, pady=5)
             self.localizable_widgets['replacement'] = reg_rep
             replace_var = tk.StringVar()
@@ -1229,8 +1305,8 @@ class Dictionary(tk.Tk):
 
             # Radio buttons to select target (graphemes or phonemes)
             target_var = tk.StringVar(value="Phonemes")
-            ttk.Radiobutton(reg_frame, text="Graphemes", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=(20, 5), sticky="w")
-            ttk.Radiobutton(reg_frame, text="Phonemes", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=10, pady=(20, 5), sticky="w")
+            ttk.Radiobutton(reg_frame, text="Graphemes", style="TRadiobutton", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=(20, 5), sticky="w")
+            ttk.Radiobutton(reg_frame, text="Phonemes", style="TRadiobutton", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=10, pady=(20, 5), sticky="w")
 
             rep_frame = ttk.Frame(reg_frame)
             rep_frame.grid(padx=10, pady=10, sticky="nsew", row=3, column=1)
@@ -1253,11 +1329,11 @@ class Dictionary(tk.Tk):
             find_frame.grid_columnconfigure(2, weight=5)
 
             # Find buttons to highlight matching entries
-            self.up = ttk.Button(find_frame, text="▲", command=lambda: self.find_next("▲", regex_var.get(), target_var.get()))
+            self.up = ttk.Button(find_frame, text="▲", style='TButton', command=lambda: self.find_next("▲", regex_var.get(), target_var.get()))
             self.up.grid(row=0, column=0, padx=(5,0), pady=10, sticky="ew")
-            self.down = ttk.Button(find_frame, text="▼", command=lambda: self.find_next("▼", regex_var.get(), target_var.get()))
+            self.down = ttk.Button(find_frame, text="▼", style='TButton', command=lambda: self.find_next("▼", regex_var.get(), target_var.get()))
             self.down.grid(row=0, column=1, padx=6, pady=10, sticky="ew")
-            find_button = ttk.Button(find_frame, text="Find", command=lambda: self.find_matches(regex_var.get(), target_var.get()))
+            find_button = ttk.Button(find_frame, text="Find", style='TButton', command=lambda: self.find_matches(regex_var.get(), target_var.get()))
             find_button.grid(row=0, column=2, padx=(0,5), pady=10, sticky="ew")
             self.localizable_widgets['find'] = find_button
 
@@ -1708,7 +1784,7 @@ class Dictionary(tk.Tk):
         frame = ttk.Frame(self.saving_window, borderwidth=2, relief="solid")
         frame.pack(fill="both", expand=True)
         # Add a label inside the frame
-        label = ttk.Label(frame, text="Saving, please wait...")
+        label = ttk.Label(frame, text="Saving, please wait...", font=self.font)
         label.pack(expand=True)
 
     def load_window(self):
@@ -1724,7 +1800,7 @@ class Dictionary(tk.Tk):
         self.loading_window.geometry(f"{window_width}x{window_height}+{position_x}+{position_y}")
         frame = ttk.Frame(self.loading_window, borderwidth=2, relief="solid")
         frame.pack(fill="both", expand=True)
-        label = ttk.Label(frame, text="Loading, please wait...")
+        label = ttk.Label(frame, text="Loading, please wait...", font=self.font)
         label.pack(expand=True)
 
     def save_as_ou_yaml(self):
@@ -2042,7 +2118,7 @@ class Dictionary(tk.Tk):
 
         # Populate the Options frame
         self.template_var = tk.StringVar()
-        template_label = ttk.Label(options_frame, text="Select Template:")  # Default text
+        template_label = ttk.Label(options_frame, text="Select Template:", font=self.font)  # Default text
         template_label.grid(row=1, column=0, padx=5, pady=5, sticky="e")
         self.localizable_widgets['select_template'] = template_label
 
@@ -2051,11 +2127,11 @@ class Dictionary(tk.Tk):
         self.update_template_combobox(self.template_combobox)
 
         # Add localizable Checkbuttons
-        remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", variable=self.remove_numbered_accents_var)
+        remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", style="TCheckbutton", variable=self.remove_numbered_accents_var)
         remove_accents_cb.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['remove_accents'] = remove_accents_cb
 
-        lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", variable=self.lowercase_phonemes_var)
+        lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", style="TCheckbutton", variable=self.lowercase_phonemes_var)
         lowercase_phonemes_cb.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['lowercase_phonemes'] = lowercase_phonemes_cb
 
@@ -2108,16 +2184,16 @@ class Dictionary(tk.Tk):
         label_color = "gray"
 
         # Add buttons to each frame
-        self.cmu = ttk.Button(convert_frame, text="Import CMUDict", command=self.load_cmudict)
+        self.cmu = ttk.Button(convert_frame, text="Import CMUDict", style='TButton', command=self.load_cmudict)
         self.cmu.grid(column=1, row=0, padx=5, sticky="ew")
         self.localizable_widgets['convert_cmudict'] = self.cmu
-        cmux = ttk.Button(convert_frame, text="Export CMUDict", command=self.export_cmudict)
+        cmux = ttk.Button(convert_frame, text="Export CMUDict", style='TButton', command=self.export_cmudict)
         cmux.grid(column=0, row=0, padx=5, sticky="ew")
         self.localizable_widgets['export_cmudict'] = cmux
-        ap_yaml = ttk.Button(load_frame, text= "Append YAML File", command=self.merge_yaml_files)
+        ap_yaml = ttk.Button(load_frame, text= "Append YAML File", style='TButton', command=self.merge_yaml_files)
         ap_yaml.grid(column=0, row=0, padx=5, pady=5, sticky="ew")
         self.localizable_widgets['append_yaml'] = ap_yaml
-        open_yaml = ttk.Button(load_frame, text= "Open YAML File", command=self.load_yaml_file)
+        open_yaml = ttk.Button(load_frame, text= "Open YAML File", style='TButton', command=self.load_yaml_file)
         open_yaml.grid(column=1, row=0, padx=5, sticky="ew")
         self.localizable_widgets['open_yaml'] = open_yaml
         
@@ -2169,7 +2245,7 @@ class Dictionary(tk.Tk):
         self.theming.columnconfigure(1, weight=1)
 
         # Label and combobox for Accent selection
-        theme_select = ttk.Label(self.theming, text="Select Theme:")
+        theme_select = ttk.Label(self.theming, text="Select Theme:", font=self.font)
         theme_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['def_theme'] = theme_select
         theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", 
@@ -2199,7 +2275,7 @@ class Dictionary(tk.Tk):
         self.save_loc.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         self.save_loc.columnconfigure(1, weight=1)
 
-        local_select = ttk.Label(self.save_loc, text="Select Localization:")
+        local_select = ttk.Label(self.save_loc, text="Select Localization:", font=self.font)
         local_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['select_local'] = local_select
         localization_combobox = ttk.Combobox(self.save_loc, textvariable=self.localization_var, state="readonly")
@@ -2224,7 +2300,7 @@ class Dictionary(tk.Tk):
         synthv_export.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['export'] = synthv_export
 
-        synthv_import = ttk.Button(synthv_frame, text="Import Dictionary", command=self.load_json_file)
+        synthv_import = ttk.Button(synthv_frame, text="Import Dictionary", style='TButton', command=self.load_json_file)
         synthv_import.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['import'] = synthv_import
 
@@ -2237,7 +2313,7 @@ class Dictionary(tk.Tk):
         ui_export_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         #self.localizable_widgets['export'] = ui_export_button
 
-        ui_import_button = ttk.Button(ui_frame, state="disabled", text="Import Dictionary", command=self.load_json_file)
+        ui_import_button = ttk.Button(ui_frame, state="disabled", text="Import Dictionary", style='TButton', command=self.load_json_file)
         ui_import_button.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         #self.localizable_widgets['import'] = ui_import_button
     
@@ -2266,60 +2342,77 @@ class Dictionary(tk.Tk):
                 messagebox.showinfo("No Updates", "You are up to date!")
         except requests.RequestException as e:
             messagebox.showerror("Update Error", f"Could not check for updates: {str(e)}")
-
-    def download_and_install_update(self, download_url):
-        downloads_path = str(P("./Downloads"))
-        if not os.path.exists(downloads_path):
-            os.makedirs(downloads_path)
-
-        local_zip_path = os.path.join(downloads_path, f"OU Dict Editor {self.latest_version_tag}.zip")
-        temp_extraction_path = os.path.join(downloads_path, "temp_extract")  # Temporary extraction directory
-        
+    
+    def get_remote_file_size(self, url):
         try:
+            r = requests.head(url, allow_redirects=True)
+            return int(r.headers.get('content-length', 0))
+        except requests.RequestException:
+            return 0
+
+    def dl_window(self, parent, max_value):
+        return DownloadProgressDialog(parent, max_value)
+    
+    def download_and_install_update(self, download_url):
+        downloads_path = P("./Downloads")
+        if not downloads_path.exists():
+            downloads_path.mkdir(parents=True, exist_ok=True)
+
+        local_zip_path = downloads_path / f"OU Dict Editor {self.latest_version_tag}.zip"
+        temp_extraction_path = downloads_path / "temp_extract"
+
+        try:
+            # Initialize progress dialog
+            total_size = self.get_remote_file_size(download_url)
+            progress_dialog = self.dl_window(self, total_size)
+            
             # Download the file
             with requests.get(download_url, stream=True) as r:
                 r.raise_for_status()
+                downloaded_size = 0
                 with open(local_zip_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            progress_dialog.set_progress(downloaded_size)
 
-            # Extract ZIP file using Python
+            # Close progress dialog
+            progress_dialog.close()
+
+            # Extract ZIP file
             with zipfile.ZipFile(local_zip_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_extraction_path)
 
-            # Move the contents of the first directory in the extracted folder
+            # Move contents to target folder
             first_directory = next(os.walk(temp_extraction_path))[1][0]
-            source_path = os.path.join(temp_extraction_path, first_directory)
-            target_path = str(P('./OU DICTIONARY EDITOR'))
-            
-            if not os.path.exists(target_path):
-                os.makedirs(target_path)
+            source_path = temp_extraction_path / first_directory
+            target_path = downloads_path / "OU DICTIONARY EDITOR"
+
+            if not target_path.exists():
+                target_path.mkdir(parents=True, exist_ok=True)
 
             for item in os.listdir(source_path):
-                s = os.path.join(source_path, item)
-                d = os.path.join(target_path, item)
+                s = source_path / item
+                d = target_path / item
                 if os.path.isdir(s):
                     shutil.copytree(s, d, dirs_exist_ok=True)
                 else:
                     shutil.copy2(s, d)
-            
-            # Offer to open the directory
-            if messagebox.askyesno("Open Directory", "Do you want to open the update directory?"):
-                if os.name == 'nt':
-                    os.startfile(target_path)
-                else:
-                    opener = "open" if sys.platform == "darwin" else "xdg-open"
-                    subprocess.Popen([opener, target_path])
 
-            # Inform user about the restart
-            messagebox.showinfo("Application Close", "The application will now close. Please move the downloaded file manually.")
-
-            # Delete the temporary files and folders
+            # Clean up temporary files
             os.remove(local_zip_path)
             shutil.rmtree(temp_extraction_path)
-
-            # Close application
-            self.close_application()
+            
+            # Offer to open the directory
+            if messagebox.showinfo("Application Close", "The application will now close. Please move the downloaded file manually."):
+                if os.name == 'nt':
+                    os.startfile(target_path)
+                    self.destroy()
+                else:
+                    opener = "open" if sys.platform == "darwin" else "xdg-open"
+                    subprocess.Popen([opener, str(target_path)])
+                    self.destroy()
 
         except requests.RequestException as e:
             messagebox.showerror("Download Error", f"Could not download the update: {str(e)}")
@@ -2328,14 +2421,6 @@ class Dictionary(tk.Tk):
         except Exception as e:
             messagebox.showerror("Update Error", f"An error occurred during the update process: {str(e)}")
 
-    def close_application(self):
-        # This should safely close the application
-        sys.exit()
-
-    def restart_application(self):
-        # Restarting the application
-        os.execl(sys.executable, sys.executable, *sys.argv)
-    
     def init_localization(self):
         # Read the last used localization file path
         last_used_file = self.read_last_selected_localization()
@@ -2349,7 +2434,7 @@ class Dictionary(tk.Tk):
         yaml = YAML()
         template_dir = self.read_template_directory()
         localization_dir = os.path.join(template_dir, 'Localizations') if template_dir else None
-        current_local = self.local_var.get()
+        self.current_local = self.local_var.get()
 
         if localization_dir and os.path.isdir(localization_dir):
             # List all YAML files in the localization directory
@@ -2368,8 +2453,8 @@ class Dictionary(tk.Tk):
                 sorted_languages = sorted(language_dict.keys())
                 # Setting ComboBox values to the sorted list of languages
                 combobox['values'] = sorted_languages
-                if current_local in language_dict:
-                    combobox.set(current_local)
+                if self.current_local in language_dict:
+                    combobox.set(self.current_local)
                 else:
                     combobox.set(sorted_languages[0])
                 self.language_file_map = language_dict
@@ -2432,11 +2517,12 @@ class Dictionary(tk.Tk):
             return None
 
     def apply_localization(self):
-        if not hasattr(self, '.\Templates\Localizations\en_US.yaml'):
+        if not hasattr(self, 'en_US.yaml'):
+            # Load default localization if not already loaded
             yaml = YAML()
-            with open('.\Templates\Localizations\en_US.yaml', 'r') as file:
+            with open('./Templates/Localizations/en_US.yaml', 'r') as file:
                 self.default_localization = yaml.load(file)
-                
+
         if hasattr(self, 'localizable_widgets'):
             for key, widget in self.localizable_widgets.items():
                 # Retrieve text from current localization or fall back to default localization
@@ -2457,6 +2543,7 @@ class Dictionary(tk.Tk):
                         print(f"Widget type not handled for localization: {type(widget)}")
         else:
             print("No localizable widgets defined.")
+        self.styling()
     
 if __name__ == "__main__":
     app = Dictionary()
