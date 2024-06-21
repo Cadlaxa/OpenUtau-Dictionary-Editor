@@ -111,7 +111,7 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         self.current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=self.current_local)
-        self.current_version = "v0.8.9"
+        self.current_version = "v0.9.0"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -182,8 +182,8 @@ class Dictionary(tk.Tk):
 
     def styling(self):
         pyglet.options['win32_gdi_font'] = True
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/Montserrat-Bold.ttf"))
-        self.font_en = 'Montserrat Bold'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSans-Bold.ttf"))
+        self.font_en = 'Noto Sans Bold'
         pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansJP-Bold.ttf"))
         self.font_jp = 'Noto Sans JP Bold'
         pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansHK-Bold.ttf"))
@@ -212,6 +212,8 @@ class Dictionary(tk.Tk):
         self.style = ttk.Style()
         self.style.configure("Accent.TButton", font=self.font)
         self.style.configure("TButton", font=self.font)
+        self.style.configure("TCheckbutton", font=self.font)
+        self.style.configure("TRadiobutton", font=self.font)
         if hasattr(self, 'ttk.Button'):
             ttk.Button.config(style="Accent.TButton")
 
@@ -1197,10 +1199,9 @@ class Dictionary(tk.Tk):
             self.viewer_tree.update()
             self.icon(self.entries_window)
             self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
-
-        self.refresh_treeview()
         if self.entries_window.winfo_exists():
             self.apply_localization()
+        self.refresh_treeview()
 
     def start_drag(self, event):
         self.drag_start_x = event.x
@@ -1304,8 +1305,8 @@ class Dictionary(tk.Tk):
 
             # Radio buttons to select target (graphemes or phonemes)
             target_var = tk.StringVar(value="Phonemes")
-            ttk.Radiobutton(reg_frame, text="Graphemes", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=(20, 5), sticky="w")
-            ttk.Radiobutton(reg_frame, text="Phonemes", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=10, pady=(20, 5), sticky="w")
+            ttk.Radiobutton(reg_frame, text="Graphemes", style="TRadiobutton", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=(20, 5), sticky="w")
+            ttk.Radiobutton(reg_frame, text="Phonemes", style="TRadiobutton", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=10, pady=(20, 5), sticky="w")
 
             rep_frame = ttk.Frame(reg_frame)
             rep_frame.grid(padx=10, pady=10, sticky="nsew", row=3, column=1)
@@ -2126,11 +2127,11 @@ class Dictionary(tk.Tk):
         self.update_template_combobox(self.template_combobox)
 
         # Add localizable Checkbuttons
-        remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", variable=self.remove_numbered_accents_var)
+        remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", style="TCheckbutton", variable=self.remove_numbered_accents_var)
         remove_accents_cb.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['remove_accents'] = remove_accents_cb
 
-        lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", variable=self.lowercase_phonemes_var)
+        lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", style="TCheckbutton", variable=self.lowercase_phonemes_var)
         lowercase_phonemes_cb.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['lowercase_phonemes'] = lowercase_phonemes_cb
 

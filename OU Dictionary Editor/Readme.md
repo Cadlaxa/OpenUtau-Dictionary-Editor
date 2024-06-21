@@ -4,6 +4,7 @@
 - Fixes to fonts for different languages
 - Added download progress bar
 - Fixed to system exit after propting the user to manually move the files after download
+- Code Fixes and Updates
 
 **`(6/6/24)`**
 - Fixed security issue with the executable file
