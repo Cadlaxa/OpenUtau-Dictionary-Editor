@@ -24,6 +24,8 @@ import pickle
 from collections import defaultdict, OrderedDict
 import gzip
 import pyglet
+import onnxruntime as onnx
+import numpy as np
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -2155,6 +2157,7 @@ class Dictionary(tk.Tk):
 
         # Entries and buttons for manual entries
         self.word_entry = ttk.Entry(manual_frame)
+        self.word_entry.bind("<KeyRelease>", self.on_entry_change)
         self.word_entry.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.phoneme_entry = ttk.Entry(manual_frame)
         self.phoneme_entry.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
@@ -2316,7 +2319,52 @@ class Dictionary(tk.Tk):
         ui_import_button = ttk.Button(ui_frame, state="disabled", text="Import Dictionary", style='TButton', command=self.load_json_file)
         ui_import_button.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         #self.localizable_widgets['import'] = ui_import_button
+
+        self.other_frame1 = ttk.Frame(self.others_tab)
+        self.other_frame1.grid(row=1, column=0, columnspan=1, padx=5, pady=10, sticky="nsew")
+        self.other_frame1.columnconfigure(0, weight=1)
+
+        # Frame for G2P
+        g2p_frame = ttk.LabelFrame(self.other_frame1, text="G2P Suggestions:")
+        g2p_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        g2p_frame.columnconfigure(0, weight=1)
+        g2p_frame.columnconfigure(1, weight=1)
+
+        # Adding Checkbox
+        self.g2p_checkbox_var = tk.BooleanVar()
+        g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
+        g2p_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+
+        # Adding Combobox
+        g2p_selection = ttk.Combobox(g2p_frame)
+        g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        g2p_selection['values'] = ('Option 1', 'Option 2', 'Option 3')
+
+        from Assets.G2p import arpabet_plus
+        # Initialize ArpabetPlusG2p instance
+        self.g2p_model = arpabet_plus.ArpabetPlusG2p()
+
+        # Bind checkbox variable to a callback function
+        self.g2p_checkbox_var.trace_add("write", self.on_checkbox_change)
     
+    def on_entry_change(self, event):
+        if self.g2p_checkbox_var.get() and self.word_entry.get().strip():
+            self.transform_text()
+        else:
+            self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
+    
+    def on_checkbox_change(self, *args):
+        if self.g2p_checkbox_var.get() and self.word_entry.get().strip():
+            self.transform_text()
+        else:
+            self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if checkbox is unchecked
+
+    def transform_text(self):
+        input_text = self.word_entry.get()
+        transformed_text = self.g2p_model.predict(input_text)
+        self.phoneme_entry.delete(0, tk.END)
+        self.phoneme_entry.insert(0, transformed_text)
+
     def is_connected(self):
         # Check internet connection by trying to reach Google lmao
         try:
