@@ -1,6 +1,7 @@
 import onnxruntime as ort
 import numpy as np
 from collections import defaultdict
+import traceback
 
 class ArpabetPlusG2p:
     graphemes = ["", "", "", "", "\'", "-", "a", "b", "c", "d", "e",
@@ -21,10 +22,11 @@ class ArpabetPlusG2p:
         self.grapheme_indexes = {}
         self.pred_cache = defaultdict(list)
         self.session = None
+        self.phonemes = self.phonemes[4:]
         self.load_pack()
 
     def load_pack(self):
-        dict_path = 'Assets/G2p/arpabet-plus/dict.txt'
+        dict_path = './arpabet-plus/dict.txt'
         with open(dict_path, 'r') as f:
             for line in f:
                 parts = line.strip().split('  ')
@@ -39,7 +41,7 @@ class ArpabetPlusG2p:
         # Create grapheme indexes (skip the first four graphemes)
         self.grapheme_indexes = {g: i + 4 for i, g in enumerate(self.graphemes[4:])}
 
-        onnx_path = 'Assets/G2p/arpabet-plus/g2p.onnx'
+        onnx_path = './arpabet-plus/g2p.onnx'
         self.session = ort.InferenceSession(onnx_path)
 
     def predict(self, input_text):
@@ -61,40 +63,56 @@ class ArpabetPlusG2p:
 
     def predict_with_model(self, word):
         # Encode input word as indices of graphemes
-        input_ids = np.array([self.grapheme_indexes.get(c, 0) for c in word], dtype=np.int32)
+        input_ids = np.array([self.grapheme_indexes.get(c, 0) for c in word], dtype=np.int32) # equvilant to `Tensor<int> src = EncodeWord(grapheme);`
         input_length = len(input_ids)
 
-        max_sequence_length = 32
-        src = np.zeros((1, max_sequence_length), dtype=np.int32)
-        tgt = np.zeros((1, max_sequence_length), dtype=np.int32)
+        if len(input_ids.shape) == 1:
+            input_ids = np.expand_dims(input_ids, axis=0)
+
         t = np.ones((1,), dtype=np.int32)
         
-        src[0, :input_length] = input_ids
-        tgt[0, :input_length] = np.arange(input_length)
+        
+        src = input_ids
+        tgt = np.array([2, ], dtype=np.int32)
+        if len(tgt.shape) == 1:
+            tgt = np.expand_dims(tgt, axis=0)
+        print(tgt)
 
-        input_feed = {'src': src, 'tgt': tgt, 't': t}
+        try: 
+            while t[0] < input_length and len(tgt) < 48:
+                input_feed = {'src': src, 'tgt': tgt, 't': t}
+                
+                outputs = self.session.run(['pred'], input_feed)
+                pred = outputs[0].flatten().astype(int)
+                if pred != 2:
+                    new_tgt_shape = (tgt.shape[0], tgt.shape[1] + 1)
 
-        try:
-            # Run inference with the ONNX model
-            outputs = self.session.run(None, input_feed)
-            predicted_phoneme_ids = outputs[0].flatten().astype(int)
+                    new_tgt = np.zeros(new_tgt_shape, dtype=np.int32)
 
-            # Map predicted phoneme IDs to actual phonemes
-            predicted_phonemes = [self.phonemes[id] for id in predicted_phoneme_ids]
+                    for i in range(tgt.shape[1]):
+                        new_tgt[:, i] = tgt[:, i]
 
-            # Post-process phonemes if necessary (e.g., remove trailing digits)
-            predicted_phonemes = [phoneme.rstrip('012') for phoneme in predicted_phonemes if phoneme != ""]
+                    new_tgt[:, tgt.shape[1]] = pred
+                    print(pred - 4)
 
-            # Join phonemes into a single string
+                    tgt = new_tgt
+                else:
+                    t[0] += 1
+                
+
+            # these lines are equivalent to `var phonemes = DecodePhonemes(tgt.Skip(1).ToArray());`
+            predicted_phonemes = []
+            for id in tgt.flatten().astype(int):
+                predicted_phonemes.append(self.phonemes[id - 4])
+            
+            print(predicted_phonemes)
+
             predicted_phonemes_str = ' '.join(predicted_phonemes)
-
             return predicted_phonemes_str
-
         except Exception as e:
-            print(f"Error predicting phonemes for '{word}' with ONNX model: {e}")
-            return ''
 
-
+            print("Error in prediction", traceback.format_exc())
+  
 arpabet_g2p = ArpabetPlusG2p()
-result = arpabet_g2p.predict("cu")
-print(result)
+result = arpabet_g2p.predict("twerky")
+print(f"\"{result}\"")
