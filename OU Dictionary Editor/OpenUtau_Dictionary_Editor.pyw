@@ -24,8 +24,6 @@ import pickle
 from collections import defaultdict, OrderedDict
 import gzip
 import pyglet
-import onnxruntime as onnx
-import numpy as np
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -2335,14 +2333,24 @@ class Dictionary(tk.Tk):
         g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
         g2p_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
-        # Adding Combobox
-        g2p_selection = ttk.Combobox(g2p_frame)
-        g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        g2p_selection['values'] = ('Option 1', 'Option 2', 'Option 3')
+        self.g2p_selection = ttk.Combobox(g2p_frame)
+        self.g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.g2p_selection['values'] = ('Arpabet-Plus G2p', 'Japanese Monophone G2p', 'YetAnotherG2pModel')
+        self.g2p_selection.current(0)
+        self.g2p_selection.state(['readonly'])
 
+        self.g2p_selection.bind("<<ComboboxSelected>>", self.update_g2p_model)
+        self.update_g2p_model()
+    def update_g2p_model(self, event=None):
+        selected_value = self.g2p_selection.get()
         from Assets.G2p import arpabet_plus
-        # Initialize ArpabetPlusG2p instance
-        self.g2p_model = arpabet_plus.ArpabetPlusG2p()
+        if selected_value == 'Arpabet-Plus G2p':
+            self.g2p_model = arpabet_plus.ArpabetPlusG2p()
+        elif selected_value == 'Japanese Monophone G2p':
+            from Assets.G2p import jp_mono
+            self.g2p_model = jp_mono.JapaneseMonophoneG2p()
+        elif selected_value == 'YetAnotherG2pModel':
+            self.g2p_model = yet_another_g2p_model.YetAnotherG2pModel()
 
         # Bind checkbox variable to a callback function
         self.g2p_checkbox_var.trace_add("write", self.on_checkbox_change)
