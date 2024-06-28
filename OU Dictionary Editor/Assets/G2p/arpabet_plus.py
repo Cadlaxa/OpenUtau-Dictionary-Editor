@@ -3,7 +3,7 @@ import numpy as np
 from collections import defaultdict
 
 class ArpabetPlusG2p:
-    graphemes = ["", "", "", "", "\'", "-", "a", "b", "c", "d", "e",
+    graphemes = ["", "", "", "", "'", "-", "a", "b", "c", "d", "e",
                  "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p",
                  "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
                  "A", "B", "C", "D", "E",
@@ -16,7 +16,7 @@ class ArpabetPlusG2p:
                 "th", "tr", "uh", "uw", "v", "w", "y", "z", "zh"]
 
     def __init__(self):
-        self.lock = None  # Placeholder for thread safety if needed
+        self.lock = None  # Placeholder for thread safety if neededy
         self.dict = {}
         self.grapheme_indexes = {}
         self.pred_cache = defaultdict(list)
@@ -31,13 +31,13 @@ class ArpabetPlusG2p:
                 if len(parts) >= 2:
                     grapheme = parts[0].lower()
                     phoneme_parts = parts[1:]
-                    phonemes = ''.join(phoneme_parts).replace('0', '').replace('1', '').replace('2', '').lower()
+                    phonemes = ''.join(phoneme_parts).replace('0', '').replace('1', '').replace('2', '').replace('3', '').lower()
                     self.dict[grapheme] = phonemes.split()
-                else:
-                    print(f"Ignoring line: {line.strip()}")
+                #else:
+                #    print(f"Ignoring line: {line.strip()}")
 
-        # Create grapheme indexes (skip the first four graphemes)
-        self.grapheme_indexes = {g: i + 4 for i, g in enumerate(self.graphemes[4:])}
+        # Create grapheme indexes (skip the first three graphemes)
+        self.grapheme_indexes = {g: i + 1 for i, g in enumerate(self.graphemes[1:])}
 
         onnx_path = 'Assets/G2p/arpabet-plus/g2p.onnx'
         self.session = ort.InferenceSession(onnx_path)
@@ -83,7 +83,7 @@ class ArpabetPlusG2p:
             predicted_phonemes = [self.phonemes[id] for id in predicted_phoneme_ids]
 
             # Post-process phonemes if necessary (e.g., remove trailing digits)
-            predicted_phonemes = [phoneme.rstrip('012') for phoneme in predicted_phonemes if phoneme != ""]
+            predicted_phonemes = [phoneme.rstrip('012') for phoneme in predicted_phonemes if phoneme!= ""]
 
             # Join phonemes into a single string
             predicted_phonemes_str = ' '.join(predicted_phonemes)
@@ -92,7 +92,7 @@ class ArpabetPlusG2p:
 
         except Exception as e:
             print(f"Error predicting phonemes for '{word}' with ONNX model: {e}")
-            return ''
+            return ''  # Return empty string if an error occurs
 
 
 arpabet_g2p = ArpabetPlusG2p()
