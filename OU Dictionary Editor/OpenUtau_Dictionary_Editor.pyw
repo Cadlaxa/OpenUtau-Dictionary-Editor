@@ -147,6 +147,7 @@ class Dictionary(tk.Tk):
         self.replace_window = None
         self.drag_window = None
         self.symbol_editor_window = None
+        self.g2p_model = None
         self.remove_numbered_accents_var = tk.BooleanVar()
         self.remove_numbered_accents_var.set(False)  # Default is off
         self.lowercase_phonemes_var = tk.BooleanVar()
@@ -2333,28 +2334,16 @@ class Dictionary(tk.Tk):
         g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
         g2p_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
-        self.g2p_selection = ttk.Combobox(g2p_frame)
+        self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         self.g2p_selection['values'] = ('Arpabet-Plus G2p', 'Japanese Monophone G2p', 'YetAnotherG2pModel')
         self.g2p_selection.current(0)
-        self.g2p_selection.state(['readonly'])
-
         self.g2p_selection.bind("<<ComboboxSelected>>", self.update_g2p_model)
         self.update_g2p_model()
-    def update_g2p_model(self, event=None):
-        selected_value = self.g2p_selection.get()
-        from Assets.G2p import arpabet_plus
-        if selected_value == 'Arpabet-Plus G2p':
-            self.g2p_model = arpabet_plus.ArpabetPlusG2p()
-        elif selected_value == 'Japanese Monophone G2p':
-            from Assets.G2p import jp_mono
-            self.g2p_model = jp_mono.JapaneseMonophoneG2p()
-        elif selected_value == 'YetAnotherG2pModel':
-            self.g2p_model = yet_another_g2p_model.YetAnotherG2pModel()
 
         # Bind checkbox variable to a callback function
         self.g2p_checkbox_var.trace_add("write", self.on_checkbox_change)
-    
+
     def on_entry_change(self, event):
         if self.g2p_checkbox_var.get() and self.word_entry.get().strip():
             self.transform_text()
@@ -2366,13 +2355,37 @@ class Dictionary(tk.Tk):
             self.transform_text()
         else:
             self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if checkbox is unchecked
+            
+        if self.g2p_checkbox_var.get() and not self.g2p_selection.get():
+            self.g2p_selection.current(0)  # Set default selection if combobox is empty
+        self.update_g2p_model()
 
     def transform_text(self):
         input_text = self.word_entry.get()
         transformed_text = self.g2p_model.predict(input_text)
         self.phoneme_entry.delete(0, tk.END)
         self.phoneme_entry.insert(0, transformed_text)
-
+        
+    def update_g2p_model(self, event=None):
+        if self.g2p_checkbox_var.get():
+            selected_value = self.g2p_selection.get()
+            try:
+                if selected_value == 'Arpabet-Plus G2p':
+                    from Assets.G2p import arpabet_plus
+                    self.g2p_model = arpabet_plus.ArpabetPlusG2p()
+                elif selected_value == 'Japanese Monophone G2p':
+                    from Assets.G2p import jp_mono
+                    self.g2p_model = jp_mono.JapaneseMonophoneG2p()
+                elif selected_value == 'YetAnotherG2pModel':
+                    from Assets.G2p import yet_another_g2p_model
+                    self.g2p_model = yet_another_g2p_model.YetAnotherG2pModel()
+                print(f"G2P model {selected_value} loaded successfully.")
+            except Exception as e:
+                print(f"Failed to load G2P model {selected_value}: {e}")
+        else:
+            self.g2p_model = None
+            print("G2P is disabled.")
+            
     def is_connected(self):
         # Check internet connection by trying to reach Google lmao
         try:
