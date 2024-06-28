@@ -66,7 +66,9 @@ class ArpabetPlusG2p:
 
     def predict_with_model(self, word):
         # Encode input word as indices of graphemes
-        input_ids = np.array([self.grapheme_indexes.get(c, 0) for c in word], dtype=np.int32) # equvilant to `Tensor<int> src = EncodeWord(grapheme);`
+        word_with_dash = "-" + word # funny workaround for that first skipped phoneme
+
+        input_ids = np.array([self.grapheme_indexes.get(c, 0) for c in word_with_dash], dtype=np.int32) # equvilant to `Tensor<int> src = EncodeWord(grapheme);`
         input_length = len(input_ids)
 
         if len(input_ids.shape) == 1:
@@ -104,7 +106,8 @@ class ArpabetPlusG2p:
             # these lines are equivalent to `var phonemes = DecodePhonemes(tgt.Skip(1).ToArray());`
             predicted_phonemes = []
             for id in tgt.flatten().astype(int):
-                predicted_phonemes.append(self.phonemes[id - 4])
+                if id != 2: # skip the first phone (workaround) cuz of the np.array initial phoneme
+                    predicted_phonemes.append(self.phonemes[id - 4])
             
             print(predicted_phonemes)
 
