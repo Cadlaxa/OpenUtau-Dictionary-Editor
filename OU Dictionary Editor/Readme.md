@@ -1,5 +1,8 @@
 # Changelog
 ---
+**`(6/28/24)`**
+- Added G2p Suggestions (G2p's are the same models with OpenUtau)
+
 **`(6/21/24)`**
 - Fixes to fonts for different languages
 - Added download progress bar
