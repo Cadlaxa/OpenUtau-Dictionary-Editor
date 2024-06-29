@@ -1,7 +1,18 @@
 # Changelog
 ---
 **`(6/28/24)`**
-- Added G2p Suggestions (G2p's are the same models with OpenUtau)
+- Added G2p Suggestions
+    - Arpabet-plus G2p (@Cadlaxa)
+    - French G2p
+    - Germern G2p (@LotteV)
+    - Italian G2p
+    - Japanese Monophone G2p (@LotteV)
+    - Millefeuille G2p (@UFR)
+    - Portuguese G2p
+    - Russian G2p
+    - Spanish G2p (@LotteV)
+- Fixed word and entry bug when typing with a g2p suggestions
+- Fixed batch loading performance of Entry window
 
 **`(6/21/24)`**
 - Fixes to fonts for different languages

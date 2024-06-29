@@ -29,7 +29,7 @@ class ArpabetPlusG2p:
         self.load_pack()
 
     def load_pack(self):
-        dict_path = P('./Assets/G2p/arpabet-plus/dict.txt')
+        dict_path = P('./Assets/G2p/g2p-en-arpa+/dict.txt')
         with open(dict_path, 'r', encoding='utf-8') as f:
             for line in f:
                 parts = line.strip().split('  ')
@@ -44,7 +44,7 @@ class ArpabetPlusG2p:
         # Create grapheme indexes (skip the first four graphemes)
         self.grapheme_indexes = {g: i + 4 for i, g in enumerate(self.graphemes[4:])}
 
-        onnx_path = P('./Assets/G2p/arpabet-plus/g2p.onnx')
+        onnx_path = P('./Assets/G2p/g2p-en-arpa+/g2p.onnx')
         self.session = ort.InferenceSession(onnx_path)
 
     def predict(self, input_text):
@@ -116,7 +116,3 @@ class ArpabetPlusG2p:
         except Exception as e:
 
             print("Error in prediction", traceback.format_exc())
-  
-arpabet_g2p = ArpabetPlusG2p()
-result = arpabet_g2p.predict("instagrammable")
-print(result)

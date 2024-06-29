@@ -38,10 +38,10 @@ class JapaneseMonophoneG2p:
         self.load_pack()
 
     def load_pack(self):
-        hira_path = P('./Assets/G2p/jp-mono/hiragana.txt')
-        katakana_path = P('./Assets/G2p/jp-mono/katakana.txt')
-        romaji_path = P('./Assets/G2p/jp-mono/romaji.txt')
-        special_path = P('./Assets/G2p/jp-mono/special.txt')
+        hira_path = P('./Assets/G2p/g2p-jp-mono/hiragana.txt')
+        katakana_path = P('./Assets/G2p/g2p-jp-mono/katakana.txt')
+        romaji_path = P('./Assets/G2p/g2p-jp-mono/romaji.txt')
+        special_path = P('./Assets/G2p/g2p-jp-mono/special.txt')
         with open(hira_path, 'r', encoding='utf-8') as hira_f, \
             open(katakana_path, 'r', encoding='utf-8') as katakana_f, \
             open(romaji_path, 'r', encoding='utf-8') as romaji_f, \

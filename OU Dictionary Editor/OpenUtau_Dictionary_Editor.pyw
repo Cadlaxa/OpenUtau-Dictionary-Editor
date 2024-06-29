@@ -24,6 +24,8 @@ import pickle
 from collections import defaultdict, OrderedDict
 import gzip
 import pyglet
+import onnxruntime as ort
+import numpy as np
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -111,6 +113,8 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         self.current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=self.current_local)
+        selected_g2p = config.get('Settings', 'G2P', fallback='Arpabet-Plus G2p')
+        self.g2p_var = tk.StringVar(value=selected_g2p)
         self.current_version = "v0.9.0"
 
         # Set window title
@@ -1190,14 +1194,16 @@ class Dictionary(tk.Tk):
             ttk.Button(button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1)).pack(side="left", padx=5, pady=10)
 
             # Insert entries in batches
-            batch_size = 3000
-            entries = list(self.dictionary.items())
-            for i in range(0, len(entries), batch_size):
-                batch = entries[i:i+batch_size]
-                for index, (grapheme, phonemes) in enumerate(batch, start=i):
-                    self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
+            if self.load_cmudict or self.load_json_file or self.load_yaml_file:
+                batch_size = 10000
+                entries = list(self.dictionary.items())
+                for i in range(0, len(entries), batch_size):
+                    batch = entries[i:i+batch_size]
+                    for index, (grapheme, phonemes) in enumerate(batch, start=i):
+                        self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
+                        self.viewer_tree.update()
+
             # Refresh the Treeview
-            self.viewer_tree.update()
             self.icon(self.entries_window)
             self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
         if self.entries_window.winfo_exists():
@@ -2336,25 +2342,41 @@ class Dictionary(tk.Tk):
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
-        self.g2p_selection['values'] = ('Arpabet-Plus G2p', 'Japanese Monophone G2p', 'YetAnotherG2pModel')
-        self.g2p_selection.current(0)
+        self.g2p_selection['values'] = ('Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Italian G2p', 'Japanese Monophone G2p'
+                                        , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p')
+        
+        self.load_last_g2p()
+
         self.g2p_selection.bind("<<ComboboxSelected>>", self.update_g2p_model)
         self.update_g2p_model()
 
         # Bind checkbox variable to a callback function
         self.g2p_checkbox_var.trace_add("write", self.on_checkbox_change)
+    
+    def load_last_g2p(self):
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        try:
+            model_name = config.get('Settings', 'g2p')
+            if self.g2p_selection['values']:
+                self.g2p_selection.set(model_name)
+            else:
+                self.g2p_selection.current(0)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            sv_ttk.set_theme("dark")
 
     def on_entry_change(self, event):
         if self.g2p_checkbox_var.get() and self.word_entry.get().strip():
             self.transform_text()
-        else:
+        elif self.g2p_checkbox_var.get() and not self.word_entry.get().strip():
             self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
-    
+
     def on_checkbox_change(self, *args):
-        if self.g2p_checkbox_var.get() and self.word_entry.get().strip():
-            self.transform_text()
-        else:
-            self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if checkbox is unchecked
+        if self.g2p_checkbox_var.get():
+            if self.word_entry.get().strip():
+                self.transform_text()
+            else:
+                self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
             
         if self.g2p_checkbox_var.get() and not self.g2p_selection.get():
             self.g2p_selection.current(0)  # Set default selection if combobox is empty
@@ -2367,24 +2389,45 @@ class Dictionary(tk.Tk):
         self.phoneme_entry.insert(0, transformed_text)
         
     def update_g2p_model(self, event=None):
+        selected_value = self.g2p_selection.get()
         if self.g2p_checkbox_var.get():
-            selected_value = self.g2p_selection.get()
-            try:
-                if selected_value == 'Arpabet-Plus G2p':
-                    from Assets.G2p import arpabet_plus
-                    self.g2p_model = arpabet_plus.ArpabetPlusG2p()
-                elif selected_value == 'Japanese Monophone G2p':
-                    from Assets.G2p import jp_mono
-                    self.g2p_model = jp_mono.JapaneseMonophoneG2p()
-                elif selected_value == 'YetAnotherG2pModel':
-                    from Assets.G2p import yet_another_g2p_model
-                    self.g2p_model = yet_another_g2p_model.YetAnotherG2pModel()
-                print(f"G2P model {selected_value} loaded successfully.")
-            except Exception as e:
-                print(f"Failed to load G2P model {selected_value}: {e}")
+            g2p_models = {
+                'Arpabet-Plus G2p': ('Assets.G2p.arpabet_plus', 'ArpabetPlusG2p'),
+                'French G2p': ('Assets.G2p.frenchG2p', 'FrenchG2p'),
+                'German G2p': ('Assets.G2p.germanG2p', 'GermanG2p'),
+                'Italian G2p': ('Assets.G2p.italianG2p', 'ItalianG2p'),
+                'Japanese Monophone G2p': ('Assets.G2p.jp_mono', 'JapaneseMonophoneG2p'),
+                'Millefeuille (French) G2p': ('Assets.G2p.millefeuilleG2p', 'MillefeuilleG2p'),
+                'Portuguese G2p': ('Assets.G2p.portugueseG2p', 'PortugueseG2p'),
+                'Russian G2p': ('Assets.G2p.russianG2p', 'RussianG2p'),
+                'Spanish G2p': ('Assets.G2p.spanishG2p', 'SpanishG2p'),
+            }
+            module_name, class_name = g2p_models.get(selected_value, (None, None))
+            if module_name and class_name:
+                try:
+                    module = __import__(module_name, fromlist=[class_name])
+                    self.g2p_model = getattr(module, class_name)()
+                    print(f"G2P model {selected_value} loaded successfully.")
+                    self.save_g2p(selected_value)
+                except Exception as e:
+                    print(f"Failed to load G2P model {selected_value}: {e}")
+            else:
+                print(f"No G2P model found for {selected_value}")
         else:
             self.g2p_model = None
             print("G2P is disabled.")
+            self.save_g2p(selected_value)
+
+    def save_g2p(self, selected_value):
+        # Save the selected G2P model to settings.ini
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        if 'Settings' not in config.sections():
+            config['Settings'] = {}
+        config['Settings']['G2P'] = selected_value
+        with open(self.config_file, 'w') as configfile:
+            config.write(configfile)
+        print(f"G2P model {selected_value} saved to config file.")
             
     def is_connected(self):
         # Check internet connection by trying to reach Google lmao
