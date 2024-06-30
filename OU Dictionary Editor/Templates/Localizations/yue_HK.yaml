@@ -59,6 +59,8 @@ update_b: "檢查更新"
 # Others (tab 3)
 import: "導入辭典"
 export: "導出辭典"
+g2p: "G2P 建議:"
+g2p_check: "啟用 G2P"
 
 # Tab names
 tab1: "條目編輯器"
