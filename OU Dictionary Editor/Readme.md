@@ -1,6 +1,10 @@
 # Changelog
 ---
-**`(6/28/24)`**
+**`(7/--/24)`**
+- Directly edit the entry with double click
+- Button for G2P suggestions on direct entry edit
+
+**`(6/30/24)`**
 - Added G2p Suggestions
     - Arpabet-plus G2p (@Cadlaxa)
     - French G2p

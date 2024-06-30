@@ -124,6 +124,7 @@ class Dictionary(tk.Tk):
         self.current_filename = None
         self.file_modified = False
         self.localizable_widgets = {}
+        self.current_entry_widgets = {}
         
         # Template folder directory
         self.Templates = self.read_template_directory()
@@ -1199,6 +1200,7 @@ class Dictionary(tk.Tk):
             self.viewer_tree.bind("<ButtonPress-1>", self.start_drag)
             self.viewer_tree.bind("<B1-Motion>", self.on_drag)
             self.viewer_tree.bind("<ButtonRelease-1>", self.stop_drag)
+            self.viewer_tree.bind("<Double-1>", self.edit_cell)
             # keyboard entries
             self.viewer_tree.bind("<Delete>", lambda event: self.delete_manual_entry())
             self.entries_window.bind("<Escape>", lambda event: self.close())
@@ -1256,6 +1258,105 @@ class Dictionary(tk.Tk):
             self.apply_localization()
         self.refresh_treeview()
     
+    def edit_cell(self, event):
+        selected_item = self.viewer_tree.selection()[0]
+        column = self.viewer_tree.identify_column(event.x)
+        col_index = int(column[1]) - 1
+
+        # Define the column identifiers
+        G2P_column = "#1"
+        grapheme_column = "#2"
+        phoneme_column = "#3"
+
+        # Calculate the positions and sizes of the cells
+        x_gr, y_gr, width_gr, height_gr = self.viewer_tree.bbox(selected_item, G2P_column)
+        x_g, y_g, width_g, height_g = self.viewer_tree.bbox(selected_item, grapheme_column)
+        x_p, y_p, width_p, height_p = self.viewer_tree.bbox(selected_item, phoneme_column)
+
+        # Retrieve initial values from Treeview, removing commas from phoneme
+        g2p_b = self.viewer_tree.item(selected_item, "values")[0]
+        initial_grapheme = self.viewer_tree.item(selected_item, "values")[1]
+        initial_phoneme = self.viewer_tree.item(selected_item, "values")[2].replace(",", "").replace("'", "")
+
+        # Destroy currently open widgets if they exist
+        if self.current_entry_widgets:
+            for widget in self.current_entry_widgets.values():
+                widget.destroy()
+            self.current_entry_widgets = {}
+
+        # Create a button for G2P correction
+        g2p_correction = ttk.Button(self.viewer_tree, text="G2P", style="Accent.TButton", command=self.is_g2p)
+        g2p_correction.place(x=x_gr, y=y_gr-5, width=width_gr, height=height_gr+10)
+        self.current_entry_widgets['g2p_correction'] = g2p_correction
+
+        # Create entry widgets for editing grapheme and phoneme
+        self.entry_popup_g = ttk.Entry(self.viewer_tree)
+        self.entry_popup_g.place(x=x_g, y=y_g-5, width=width_g, height=height_g+10)
+        self.entry_popup_g.insert(0, initial_grapheme)
+        self.entry_popup_g.focus_set()
+        self.current_entry_widgets['self.entry_popup_g'] = self.entry_popup_g
+
+        self.entry_popup_p = ttk.Entry(self.viewer_tree)
+        self.entry_popup_p.place(x=x_p, y=y_p-5, width=width_p, height=height_p+10)
+        self.entry_popup_p.insert(0, initial_phoneme)
+        self.current_entry_widgets['self.entry_popup_p'] = self.entry_popup_p
+
+        def on_validate(event):
+            self.save_state_before_change()
+
+            # Get the edited values from entry widgets
+            new_grapheme = self.entry_popup_g.get()
+            new_phoneme = self.entry_popup_p.get().replace(",", "").replace("'", "")
+
+            # Update Treeview with edited values
+            self.viewer_tree.set(selected_item, grapheme_column, new_grapheme)
+            self.viewer_tree.set(selected_item, phoneme_column, new_phoneme)
+
+            # Destroy entry widgets after editing
+            self.entry_popup_g.destroy()
+            self.entry_popup_p.destroy()
+            g2p_correction.destroy()
+            self.current_entry_widgets = {}
+
+            # Get the index of the currently selected item
+            selected_index = self.viewer_tree.index(selected_item)
+
+            # Delete the item above the edited row
+            if event.widget == self.entry_popup_g or event.widget == g2p_correction and new_grapheme != initial_grapheme:
+                if selected_index > 0:
+                    prev_item = self.viewer_tree.get_children()[selected_index - 1]
+                    self.viewer_tree.delete(prev_item)
+
+            self.add_entry_treeview(new_grapheme, new_phoneme.split())
+
+            if event.widget == self.entry_popup_g or event.widget == g2p_correction and new_grapheme != initial_grapheme:
+                if selected_index > 0:
+                    prev_item1 = self.viewer_tree.get_children()[selected_index + 1]
+                    self.viewer_tree.selection_set(prev_item1)
+                    self.delete_selected_entries()
+
+        g2p_correction.bind("<Return>", on_validate)
+        self.entry_popup_g.bind("<Return>", on_validate)
+        self.entry_popup_p.bind("<Return>", on_validate)
+
+    def is_g2p(self):
+        if not self.g2p_checkbox_var.get():
+            messagebox.showwarning("G2P Disabled", "The G2P option is currently disabled. Please enable it to use this feature.")
+        elif self.g2p_checkbox_var.get():
+            self.direct_entry_change()
+
+    def direct_entry_change(self):
+        if self.entry_popup_g.get().strip():
+            self.transform_text_with_g2p()
+        elif not self.entry_popup_g.get().strip():
+            self.entry_popup_p.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
+
+    def transform_text_with_g2p(self):
+        input_text1 = self.entry_popup_g.get()
+        transformed_text1 = self.g2p_model.predict(input_text1)
+        self.entry_popup_p.delete(0, tk.END)
+        self.entry_popup_p.insert(0, transformed_text1)
+
     def start_drag(self, event):
         self.drag_start_x = event.x
         self.drag_start_y = event.y
@@ -1760,7 +1861,7 @@ class Dictionary(tk.Tk):
             self.word_entry.insert(0, graphemes_text)
             self.phoneme_entry.delete(0, tk.END)
             self.phoneme_entry.insert(0, phonemes_text)
-        
+    
     def deselect_entry(self, event):
         # Check if there is currently a selection
         selected_items = self.viewer_tree.selection()
@@ -2479,15 +2580,15 @@ class Dictionary(tk.Tk):
             self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
 
     def on_checkbox_change(self, *args):
+        if self.g2p_checkbox_var.get() and not self.g2p_selection.get():
+            self.g2p_selection.current(0)  # Set default selection if combobox is empty
+        self.update_g2p_model()
+
         if self.g2p_checkbox_var.get():
             if self.word_entry.get().strip():
                 self.transform_text()
             else:
                 self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
-            
-        if self.g2p_checkbox_var.get() and not self.g2p_selection.get():
-            self.g2p_selection.current(0)  # Set default selection if combobox is empty
-        self.update_g2p_model()
 
     def transform_text(self):
         input_text = self.word_entry.get()
