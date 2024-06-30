@@ -74,7 +74,7 @@
 - 新增了 G2p 建議
     - Arpabet-plus G2p (@Cadlaxa)
     - French G2p
-    - Germern G2p (@LotteV)
+    - German G2p (@LotteV)
     - Italian G2p
     - Japanese Monophone G2p (@LotteV)
     - Millefeuille G2p (@UFR)
