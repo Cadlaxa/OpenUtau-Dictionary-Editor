@@ -116,7 +116,7 @@ class Dictionary(tk.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         selected_g2p = config.get('Settings', 'G2P', fallback='Arpabet-Plus G2p')
         self.g2p_var = tk.StringVar(value=selected_g2p)
-        self.current_version = "v0.9.0"
+        self.current_version = "v0.9.7"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -1155,12 +1155,13 @@ class Dictionary(tk.Tk):
             self.entries_window = tk.Toplevel(self)
             self.entries_window.title("Entries Viewer")
             self.entries_window.protocol("WM_DELETE_WINDOW", self.close)
-            self.save_state_before_change()
+            #self.save_state_before_change()
+            self.icon(self.entries_window)
 
             # Create a Frame for the search bar
             search_frame = ttk.Frame(self.entries_window, style='Card.TFrame')
             search_frame.pack(fill=tk.X, padx=15, pady=10)
-            search_label = ttk.Button(search_frame, text="Search:", style='Accent.TButton', command=self.filter_treeview)
+            search_label = ttk.Button(search_frame, text="Search:", style='Accent.TButton', command=self.iterate_search)
             search_label.pack(side=tk.LEFT, padx=(10,5), pady=5)
             self.localizable_widgets['search'] = search_label
             self.search_var = tk.StringVar()
@@ -1194,8 +1195,6 @@ class Dictionary(tk.Tk):
             self.viewer_tree.bind("<Button-3>", self.deselect_entry)
             # select
             self.viewer_tree.bind("<<TreeviewSelect>>", self.on_tree_selection)
-            self.entries_window.bind("<Control-a>", lambda event: self.select_all_entries())
-            self.entries_window.bind("<Command-a>", lambda event: self.select_all_entries())
             # mouse drag
             self.viewer_tree.bind("<ButtonPress-1>", self.start_drag)
             self.viewer_tree.bind("<B1-Motion>", self.on_drag)
@@ -1206,6 +1205,7 @@ class Dictionary(tk.Tk):
             os_name = platform.system()
             if os_name == "Windows":
                 # Windows key bindings
+                self.entries_window.bind("<Control-a>", lambda event: self.select_all_entries())
                 self.entries_window.bind('<Control-z>', lambda event: self.undo())
                 self.entries_window.bind('<Control-y>', lambda event: self.redo())
                 self.entries_window.bind("<Control-c>", lambda event: self.copy_entry())
@@ -1213,6 +1213,7 @@ class Dictionary(tk.Tk):
                 self.entries_window.bind("<Control-v>", lambda event: self.paste_entry())
             elif os_name == "Darwin":
                 # macOS key bindings (uses Command key)
+                self.entries_window.bind("<Command-a>", lambda event: self.select_all_entries())
                 self.entries_window.bind('<Command-z>', lambda event: self.undo())
                 self.entries_window.bind('<Command-y>', lambda event: self.redo())
                 self.entries_window.bind("<Command-c>", lambda event: self.copy_entry())
@@ -1250,12 +1251,11 @@ class Dictionary(tk.Tk):
                         self.viewer_tree.update()
 
             # Refresh the Treeview
-            self.icon(self.entries_window)
             self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
         if self.entries_window.winfo_exists():
             self.apply_localization()
         self.refresh_treeview()
-
+    
     def start_drag(self, event):
         self.drag_start_x = event.x
         self.drag_start_y = event.y
@@ -1806,17 +1806,76 @@ class Dictionary(tk.Tk):
             self.viewer_tree.selection_set(new_item_ids) 
         self.refresh_treeview()
 
-    def filter_treeview(self):
-        search_text = self.search_var.get().replace(",", "")  # Remove commas from search text
-        self.refresh_treeview()
+    def filter_treeview(self, exact_search=False):
+        search_text = self.search_var.get().strip().lower()  # Get and normalize search text
+        # Clear previous selections
+        self.viewer_tree.selection_remove(self.viewer_tree.selection())
         if search_text:
+            closest_item = None
+            closest_distance = float('inf')  # Start with a large distance
+
             for item in self.viewer_tree.get_children():
                 item_values = self.viewer_tree.item(item, "values")
-                if not (search_text in item_values[0].lower().replace(",", "") or
-                        search_text in item_values[1].lower().replace(",", "") or
-                        search_text in item_values[2].replace(",", "")):
-                    # Detach items that don't match the search criteria
-                    self.viewer_tree.detach(item)
+                matched = False
+                for value in item_values:
+                    value_lower = value.lower().strip().replace(",", "")
+                    if exact_search:
+                        # Perform exact match search
+                        if search_text == value_lower:
+                            closest_item = item
+                            matched = True
+                            break
+                    else:
+                        # Perform closest match search (similar to your previous logic)
+                        if search_text in value_lower:
+                            # Calculate distance (you can define your own metric here)
+                            distance = abs(len(value_lower) - len(search_text))
+                            if distance < closest_distance:
+                                closest_item = item
+                                closest_distance = distance
+                            matched = True
+
+                if exact_search and matched:
+                    # If exact match found and exact_search is True, stop iterating
+                    break
+            # Select the closest matching item
+            if closest_item:
+                self.viewer_tree.selection_set(closest_item)
+                self.viewer_tree.see(closest_item)
+            # Optionally iterate through all items if used by a button
+            elif not exact_search:
+                items_to_select = []
+                for item in self.viewer_tree.get_children():
+                    item_values = self.viewer_tree.item(item, "values")
+                    for value in item_values:
+                        value_lower = value.lower().strip().replace(",", "")
+                        if search_text in value_lower:
+                            items_to_select.append(item)
+                            break
+
+                # Set the selection to items found in the iteration
+                if items_to_select:
+                    self.viewer_tree.selection_set(items_to_select)
+                    self.viewer_tree.see(items_to_select[0])
+    
+    def iterate_search(self):
+        search_text = self.search_var.get().strip().lower()  # Get and normalize search text
+        # Clear previous selections
+        self.viewer_tree.selection_remove(self.viewer_tree.selection())
+        if search_text:
+            items_to_select = []
+            for item in self.viewer_tree.get_children():
+                item_values = self.viewer_tree.item(item, "values")
+                for value in item_values:
+                    value_lower = value.lower().strip().replace(",", "")
+                    if search_text in value_lower:
+                        items_to_select.append(item)
+                        break  # Stop iterating further for this item if a match is found
+
+            # Select all matching items found during iteration
+            for item in items_to_select:
+                self.viewer_tree.selection_add(item)
+                self.viewer_tree.see(item)
     
     def save_window(self):
         # Create a toplevel window to inform the user that the file is being saved

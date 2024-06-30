@@ -15,6 +15,8 @@
 - Fixed batch loading performance of Entry window
 - Update Localizations
 - Preparing 11 New themes: (`Sunny Yellow`, `Moonstone`, `Beaver`, `Dark Red`, `Liver`, `Yellow Green`, `Payne's Gray`, `Hunter Green`, `Sky Magenta`, `Light See Green`, `Middle Green Yellow`)
+- Fix keyboard bindings to not overlap with other systems
+- Revamp search function to select the closest value instead if filtering them, clicking the `search` button will iterates the closest search value
 
 **`(6/21/24)`**
 - Fixes to fonts for different languages
