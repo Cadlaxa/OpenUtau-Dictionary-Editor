@@ -1322,14 +1322,14 @@ class Dictionary(tk.Tk):
             selected_index = self.viewer_tree.index(selected_item)
 
             # Delete the item above the edited row
-            if event.widget == self.entry_popup_g or event.widget == g2p_correction and new_grapheme != initial_grapheme:
+            if new_grapheme != initial_grapheme:
                 if selected_index > 0:
                     prev_item = self.viewer_tree.get_children()[selected_index - 1]
                     self.viewer_tree.delete(prev_item)
 
             self.add_entry_treeview(new_grapheme, new_phoneme.split())
 
-            if event.widget == self.entry_popup_g or event.widget == g2p_correction and new_grapheme != initial_grapheme:
+            if new_grapheme != initial_grapheme:
                 if selected_index > 0:
                     prev_item1 = self.viewer_tree.get_children()[selected_index + 1]
                     self.viewer_tree.selection_set(prev_item1)
