@@ -9,6 +9,11 @@
 - 在 **`MacOs`** 和 **`Linux`** 安裝必要組件：
   ```
   pip install ruamel.yaml tk requests
+  pip install -r requirements.txt
+  ```
+- pip is not on the path yet do `python get-pip.py` then pip install:
+  ```
+  python get-pip.py
   ```
 ---
 ## 📍 在這裏下載最新版本:
@@ -65,6 +70,24 @@
 
 # 變更日誌
 ---
+**`(28/6/24)`**
+- 新增了 G2p 建議
+    - Arpabet-plus G2p (@Cadlaxa)
+    - French G2p
+    - Germern G2p (@LotteV)
+    - Italian G2p
+    - Japanese Monophone G2p (@LotteV)
+    - Millefeuille G2p (@UFR)
+    - Portuguese G2p
+    - Russian G2p
+    - Spanish G2p (@LotteV)
+- 修正了使用 g2p 建議輸入時的單字和輸入錯誤
+- 修正了輸入視窗的批次載入效能
+- 更新本地化
+- 準備11 個新主題：(`Sunny Yellow`, `Moonstone`, `Beaver`, `Dark Red`, `Liver`, `Yellow Green`, `Payne's Gray`, `Hunter Green`, `Sky Magenta`, `Light See Green`, `Middle Green Yellow`)
+- 修復鍵盤綁定，使其不與其他系統重疊
+- 改進搜尋功能以選擇最接近的值，而不是過濾它們，點擊「搜尋」按鈕將迭代最接近的搜尋值
+
 **`(24/5/24)`**
 - 使用壓縮快取載入辭典檔案以獲得更好的效能（大檔案啟動會很慢，因為載入檔案本身+第一次建立快取）
 - 儲存字典檔案時更新快取文件
