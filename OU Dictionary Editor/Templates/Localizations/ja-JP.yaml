@@ -62,6 +62,8 @@ update_b: "アップデートを確認"
 # Others (tab 3)
 import: "辞書をインポート"
 export: "辞書をエクスポート"
+g2p: "G2P 提案:"
+g2p_check: "G2P を有効にする"
 
 # Tab names
 tab1: "エントリーエディター"

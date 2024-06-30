@@ -13,6 +13,8 @@
     - Spanish G2p (@LotteV)
 - Fixed word and entry bug when typing with a g2p suggestions
 - Fixed batch loading performance of Entry window
+- Update Localizations
+- Preparing 11 New themes: (`Sunny Yellow`, `Moonstone`, `Beaver`, `Dark Red`, `Liver`, `Yellow Green`, `Payne's Gray`, `Hunter Green`, `Sky Magenta`, `Light See Green`, `Middle Green Yellow`)
 
 **`(6/21/24)`**
 - Fixes to fonts for different languages

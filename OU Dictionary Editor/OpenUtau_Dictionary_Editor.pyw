@@ -27,6 +27,7 @@ import pyglet
 import onnxruntime as ort
 import numpy as np
 
+
 # Directories
 TEMPLATES = P('./Templates')
 LOCAL = P('./Templates/Localizations')
@@ -294,12 +295,35 @@ class Dictionary(tk.Tk):
             ("Sea Green", "Light"): "sea-green_light",
             ("Sea Green", "Dark"): "sea-green_dark",
             ("Seance", "Light"): "seance_light",
-            ("Seance", "Dark"): "seance_dark"
+            ("Seance", "Dark"): "seance_dark",
+            ("Sunny Yellow", "Light"): "sunny-yellow_light",
+            ("Sunny Yellow", "Dark"): "sunny-yellow_dark",
+            ("Moonstone", "Light"): "moonstone_light",
+            ("Moonstone", "Dark"): "moonstone_dark",
+            ("Dark Red", "Light"): "dark-red_light",
+            ("Dark Red", "Dark"): "dark-red_dark",
+            ("Beaver", "Light"): "beaver_light",
+            ("Beaver", "Dark"): "beaver_dark",
+            ("Liver", "Light"): "liver_light",
+            ("Liver", "Dark"): "liver_dark",
+            ("Yellow Green", "Light"): "yellow-green_light",
+            ("Yellow Green", "Dark"): "yellow-green_dark",
+            ("Payne's Gray", "Light"): "payne's-gray_light",
+            ("Payne's Gray", "Dark"): "payne's-gray_dark",
+            ("Hunter Green", "Light"): "hunter-green_light",
+            ("Hunter Green", "Dark"): "hunter-green_dark",
+            ("Sky Magenta", "Light"): "sky-magenta_light",
+            ("Sky Magenta", "Dark"): "sky-magenta_dark",
+            ("Light See Green", "Light"): "l-see-green_light",
+            ("Light See Green", "Dark"): "l-see-green_dark",
+            ("Middle Green Yellow", "Light"): "middle-gy_light",
+            ("Middle Green Yellow", "Dark"): "middle-gy_dark"
         }
         # Apply the theme using sv_ttk
         theme_key = (accent_name, theme_name)
         if theme_key in theme_map:
             ttk.Style().theme_use(theme_map[theme_key])
+            self.widget_style()
             self.save_theme_to_config(accent_name, theme_name)
     
     def save_theme_to_config(self, accent_name, theme_name):
@@ -355,7 +379,29 @@ class Dictionary(tk.Tk):
                 ("Sea Green", "Light"): "sea-green_light",
                 ("Sea Green", "Dark"): "sea-green_dark",
                 ("Seance", "Light"): "seance_light",
-                ("Seance", "Dark"): "seance_dark"
+                ("Seance", "Dark"): "seance_dark",
+                ("Sunny Yellow", "Light"): "sunny-yellow_light",
+                ("Sunny Yellow", "Dark"): "sunny-yellow_dark",
+                ("Moonstone", "Light"): "moonstone_light",
+                ("Moonstone", "Dark"): "moonstone_dark",
+                ("Dark Red", "Light"): "dark-red_light",
+                ("Dark Red", "Dark"): "dark-red_dark",
+                ("Beaver", "Light"): "beaver_light",
+                ("Beaver", "Dark"): "beaver_dark",
+                ("Liver", "Light"): "liver_light",
+                ("Liver", "Dark"): "liver_dark",
+                ("Yellow Green", "Light"): "yellow-green_light",
+                ("Yellow Green", "Dark"): "yellow-green_dark",
+                ("Payne's Gray", "Light"): "payne's-gray_light",
+                ("Payne's Gray", "Dark"): "payne's-gray_dark",
+                ("Hunter Green", "Light"): "hunter-green_light",
+                ("Hunter Green", "Dark"): "hunter-green_dark",
+                ("Sky Magenta", "Light"): "sky-magenta_light",
+                ("Sky Magenta", "Dark"): "sky-magenta_dark",
+                ("Light See Green", "Light"): "l-see-green_light",
+                ("Light See Green", "Dark"): "l-see-green_dark",
+                ("Middle Green Yellow", "Light"): "middle-green-yellow_light",
+                ("Middle Green Yellow", "Dark"): "middle-green-yellow_dark"
             }
             # Apply the theme using sv_ttk
             theme_key = (accent_name, theme_name)
@@ -2256,9 +2302,9 @@ class Dictionary(tk.Tk):
         theme_select = ttk.Label(self.theming, text="Select Theme:", font=self.font)
         theme_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['def_theme'] = theme_select
-        theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", 
-                         "Fern", "Lemon Ginger", "Lightning Yellow", "Mint", "Orange", "Pear", "Persian Red", 
-                         "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"]  # Theme options
+        theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim",
+                         "Electric Blue", "Fern", "Lemon Ginger", "Lightning Yellow",
+                         "Mint", "Orange", "Pear", "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"] # Theme options
         theme_combobox = ttk.Combobox(self.theming, textvariable=self.accent_var, values=theme_options, state="readonly")
         theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
@@ -2334,11 +2380,13 @@ class Dictionary(tk.Tk):
         g2p_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
         g2p_frame.columnconfigure(0, weight=1)
         g2p_frame.columnconfigure(1, weight=1)
+        self.localizable_widgets['g2p'] = g2p_frame
 
         # Adding Checkbox
         self.g2p_checkbox_var = tk.BooleanVar()
         g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
         g2p_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.localizable_widgets['g2p_check'] = g2p_checkbox
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
@@ -2655,7 +2703,7 @@ class Dictionary(tk.Tk):
                         print(f"Widget type not handled for localization: {type(widget)}")
         else:
             print("No localizable widgets defined.")
-        self.styling()
+        self.widget_style()
     
 if __name__ == "__main__":
     app = Dictionary()

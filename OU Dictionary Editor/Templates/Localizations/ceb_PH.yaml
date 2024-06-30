@@ -59,6 +59,8 @@ update_b: "Tan-awa ang Mga Update"
 # Others (tab 3)
 import: "I-import ang Diksyunaryo"
 export: "I-eksport ang Diksyunaryo"
+g2p: "Mga Suggestion sa G2P"
+g2p_check: "Pahintulot sa G2P"
 
 # Tab names
 tab1: "Entry Editor"
