@@ -59,6 +59,8 @@ update_b: "Buscar Actualizaciones"
 # Others (tab 3)
 import: "Importar Diccionario"
 export: "Exportar Diccionario"
+g2p: "Sugerencias de G2P:"
+g2p_check: "Habilitar G2P"
 
 # Tab names
 tab1: "Editor de Entrada"

@@ -5,7 +5,11 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 - To use this GUI Toolkit, for **`Windows`** I recommend using the portable **`.exe`** file and for **`MacOs`** and **`Linux`** I recommend using the **`.pyw`** file and use **`python version 3.10 and above`** **`3.9 and below`** is untested and it may not work properly.
 - installing the modules for **`MacOs`** and **`Linux`**:
   ```
-  pip install ruamel.yaml tk requests
+  pip install -r requirements.txt
+  ```
+- pip is not on the path yet do `python get-pip.py` then pip install:
+  ```
+  python get-pip.py
   ```
 ---
 ## 📍 Download the latest version here:

@@ -1,5 +1,23 @@
 # Changelog
 ---
+**`(6/28/24)`**
+- Added G2p Suggestions
+    - Arpabet-plus G2p (@Cadlaxa)
+    - French G2p
+    - Germern G2p (@LotteV)
+    - Italian G2p
+    - Japanese Monophone G2p (@LotteV)
+    - Millefeuille G2p (@UFR)
+    - Portuguese G2p
+    - Russian G2p
+    - Spanish G2p (@LotteV)
+- Fixed word and entry bug when typing with a g2p suggestions
+- Fixed batch loading performance of Entry window
+- Update Localizations
+- Preparing 11 New themes: (`Sunny Yellow`, `Moonstone`, `Beaver`, `Dark Red`, `Liver`, `Yellow Green`, `Payne's Gray`, `Hunter Green`, `Sky Magenta`, `Light See Green`, `Middle Green Yellow`)
+- Fix keyboard bindings to not overlap with other systems
+- Revamp search function to select the closest value instead if filtering them, clicking the `search` button will iterates the closest search value
+
 **`(6/21/24)`**
 - Fixes to fonts for different languages
 - Added download progress bar

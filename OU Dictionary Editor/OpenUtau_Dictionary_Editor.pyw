@@ -24,6 +24,9 @@ import pickle
 from collections import defaultdict, OrderedDict
 import gzip
 import pyglet
+import onnxruntime as ort
+import numpy as np
+
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -111,7 +114,9 @@ class Dictionary(tk.Tk):
         self.localization_var = tk.StringVar(value=selected_local)
         self.current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=self.current_local)
-        self.current_version = "v0.9.0"
+        selected_g2p = config.get('Settings', 'G2P', fallback='Arpabet-Plus G2p')
+        self.g2p_var = tk.StringVar(value=selected_g2p)
+        self.current_version = "v0.9.7"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -147,6 +152,7 @@ class Dictionary(tk.Tk):
         self.replace_window = None
         self.drag_window = None
         self.symbol_editor_window = None
+        self.g2p_model = None
         self.remove_numbered_accents_var = tk.BooleanVar()
         self.remove_numbered_accents_var.set(False)  # Default is off
         self.lowercase_phonemes_var = tk.BooleanVar()
@@ -289,12 +295,35 @@ class Dictionary(tk.Tk):
             ("Sea Green", "Light"): "sea-green_light",
             ("Sea Green", "Dark"): "sea-green_dark",
             ("Seance", "Light"): "seance_light",
-            ("Seance", "Dark"): "seance_dark"
+            ("Seance", "Dark"): "seance_dark",
+            ("Sunny Yellow", "Light"): "sunny-yellow_light",
+            ("Sunny Yellow", "Dark"): "sunny-yellow_dark",
+            ("Moonstone", "Light"): "moonstone_light",
+            ("Moonstone", "Dark"): "moonstone_dark",
+            ("Dark Red", "Light"): "dark-red_light",
+            ("Dark Red", "Dark"): "dark-red_dark",
+            ("Beaver", "Light"): "beaver_light",
+            ("Beaver", "Dark"): "beaver_dark",
+            ("Liver", "Light"): "liver_light",
+            ("Liver", "Dark"): "liver_dark",
+            ("Yellow Green", "Light"): "yellow-green_light",
+            ("Yellow Green", "Dark"): "yellow-green_dark",
+            ("Payne's Gray", "Light"): "payne's-gray_light",
+            ("Payne's Gray", "Dark"): "payne's-gray_dark",
+            ("Hunter Green", "Light"): "hunter-green_light",
+            ("Hunter Green", "Dark"): "hunter-green_dark",
+            ("Sky Magenta", "Light"): "sky-magenta_light",
+            ("Sky Magenta", "Dark"): "sky-magenta_dark",
+            ("Light See Green", "Light"): "l-see-green_light",
+            ("Light See Green", "Dark"): "l-see-green_dark",
+            ("Middle Green Yellow", "Light"): "middle-gy_light",
+            ("Middle Green Yellow", "Dark"): "middle-gy_dark"
         }
         # Apply the theme using sv_ttk
         theme_key = (accent_name, theme_name)
         if theme_key in theme_map:
             ttk.Style().theme_use(theme_map[theme_key])
+            self.widget_style()
             self.save_theme_to_config(accent_name, theme_name)
     
     def save_theme_to_config(self, accent_name, theme_name):
@@ -350,7 +379,29 @@ class Dictionary(tk.Tk):
                 ("Sea Green", "Light"): "sea-green_light",
                 ("Sea Green", "Dark"): "sea-green_dark",
                 ("Seance", "Light"): "seance_light",
-                ("Seance", "Dark"): "seance_dark"
+                ("Seance", "Dark"): "seance_dark",
+                ("Sunny Yellow", "Light"): "sunny-yellow_light",
+                ("Sunny Yellow", "Dark"): "sunny-yellow_dark",
+                ("Moonstone", "Light"): "moonstone_light",
+                ("Moonstone", "Dark"): "moonstone_dark",
+                ("Dark Red", "Light"): "dark-red_light",
+                ("Dark Red", "Dark"): "dark-red_dark",
+                ("Beaver", "Light"): "beaver_light",
+                ("Beaver", "Dark"): "beaver_dark",
+                ("Liver", "Light"): "liver_light",
+                ("Liver", "Dark"): "liver_dark",
+                ("Yellow Green", "Light"): "yellow-green_light",
+                ("Yellow Green", "Dark"): "yellow-green_dark",
+                ("Payne's Gray", "Light"): "payne's-gray_light",
+                ("Payne's Gray", "Dark"): "payne's-gray_dark",
+                ("Hunter Green", "Light"): "hunter-green_light",
+                ("Hunter Green", "Dark"): "hunter-green_dark",
+                ("Sky Magenta", "Light"): "sky-magenta_light",
+                ("Sky Magenta", "Dark"): "sky-magenta_dark",
+                ("Light See Green", "Light"): "l-see-green_light",
+                ("Light See Green", "Dark"): "l-see-green_dark",
+                ("Middle Green Yellow", "Light"): "middle-green-yellow_light",
+                ("Middle Green Yellow", "Dark"): "middle-green-yellow_dark"
             }
             # Apply the theme using sv_ttk
             theme_key = (accent_name, theme_name)
@@ -1104,12 +1155,13 @@ class Dictionary(tk.Tk):
             self.entries_window = tk.Toplevel(self)
             self.entries_window.title("Entries Viewer")
             self.entries_window.protocol("WM_DELETE_WINDOW", self.close)
-            self.save_state_before_change()
+            #self.save_state_before_change()
+            self.icon(self.entries_window)
 
             # Create a Frame for the search bar
             search_frame = ttk.Frame(self.entries_window, style='Card.TFrame')
             search_frame.pack(fill=tk.X, padx=15, pady=10)
-            search_label = ttk.Button(search_frame, text="Search:", style='Accent.TButton', command=self.filter_treeview)
+            search_label = ttk.Button(search_frame, text="Search:", style='Accent.TButton', command=self.iterate_search)
             search_label.pack(side=tk.LEFT, padx=(10,5), pady=5)
             self.localizable_widgets['search'] = search_label
             self.search_var = tk.StringVar()
@@ -1143,8 +1195,6 @@ class Dictionary(tk.Tk):
             self.viewer_tree.bind("<Button-3>", self.deselect_entry)
             # select
             self.viewer_tree.bind("<<TreeviewSelect>>", self.on_tree_selection)
-            self.entries_window.bind("<Control-a>", lambda event: self.select_all_entries())
-            self.entries_window.bind("<Command-a>", lambda event: self.select_all_entries())
             # mouse drag
             self.viewer_tree.bind("<ButtonPress-1>", self.start_drag)
             self.viewer_tree.bind("<B1-Motion>", self.on_drag)
@@ -1155,6 +1205,7 @@ class Dictionary(tk.Tk):
             os_name = platform.system()
             if os_name == "Windows":
                 # Windows key bindings
+                self.entries_window.bind("<Control-a>", lambda event: self.select_all_entries())
                 self.entries_window.bind('<Control-z>', lambda event: self.undo())
                 self.entries_window.bind('<Control-y>', lambda event: self.redo())
                 self.entries_window.bind("<Control-c>", lambda event: self.copy_entry())
@@ -1162,6 +1213,7 @@ class Dictionary(tk.Tk):
                 self.entries_window.bind("<Control-v>", lambda event: self.paste_entry())
             elif os_name == "Darwin":
                 # macOS key bindings (uses Command key)
+                self.entries_window.bind("<Command-a>", lambda event: self.select_all_entries())
                 self.entries_window.bind('<Command-z>', lambda event: self.undo())
                 self.entries_window.bind('<Command-y>', lambda event: self.redo())
                 self.entries_window.bind("<Command-c>", lambda event: self.copy_entry())
@@ -1189,20 +1241,21 @@ class Dictionary(tk.Tk):
             ttk.Button(button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1)).pack(side="left", padx=5, pady=10)
 
             # Insert entries in batches
-            batch_size = 3000
-            entries = list(self.dictionary.items())
-            for i in range(0, len(entries), batch_size):
-                batch = entries[i:i+batch_size]
-                for index, (grapheme, phonemes) in enumerate(batch, start=i):
-                    self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
+            if self.load_cmudict or self.load_json_file or self.load_yaml_file:
+                batch_size = 10000
+                entries = list(self.dictionary.items())
+                for i in range(0, len(entries), batch_size):
+                    batch = entries[i:i+batch_size]
+                    for index, (grapheme, phonemes) in enumerate(batch, start=i):
+                        self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
+                        self.viewer_tree.update()
+
             # Refresh the Treeview
-            self.viewer_tree.update()
-            self.icon(self.entries_window)
             self.viewer_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(15,0))
         if self.entries_window.winfo_exists():
             self.apply_localization()
         self.refresh_treeview()
-
+    
     def start_drag(self, event):
         self.drag_start_x = event.x
         self.drag_start_y = event.y
@@ -1753,17 +1806,76 @@ class Dictionary(tk.Tk):
             self.viewer_tree.selection_set(new_item_ids) 
         self.refresh_treeview()
 
-    def filter_treeview(self):
-        search_text = self.search_var.get().replace(",", "")  # Remove commas from search text
-        self.refresh_treeview()
+    def filter_treeview(self, exact_search=False):
+        search_text = self.search_var.get().strip().lower()  # Get and normalize search text
+        # Clear previous selections
+        self.viewer_tree.selection_remove(self.viewer_tree.selection())
         if search_text:
+            closest_item = None
+            closest_distance = float('inf')  # Start with a large distance
+
             for item in self.viewer_tree.get_children():
                 item_values = self.viewer_tree.item(item, "values")
-                if not (search_text in item_values[0].lower().replace(",", "") or
-                        search_text in item_values[1].lower().replace(",", "") or
-                        search_text in item_values[2].replace(",", "")):
-                    # Detach items that don't match the search criteria
-                    self.viewer_tree.detach(item)
+                matched = False
+                for value in item_values:
+                    value_lower = value.lower().strip().replace(",", "")
+                    if exact_search:
+                        # Perform exact match search
+                        if search_text == value_lower:
+                            closest_item = item
+                            matched = True
+                            break
+                    else:
+                        # Perform closest match search (similar to your previous logic)
+                        if search_text in value_lower:
+                            # Calculate distance (you can define your own metric here)
+                            distance = abs(len(value_lower) - len(search_text))
+                            if distance < closest_distance:
+                                closest_item = item
+                                closest_distance = distance
+                            matched = True
+
+                if exact_search and matched:
+                    # If exact match found and exact_search is True, stop iterating
+                    break
+            # Select the closest matching item
+            if closest_item:
+                self.viewer_tree.selection_set(closest_item)
+                self.viewer_tree.see(closest_item)
+            # Optionally iterate through all items if used by a button
+            elif not exact_search:
+                items_to_select = []
+                for item in self.viewer_tree.get_children():
+                    item_values = self.viewer_tree.item(item, "values")
+                    for value in item_values:
+                        value_lower = value.lower().strip().replace(",", "")
+                        if search_text in value_lower:
+                            items_to_select.append(item)
+                            break
+
+                # Set the selection to items found in the iteration
+                if items_to_select:
+                    self.viewer_tree.selection_set(items_to_select)
+                    self.viewer_tree.see(items_to_select[0])
+    
+    def iterate_search(self):
+        search_text = self.search_var.get().strip().lower()  # Get and normalize search text
+        # Clear previous selections
+        self.viewer_tree.selection_remove(self.viewer_tree.selection())
+        if search_text:
+            items_to_select = []
+            for item in self.viewer_tree.get_children():
+                item_values = self.viewer_tree.item(item, "values")
+                for value in item_values:
+                    value_lower = value.lower().strip().replace(",", "")
+                    if search_text in value_lower:
+                        items_to_select.append(item)
+                        break  # Stop iterating further for this item if a match is found
+
+            # Select all matching items found during iteration
+            for item in items_to_select:
+                self.viewer_tree.selection_add(item)
+                self.viewer_tree.see(item)
     
     def save_window(self):
         # Create a toplevel window to inform the user that the file is being saved
@@ -2155,6 +2267,7 @@ class Dictionary(tk.Tk):
 
         # Entries and buttons for manual entries
         self.word_entry = ttk.Entry(manual_frame)
+        self.word_entry.bind("<KeyRelease>", self.on_entry_change)
         self.word_entry.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.phoneme_entry = ttk.Entry(manual_frame)
         self.phoneme_entry.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
@@ -2248,9 +2361,9 @@ class Dictionary(tk.Tk):
         theme_select = ttk.Label(self.theming, text="Select Theme:", font=self.font)
         theme_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['def_theme'] = theme_select
-        theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim", "Electric Blue", 
-                         "Fern", "Lemon Ginger", "Lightning Yellow", "Mint", "Orange", "Pear", "Persian Red", 
-                         "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"]  # Theme options
+        theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim",
+                         "Electric Blue", "Fern", "Lemon Ginger", "Lightning Yellow",
+                         "Mint", "Orange", "Pear", "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"] # Theme options
         theme_combobox = ttk.Combobox(self.theming, textvariable=self.accent_var, values=theme_options, state="readonly")
         theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
@@ -2316,7 +2429,113 @@ class Dictionary(tk.Tk):
         ui_import_button = ttk.Button(ui_frame, state="disabled", text="Import Dictionary", style='TButton', command=self.load_json_file)
         ui_import_button.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         #self.localizable_widgets['import'] = ui_import_button
+
+        self.other_frame1 = ttk.Frame(self.others_tab)
+        self.other_frame1.grid(row=1, column=0, columnspan=1, padx=5, pady=10, sticky="nsew")
+        self.other_frame1.columnconfigure(0, weight=1)
+
+        # Frame for G2P
+        g2p_frame = ttk.LabelFrame(self.other_frame1, text="G2P Suggestions:")
+        g2p_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        g2p_frame.columnconfigure(0, weight=1)
+        g2p_frame.columnconfigure(1, weight=1)
+        self.localizable_widgets['g2p'] = g2p_frame
+
+        # Adding Checkbox
+        self.g2p_checkbox_var = tk.BooleanVar()
+        g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
+        g2p_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        self.localizable_widgets['g2p_check'] = g2p_checkbox
+
+        self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
+        self.g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.g2p_selection['values'] = ('Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Italian G2p', 'Japanese Monophone G2p'
+                                        , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p')
+        
+        self.load_last_g2p()
+
+        self.g2p_selection.bind("<<ComboboxSelected>>", self.update_g2p_model)
+        self.update_g2p_model()
+
+        # Bind checkbox variable to a callback function
+        self.g2p_checkbox_var.trace_add("write", self.on_checkbox_change)
     
+    def load_last_g2p(self):
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        try:
+            model_name = config.get('Settings', 'g2p')
+            if self.g2p_selection['values']:
+                self.g2p_selection.set(model_name)
+            else:
+                self.g2p_selection.current(0)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            sv_ttk.set_theme("dark")
+
+    def on_entry_change(self, event):
+        if self.g2p_checkbox_var.get() and self.word_entry.get().strip():
+            self.transform_text()
+        elif self.g2p_checkbox_var.get() and not self.word_entry.get().strip():
+            self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
+
+    def on_checkbox_change(self, *args):
+        if self.g2p_checkbox_var.get():
+            if self.word_entry.get().strip():
+                self.transform_text()
+            else:
+                self.phoneme_entry.delete(0, tk.END)  # Clear phoneme entry if word_entry is empty
+            
+        if self.g2p_checkbox_var.get() and not self.g2p_selection.get():
+            self.g2p_selection.current(0)  # Set default selection if combobox is empty
+        self.update_g2p_model()
+
+    def transform_text(self):
+        input_text = self.word_entry.get()
+        transformed_text = self.g2p_model.predict(input_text)
+        self.phoneme_entry.delete(0, tk.END)
+        self.phoneme_entry.insert(0, transformed_text)
+        
+    def update_g2p_model(self, event=None):
+        selected_value = self.g2p_selection.get()
+        if self.g2p_checkbox_var.get():
+            g2p_models = {
+                'Arpabet-Plus G2p': ('Assets.G2p.arpabet_plus', 'ArpabetPlusG2p'),
+                'French G2p': ('Assets.G2p.frenchG2p', 'FrenchG2p'),
+                'German G2p': ('Assets.G2p.germanG2p', 'GermanG2p'),
+                'Italian G2p': ('Assets.G2p.italianG2p', 'ItalianG2p'),
+                'Japanese Monophone G2p': ('Assets.G2p.jp_mono', 'JapaneseMonophoneG2p'),
+                'Millefeuille (French) G2p': ('Assets.G2p.millefeuilleG2p', 'MillefeuilleG2p'),
+                'Portuguese G2p': ('Assets.G2p.portugueseG2p', 'PortugueseG2p'),
+                'Russian G2p': ('Assets.G2p.russianG2p', 'RussianG2p'),
+                'Spanish G2p': ('Assets.G2p.spanishG2p', 'SpanishG2p'),
+            }
+            module_name, class_name = g2p_models.get(selected_value, (None, None))
+            if module_name and class_name:
+                try:
+                    module = __import__(module_name, fromlist=[class_name])
+                    self.g2p_model = getattr(module, class_name)()
+                    print(f"G2P model {selected_value} loaded successfully.")
+                    self.save_g2p(selected_value)
+                except Exception as e:
+                    print(f"Failed to load G2P model {selected_value}: {e}")
+            else:
+                print(f"No G2P model found for {selected_value}")
+        else:
+            self.g2p_model = None
+            print("G2P is disabled.")
+            self.save_g2p(selected_value)
+
+    def save_g2p(self, selected_value):
+        # Save the selected G2P model to settings.ini
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        if 'Settings' not in config.sections():
+            config['Settings'] = {}
+        config['Settings']['G2P'] = selected_value
+        with open(self.config_file, 'w') as configfile:
+            config.write(configfile)
+        print(f"G2P model {selected_value} saved to config file.")
+            
     def is_connected(self):
         # Check internet connection by trying to reach Google lmao
         try:
@@ -2543,7 +2762,7 @@ class Dictionary(tk.Tk):
                         print(f"Widget type not handled for localization: {type(widget)}")
         else:
             print("No localizable widgets defined.")
-        self.styling()
+        self.widget_style()
     
 if __name__ == "__main__":
     app = Dictionary()
