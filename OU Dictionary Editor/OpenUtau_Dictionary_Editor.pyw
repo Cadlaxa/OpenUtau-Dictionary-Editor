@@ -26,6 +26,7 @@ import gzip
 import pyglet
 import onnxruntime as ort
 import numpy as np
+import pyperclip
 
 
 # Directories
@@ -101,9 +102,7 @@ class DownloadProgressDialog:
 class Dictionary(tk.Tk):
     def __init__(self, *args, **kwargs):
         tk.Tk.__init__(self, *args, **kwargs)
-
-        # Initialize the sv_ttk theme
-        sv_ttk.set_theme("dark")
+        
         config = configparser.ConfigParser()
         config.read('settings.ini')
         selected_theme = config.get('Settings', 'theme', fallback='Dark')
@@ -127,12 +126,13 @@ class Dictionary(tk.Tk):
         self.current_entry_widgets = {}
         
         # Template folder directory
+        sv_ttk.set_theme("dark")
         self.Templates = self.read_template_directory()
         self.config_file = "settings.ini"
         self.load_last_theme()
 
         # Dictionary to hold the data
-        self.dictionary = OrderedDict()
+        self.dictionary = {}
         self.comments = {}
         self.localization = {}
         self.symbols = defaultdict(tuple)
@@ -162,6 +162,7 @@ class Dictionary(tk.Tk):
         self.styling()
         self.create_widgets()
         self.init_localization()
+
         self.icon()
         # Start update check in a non-blocking way
         threading.Thread(target=self.bg_updates, daemon=True).start()
@@ -410,7 +411,7 @@ class Dictionary(tk.Tk):
                 ttk.Style().theme_use(theme_map[theme_key])
         except (configparser.NoSectionError, configparser.NoOptionError):
             sv_ttk.set_theme("dark")
-    
+        
     def load_cmudict(self):
         filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
         if not filepath:
@@ -1283,7 +1284,7 @@ class Dictionary(tk.Tk):
             for widget in self.current_entry_widgets.values():
                 widget.destroy()
             self.current_entry_widgets = {}
-
+        
         # Create a button for G2P correction
         g2p_correction = ttk.Button(self.viewer_tree, text="G2P", style="Accent.TButton", command=self.is_g2p)
         g2p_correction.place(x=x_gr, y=y_gr-5, width=width_gr, height=height_gr+10)
@@ -1713,6 +1714,7 @@ class Dictionary(tk.Tk):
             self.copy_stack.clear()
 
             # Iterate over all selected items to copy their data
+            entries_to_copy = []
             for selected_id in selected_items:
                 item = self.viewer_tree.item(selected_id)
                 values = item['values']
@@ -1726,6 +1728,14 @@ class Dictionary(tk.Tk):
                     }
                     # Append this dictionary to the copy_stack for later use
                     self.copy_stack.append(entry_dict)
+                    # Format the entry as a string for clipboard copying
+                    entry_str = f"- {{grapheme: {grapheme}, phonemes: [{', '.join(phonemes)}]}}"
+                    entries_to_copy.append(entry_str)
+
+            # Join all entries into a single string and copy to clipboard
+            clipboard_content = "\n".join(entries_to_copy)
+            pyperclip.copy(clipboard_content)
+            #messagebox.showinfo("Copy", "Selected entries have been copied to the clipboard.")
         else:
             messagebox.showinfo("Copy", "No entry selected.")
 
@@ -1738,37 +1748,31 @@ class Dictionary(tk.Tk):
             messagebox.showinfo("Cut", "No entry selected.")
 
     def paste_entry(self):
-        if self.copy_stack:
+        clipboard_content = pyperclip.paste()
+        entries = re.findall(r"- \{grapheme: (.*?), phonemes: (.*?)\}", clipboard_content)
+        if entries:
+            self.save_state_before_change()
             selected = self.viewer_tree.selection()
             insert_index = self.viewer_tree.index(selected[-1]) + 1 if selected else 'end'
+            for grapheme, phonemes in entries:
+                phonemes_list = phonemes.split(', ')
+                phonemes_list = [phoneme.replace(',', '').replace("'", '').replace("[", '').replace("]", '').strip() for phoneme in phonemes_list]
+                original_grapheme = grapheme.strip()
+                count = 1
+                match = re.match(r'^(.*)\((\d+)\)$', original_grapheme)
+                if match:
+                    original_grapheme, count = match.groups()
+                    count = int(count) + 1
 
-            for entry in self.copy_stack:  # Loop through all copied entries
-                if 'grapheme' in entry and 'phonemes' in entry:
-                    grapheme = entry['grapheme']
-                    phonemes = entry['phonemes']
-                    original_grapheme = grapheme
-                    count = 1
-                    
-                    # Extract the existing count from the grapheme (if any)
-                    match = re.match(r'^(.*)\((\d+)\)$', original_grapheme)
-                    if match:
-                        original_grapheme, count = match.groups()
-                        count = int(count) + 1
-                    
-                    while grapheme in self.dictionary:
-                        grapheme = f"{original_grapheme}({count})"
-                        count += 1
+                while grapheme in self.dictionary:
+                    grapheme = f"{original_grapheme}({count})"
+                    count += 1
 
-                    # Use the helper function to add or update the entry
-                    self.add_entry_treeview(new_word=grapheme, new_phonemes=phonemes, insert_index=insert_index)
-                    
-                    # Update the insert index for sequential pasting
-                    if insert_index != 'end':
-                        insert_index += 1
-                else:
-                    messagebox.showinfo("Error", "Clipboard data is invalid.")
+                self.add_entry_treeview(new_word=grapheme, new_phonemes=phonemes_list, insert_index=insert_index)
+                if insert_index != 'end':
+                    insert_index += 1
         else:
-            messagebox.showinfo("Paste", "Clipboard is empty.")
+            messagebox.showinfo("Paste", "Clipboard is empty or data is invalid.")
     
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
@@ -1789,7 +1793,7 @@ class Dictionary(tk.Tk):
         self.viewer_tree.delete(*self.viewer_tree.get_children())
 
         # Insert new entries into the treeview in chunks
-        chunk_size = 1000
+        chunk_size = 3000
         items = []
         for start in range(0, len(self.dictionary), chunk_size):
             end = min(start + chunk_size, len(self.dictionary))

@@ -3,6 +3,9 @@
 **`(7/--/24)`**
 - Directly edit the entry with double click
 - Button for G2P suggestions on direct entry edit
+- Update Localizations (@zout)
+- Copy entry function can now copy the data through the system's clipboard
+- Paste function can now paste the datas on the system's clipboard (only yaml format is accepted)
 
 **`(6/30/24)`**
 - Added G2p Suggestions
