@@ -27,6 +27,7 @@ import pyglet
 import onnxruntime as ort
 import numpy as np
 import pyperclip
+import io
 
 
 # Directories
@@ -1710,32 +1711,39 @@ class Dictionary(tk.Tk):
     def copy_entry(self):
         selected_items = self.viewer_tree.selection()
         if selected_items:
-            # Clear previous copies if you want to copy new entries only
-            self.copy_stack.clear()
+            # Initialize YAML object for dumping
+            yaml = YAML()
+            yaml.default_flow_style = False
 
-            # Iterate over all selected items to copy their data
+            # Prepare entries for YAML serialization
             entries_to_copy = []
             for selected_id in selected_items:
                 item = self.viewer_tree.item(selected_id)
                 values = item['values']
-                if len(values) >= 2:
+                if len(values) >= 3:
                     grapheme = values[1]
                     phonemes = values[2].split(', ')
-                    # Create a dictionary from each selected entry
-                    entry_dict = {
-                        'grapheme': grapheme,
-                        'phonemes': phonemes
-                    }
-                    # Append this dictionary to the copy_stack for later use
-                    self.copy_stack.append(entry_dict)
-                    # Format the entry as a string for clipboard copying
-                    entry_str = f"- {{grapheme: {grapheme}, phonemes: [{', '.join(phonemes)}]}}"
-                    entries_to_copy.append(entry_str)
+                    # Create a CommentedMap for the entry
+                    entry_map = CommentedMap([('grapheme', grapheme), ('phonemes', phonemes)])
+                    entries_to_copy.append(entry_map)
 
-            # Join all entries into a single string and copy to clipboard
-            clipboard_content = "\n".join(entries_to_copy)
-            pyperclip.copy(clipboard_content)
-            #messagebox.showinfo("Copy", "Selected entries have been copied to the clipboard.")
+            # Define a custom representer for CommentedMap to ensure the desired format
+            def compact_representation(dumper, data):
+                return dumper.represent_mapping(
+                    'tag:yaml.org,2002:map', data, flow_style=True
+                )
+            yaml.representer.add_representer(CommentedMap, compact_representation)
+
+            # Dump each entry with a preceding "- " and concatenate them
+            yaml_output = io.StringIO()
+            for entry in entries_to_copy:
+                yaml_output.write('- ')
+                yaml.dump(entry, yaml_output)
+            yaml_string = yaml_output.getvalue()
+            yaml_string = yaml_string.replace("'", "")
+            # Copy the YAML string to clipboard
+            pyperclip.copy(yaml_string)
+            messagebox.showinfo("Copy", "Selected entries have been copied to the clipboard.")
         else:
             messagebox.showinfo("Copy", "No entry selected.")
 
@@ -1748,15 +1756,21 @@ class Dictionary(tk.Tk):
             messagebox.showinfo("Cut", "No entry selected.")
 
     def paste_entry(self):
+        self.save_state_before_change()
         clipboard_content = pyperclip.paste()
+        
+        # Attempt to parse the custom entry format
         entries = re.findall(r"- \{grapheme: (.*?), phonemes: (.*?)\}", clipboard_content)
+        if not entries:
+            # Attempt to parse the CMUDict format
+            entries = re.findall(r"(\S+)\s+((?:\S+\s*)+)", clipboard_content)
+        
         if entries:
-            self.save_state_before_change()
             selected = self.viewer_tree.selection()
             insert_index = self.viewer_tree.index(selected[-1]) + 1 if selected else 'end'
+            
             for grapheme, phonemes in entries:
-                phonemes_list = phonemes.split(', ')
-                phonemes_list = [phoneme.replace(',', '').replace("'", '').replace("[", '').replace("]", '').strip() for phoneme in phonemes_list]
+                phonemes_list = [phoneme.strip("',[] \"") for phoneme in phonemes.split()]
                 original_grapheme = grapheme.strip()
                 count = 1
                 match = re.match(r'^(.*)\((\d+)\)$', original_grapheme)
@@ -1778,6 +1792,7 @@ class Dictionary(tk.Tk):
         # Setup tag configurations for normal and bold fonts
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
+        
         # Capture the grapheme of the currently selected item before clearing entries
         selected_grapheme = None
         selected = self.viewer_tree.selection()
@@ -1792,21 +1807,16 @@ class Dictionary(tk.Tk):
         # Clear all current entries from the treeview
         self.viewer_tree.delete(*self.viewer_tree.get_children())
 
-        # Insert new entries into the treeview in chunks
-        chunk_size = 3000
         items = []
-        for start in range(0, len(self.dictionary), chunk_size):
-            end = min(start + chunk_size, len(self.dictionary))
-            chunk_items = []
-            for index, (grapheme, phonemes) in enumerate(list(self.dictionary.items())[start:end], start=start + 1):
-                if self.lowercase_phonemes_var.get():
-                    phonemes = [phoneme.lower() for phoneme in phonemes]
-                if self.remove_numbered_accents_var.get():
-                    phonemes = self.remove_numbered_accents(phonemes)
-                escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
-                item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
-                chunk_items.append(item_id)
-            items.extend(chunk_items)
+        # Insert new entries into the treeview
+        for index, (grapheme, phonemes) in enumerate(self.dictionary.items(), start=1):
+            if self.lowercase_phonemes_var.get():
+                phonemes = [phoneme.lower() for phoneme in phonemes]
+            if self.remove_numbered_accents_var.get():
+                phonemes = self.remove_numbered_accents(phonemes)
+            escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
+            item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
+            items.append(item_id)
 
         # Re-enable the treeview
         self.viewer_tree.configure(displaycolumns="#all")
@@ -1829,7 +1839,7 @@ class Dictionary(tk.Tk):
         # Configure the 'normal' tag only once
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
-
+        
         # Apply 'normal' tag to all non-selected items
         for item in items_to_reset:
             self.viewer_tree.item(item, tags=('normal',))
@@ -2621,6 +2631,7 @@ class Dictionary(tk.Tk):
                     self.g2p_model = getattr(module, class_name)()
                     print(f"G2P model {selected_value} loaded successfully.")
                     self.save_g2p(selected_value)
+                    self.transform_text()
                 except Exception as e:
                     print(f"Failed to load G2P model {selected_value}: {e}")
             else:

@@ -5,7 +5,9 @@
 - Button for G2P suggestions on direct entry edit
 - Update Localizations (@zout)
 - Copy entry function can now copy the data through the system's clipboard
-- Paste function can now paste the datas on the system's clipboard (only yaml format is accepted)
+- Paste function can now paste the datas on the system's clipboard (only yaml and cmudict format is accepted)
+- Fixes to G2p combobox, updates also the phoneme entry automatically when changing the models
+- Improved Treeview performance especially on bigger dictionary files
 
 **`(6/30/24)`**
 - Added G2p Suggestions
