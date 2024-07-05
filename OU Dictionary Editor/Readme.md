@@ -8,6 +8,8 @@
 - Paste function can now paste the datas on the system's clipboard (only yaml and cmudict format is accepted)
 - Fixes to G2p combobox, updates also the phoneme entry automatically when changing the models
 - Improved Treeview performance especially on bigger dictionary files
+- Revamp drag message UI
+- New keyboard shortcut: [`Enter` = adding new entry/symbol]
 
 **`(6/30/24)`**
 - Added G2p Suggestions
@@ -125,7 +127,7 @@
 - UI changes
 - **`templates.ini`** is now deprecated and changed to **`settings.ini`**, users can now delete **`templates.ini`**
 - Fixes to Treeview
-- Move Theming to Settings tab and data is store through **`settings.ini`**
+- Move Theming to Settings tab and data is stored through **`settings.ini`**
 
 **`(4/15/24)`**
 - **V.01 released**

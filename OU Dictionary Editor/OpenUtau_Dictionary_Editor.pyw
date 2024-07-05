@@ -782,6 +782,7 @@ class Dictionary(tk.Tk):
             self.symbol_editor_window.bind("<Button-3>", self.deselect_symbols)
             # Select
             self.symbol_editor_window.bind("<<TreeviewSelect>>", self.on_tree_symbol_selection)
+            self.symbol_editor_window.bind("<Delete>", lambda event: self.delete_symbol_entry())
 
             # Create the Treeview
             self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type'), show='headings', height=14)
@@ -797,6 +798,8 @@ class Dictionary(tk.Tk):
 
             self.symbol_treeview.configure(yscrollcommand=self.treeview_scrollbar.set)
             self.symbol_treeview.bind("<Escape>", lambda event: self.close())
+            
+            self.symbol_treeview.bind("<Double-1>", self.edit_cell_symbols)
 
             # Frame for action buttons
             action_button_frame = ttk.Frame(self.symbol_editor_window)
@@ -813,12 +816,16 @@ class Dictionary(tk.Tk):
             self.localizable_widgets['del'] = delete_button
             self.word_edit = ttk.Entry(action_button_frame)
             self.word_edit.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+            
+            self.phoneme_edit = ttk.Entry(action_button_frame)
+            self.phoneme_edit.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
 
             add_button = ttk.Button(action_button_frame, style='TButton', text="Add", command=self.add_symbol_entry)
             add_button.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
             self.localizable_widgets['add'] = add_button
-            self.phoneme_edit = ttk.Entry(action_button_frame)
-            self.phoneme_edit.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+
+            self.word_edit.bind("<Return>", self.add_symbol_entry_event)
+            self.phoneme_edit.bind("<Return>", self.add_symbol_entry_event)
 
             save_templ = ttk.Button(action_button_frame1, style='Accent.TButton', text="Save to Templates", command=self.save_yaml_template)
             save_templ.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
@@ -828,67 +835,6 @@ class Dictionary(tk.Tk):
         if self.symbol_editor_window.winfo_exists():
             self.apply_localization()
 
-    def save_yaml_template_beta(self):
-        if not self.symbols:
-            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
-            return
-
-        # Ensure the templates directory exists
-        templates_dir = os.path.join(os.getcwd(), TEMPLATES)
-        if not os.path.exists(templates_dir):
-            os.makedirs(templates_dir)
-
-        # Prompt user for file path using a file dialog with the default directory set to 'templates'
-        template_path = filedialog.asksaveasfilename(
-            title="Saving symbols to Template YAML",
-            initialdir=templates_dir,
-            filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")]
-        )
-        if not template_path:
-            return
-
-        # Ensure the file path ends with .yaml
-        if not template_path.endswith('.yaml'):
-            template_path += '.template.yaml'
-
-        yaml = YAML()
-        yaml.preserve_quotes = True
-        existing_data = CommentedMap()
-
-        # Prepare new symbols entries
-        escaped_symbols = [(symbol) for symbol in self.symbols.keys()]
-        symbols_entries = CommentedSeq([
-            CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(types))])
-            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
-        ])
-
-        existing_data['symbols'] = symbols_entries
-
-        # Configure YAML instance to use flow style for specific parts
-        def compact_representation(dumper, data):
-            return dumper.represent_mapping(
-                'tag:yaml.org,2002:map', data, flow_style=True
-            )
-        yaml.representer.add_representer(CommentedMap, compact_representation)
-
-
-        # Custom representation for YAML header
-        def yaml_header():
-            return "%YAML 1.2\n---\n"
-
-        # Save changes if the user has selected a file path
-        if template_path:
-            try:
-                with open(template_path, 'w', encoding='utf-8') as file:
-                    file.write(yaml_header())
-                    yaml.dump(existing_data, file)
-                messagebox.showinfo("Success", f"Template saved to {template_path}.")
-                self.update_template_combobox(self.template_combobox)
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to save the file: {e}")
-        else:
-            messagebox.showinfo("Cancelled", "Save operation cancelled.")
-    
     def save_yaml_template(self):
         if not self.symbols:
             messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
@@ -954,7 +900,10 @@ class Dictionary(tk.Tk):
 
             self.word_edit.delete(0, tk.END)
             self.phoneme_edit.delete(0, tk.END)
-    
+        
+    def add_symbol_entry_event(self, event):
+        self.add_symbol_entry()
+
     def add_symbol_entry(self):
         symbol = self.word_edit.get().strip()
         value = self.phoneme_edit.get().strip()
@@ -965,7 +914,6 @@ class Dictionary(tk.Tk):
             self.add_symbols_treeview(symbol, value.split())
             self.phoneme_edit.delete(0, tk.END)
             self.word_edit.delete(0, tk.END)
-            self.symbol_treeview.yview_moveto(1)
         else:
             messagebox.showinfo("Error", "Please provide both phonemes and its respective value for the entry.")
 
@@ -991,23 +939,126 @@ class Dictionary(tk.Tk):
             # Convert phonemes list to a string for display
             phoneme_display = ', '.join(value)
             new_item_ids = []
+
+            selected_item = self.symbol_treeview.selection()
             if word in self.symbols:
                 # Update the existing item's phonemes
                 self.symbols[word] = value
                 for item in self.symbol_treeview.get_children():
-                    if self.symbol_treeview.item(item, 'values')[1] == word:
-                        self.symbol_treeview.item(item, values=(self.symbol_treeview.index(item) + 1, word, phoneme_display))
+                    if self.symbol_treeview.item(item, 'values')[0] == word:
+                        self.symbol_treeview.item(item, values=(word, phoneme_display))
                         break
             else:
-                # Insert new entry if the word does not exist
-                item_id = self.symbol_treeview.insert('', 'end', values=(len(self.symbols) + 1, word, phoneme_display), tags=('normal',))
+                if selected_item:
+                    insert_index = self.symbol_treeview.index(selected_item[0]) + 1
+                else:
+                    insert_index = 'end'
+
+                # Insert the new entry
+                item_id = self.symbol_treeview.insert('', insert_index, values=(word, phoneme_display), tags=('normal',))
                 new_item_ids.append(item_id)
                 self.symbols[word] = value
+
             # Update symbols_list to reflect changes
             self.symbols_list = [{'symbol': k, 'type': v} for k, v in self.symbols.items()]
+
+            # Re-index items to maintain order consistency
+            for index, item in enumerate(self.symbol_treeview.get_children()):
+                self.symbol_treeview.item(item, values=(self.symbol_treeview.item(item, 'values')[0], self.symbol_treeview.item(item, 'values')[1]))
+
             # Select the newly added or updated items
             self.symbol_treeview.selection_set(new_item_ids)
             self.refresh_treeview_symbols()
+
+    def edit_cell_symbols(self, event):
+        selected_item = self.symbol_treeview.selection()[0]
+        column = self.symbol_treeview.identify_column(event.x)
+
+        # Define the column identifiers
+        grapheme_column = "#1"
+        phoneme_column = "#2"
+
+        # Calculate the positions and sizes of the cells
+        x_g, y_g, width_g, height_g = self.symbol_treeview.bbox(selected_item, grapheme_column)
+        x_p, y_p, width_p, height_p = self.symbol_treeview.bbox(selected_item, phoneme_column)
+
+        # Retrieve initial values from Treeview, removing commas from phoneme
+        initial_grapheme = self.symbol_treeview.item(selected_item, "values")[0]
+        initial_phoneme = self.symbol_treeview.item(selected_item, "values")[1]
+
+        # Destroy currently open widgets if they exist
+        if self.current_entry_widgets:
+            for widget in self.current_entry_widgets.values():
+                widget.destroy()
+            self.current_entry_widgets = {}
+        
+        # Create entry widgets for editing grapheme and phoneme
+        self.entry_popup_sym = ttk.Entry(self.symbol_treeview)
+        self.entry_popup_sym.place(x=x_g, y=y_g-5, width=width_g, height=height_g+10)
+        self.entry_popup_sym.insert(0, initial_grapheme)
+        self.entry_popup_sym.focus_set()
+        self.current_entry_widgets['self.entry_popup_sym'] = self.entry_popup_sym
+
+        self.entry_popup_val = ttk.Entry(self.symbol_treeview)
+        self.entry_popup_val.place(x=x_p, y=y_p-5, width=width_p, height=height_p+10)
+        self.entry_popup_val.insert(0, initial_phoneme)
+        self.current_entry_widgets['self.entry_popup_val'] = self.entry_popup_val
+
+        def on_validate(event):
+            self.save_state_before_change()
+
+            # Get the edited values from entry widgets
+            new_grapheme = self.entry_popup_sym.get()
+            new_phoneme = self.entry_popup_val.get()
+
+            # Update Treeview with edited values
+            self.symbol_treeview.set(selected_item, grapheme_column, new_grapheme)
+            self.symbol_treeview.set(selected_item, phoneme_column, new_phoneme)
+
+            # Destroy entry widgets after editing
+            self.entry_popup_sym.destroy()
+            self.entry_popup_val.destroy()
+            self.current_entry_widgets = {}
+
+            # Get the index of the currently selected item
+            selected_index = self.symbol_treeview.index(selected_item)
+
+            # Delete the item above the edited row
+            if new_grapheme != initial_grapheme:
+                if selected_index > 0:
+                    prev_item = self.symbol_treeview.get_children()[selected_index - 1]
+                    self.symbol_treeview.delete(prev_item)
+
+            self.add_symbols_treeview(new_grapheme, new_phoneme.split())
+
+            if new_grapheme != initial_grapheme:
+                if selected_index > 0:
+                    prev_item1 = self.symbol_treeview.get_children()[selected_index + 1]
+                    self.symbol_treeview.selection_set(prev_item1)
+                    self.delete_symbol_entry()
+
+        self.entry_popup_sym.bind("<Return>", on_validate)
+        self.entry_popup_val.bind("<Return>", on_validate)
+    
+    def delete_selected_symbols(self):
+        selected_items = self.symbol_treeview.selection()
+        if not selected_items:
+            messagebox.showinfo("Info", "No symbols selected.")
+            return
+
+        # Delete from the dictionary if you are syncing it with the tree view
+        for item in selected_items:
+            item_values = self.symbol_treeview.item(item, 'values')
+            self.save_state_before_change()
+            if item_values:
+                key = item_values[1]  # Assuming the first column in tree view is the key for the dictionary
+                if key in self.symbols:
+                    del self.symbols[key]
+        # Delete from the tree view
+        self.symbol_treeview.delete(*selected_items)
+        self.phoneme_edit.delete(0, tk.END)
+        self.word_edit.delete(0, tk.END)
+        self.refresh_treeview_symbols()
     
     def filter_symbols_treeview(self):
         search_symbol = self.search_var.get().lower().replace(",", "")
@@ -1089,6 +1140,9 @@ class Dictionary(tk.Tk):
 
             self.phoneme_edit.delete(0, tk.END)
             self.phoneme_edit.insert(0, phonemes_text)
+    
+    def add_manual_entry_event(self, event):
+        self.add_manual_entry()
 
     def add_manual_entry(self):
         word = self.word_entry.get().strip()
@@ -1375,21 +1429,34 @@ class Dictionary(tk.Tk):
             self.create_drag_window(event)
         if self.drag_initiated:
             # Update the position of the drag window during the drag
-            self.drag_window.geometry(f"+{event.x_root}+{event.y_root}")
+            self.drag_window.geometry(f"+{event.x_root}+{event.y_root-30}")
             self.autoscroll(event)
 
     def create_drag_window(self, event):
-        if not hasattr(self, 'drag_window') or not self.drag_window:
-            self.drag_window = tk.Toplevel(self)
-            self.drag_window.overrideredirect(True)
-            self.drag_window.attributes("-alpha", 0.8)
-            label = tk.Label(self.drag_window, text="Aesthetic drag", bg='#FFD700', fg='#000000', font=("Helvetica", 8, "bold"))
-            label.pack(ipadx=3, ipady=3, expand=True)
-            self.localizable_widgets['drag'] = label
-            self.drag_window.config(borderwidth=1, relief="solid")
-            self.drag_window.wm_attributes("-topmost", True)
-            self.drag_window.wm_attributes("-toolwindow", True)
-            self.save_state_before_change()
+        selected_item = self.viewer_tree.selection()
+        if selected_item:
+            # Retrieve the first selected item
+            item = self.viewer_tree.item(selected_item[0])
+            values = item['values']
+            if values:
+                # Use the appropriate value from the selected item's values
+                selected_text = values[1]
+                selected_phoneme = values[2]
+
+                if not hasattr(self, 'drag_window') or not self.drag_window:
+                    self.drag_window = tk.Toplevel(self)
+                    self.drag_window.overrideredirect(True)
+                    self.drag_window.attributes("-alpha", 0.8)
+
+                    # Create the label with the selected item's text
+                    label = ttk.Label(self.drag_window, text=f"[{selected_text}]", style='Accent.TButton')
+                    label.pack(expand=True)
+
+                    self.drag_window.config(borderwidth=1, relief="solid")
+                    self.drag_window.wm_attributes("-topmost", True)
+                    self.drag_window.wm_attributes("-toolwindow", True)
+
+                self.save_state_before_change()
 
     def autoscroll(self, event):
         treeview_height = self.viewer_tree.winfo_height()
@@ -2386,6 +2453,8 @@ class Dictionary(tk.Tk):
         self.word_entry.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.phoneme_entry = ttk.Entry(manual_frame)
         self.phoneme_entry.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+        self.word_entry.bind("<Return>", self.add_manual_entry_event)
+        self.phoneme_entry.bind("<Return>", self.add_manual_entry_event)
 
         add_entry_button = ttk.Button(manual_frame, text="Add Entry", style='Accent.TButton', command=self.add_manual_entry)
         add_entry_button.grid(row=2, column=1, columnspan=1, padx=5, pady=10)
