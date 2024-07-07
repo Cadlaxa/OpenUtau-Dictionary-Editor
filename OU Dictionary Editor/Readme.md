@@ -1,7 +1,7 @@
 # Changelog
 ---
 **`(7/--/24)`**
-- Directly edit the entry with double click
+- Directly edit the entry with double click or `enter` button
 - Button for G2P suggestions on direct entry edit
 - Update Localizations (@zout)
 - Copy entry function can now copy the data through the system's clipboard

@@ -28,6 +28,7 @@ import onnxruntime as ort
 import numpy as np
 import pyperclip
 import io
+import pandas as pd
 
 
 # Directories
@@ -1254,6 +1255,7 @@ class Dictionary(tk.Tk):
             self.viewer_tree.bind("<B1-Motion>", self.on_drag)
             self.viewer_tree.bind("<ButtonRelease-1>", self.stop_drag)
             self.viewer_tree.bind("<Double-1>", self.edit_cell)
+            self.viewer_tree.bind("<Return>", self.edit_cell)
             # keyboard entries
             self.viewer_tree.bind("<Delete>", lambda event: self.delete_manual_entry())
             self.entries_window.bind("<Escape>", lambda event: self.close())
@@ -1309,6 +1311,7 @@ class Dictionary(tk.Tk):
                     batch = entries[i:i+batch_size]
                     for index, (grapheme, phonemes) in enumerate(batch, start=i):
                         self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
+                        self.update_idletasks()
                         self.viewer_tree.update()
 
             # Refresh the Treeview
@@ -1864,44 +1867,55 @@ class Dictionary(tk.Tk):
         # Setup tag configurations for normal and bold fonts
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
-        
-        # Capture the grapheme of the currently selected item before clearing entries
+
+        # Capture the grapheme of the currently selected item
         selected_grapheme = None
         selected = self.viewer_tree.selection()
         if selected:
             selected_item_id = selected[0]
             selected_item_values = self.viewer_tree.item(selected_item_id, "values")
             selected_grapheme = selected_item_values[1] if selected_item_values else None
+
+        # Create a DataFrame from the dictionary
+        data = [{"Index": index + 1, "Grapheme": grapheme, "Phonemes": phonemes}
+                for index, (grapheme, phonemes) in enumerate(self.dictionary.items())]
+
+        df = pd.DataFrame(data)
+
+        # Apply transformations if necessary
+        if self.lowercase_phonemes_var.get():
+            df["Phonemes"] = df["Phonemes"].apply(lambda x: [phoneme.lower() for phoneme in x])
+        if self.remove_numbered_accents_var.get():
+            df["Phonemes"] = df["Phonemes"].apply(lambda x: self.remove_numbered_accents(x))
         
-        # Disable the treeview update during data loading
-        self.viewer_tree.configure(displaycolumns=())
+        df["Phonemes"] = df["Phonemes"].apply(lambda x: ', '.join(escape_special_characters(str(phoneme)) for phoneme in x))
 
-        # Clear all current entries from the treeview
-        self.viewer_tree.delete(*self.viewer_tree.get_children())
+        # Create a mapping from grapheme to item ID for quick lookup
+        grapheme_to_item_id = {self.viewer_tree.item(item)["values"][1]: item for item in self.viewer_tree.get_children()}
 
-        items = []
-        # Insert new entries into the treeview
-        for index, (grapheme, phonemes) in enumerate(self.dictionary.items(), start=1):
-            if self.lowercase_phonemes_var.get():
-                phonemes = [phoneme.lower() for phoneme in phonemes]
-            if self.remove_numbered_accents_var.get():
-                phonemes = self.remove_numbered_accents(phonemes)
-            escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
-            item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
-            items.append(item_id)
+        # Update existing items and add new ones if necessary
+        for _, row in df.iterrows():
+            grapheme = row["Grapheme"]
+            if grapheme in grapheme_to_item_id:
+                item_id = grapheme_to_item_id[grapheme]
+                self.viewer_tree.item(item_id, values=(row["Index"], row["Grapheme"], row["Phonemes"]), tags=('normal',))
+            else:
+                self.viewer_tree.insert('', 'end', values=(row["Index"], row["Grapheme"], row["Phonemes"]), tags=('normal',))
 
-        # Re-enable the treeview
-        self.viewer_tree.configure(displaycolumns="#all")
-
+        # Remove items that are no longer in the dictionary
+        current_graphemes = set(df["Grapheme"])
+        for grapheme, item_id in grapheme_to_item_id.items():
+            if grapheme not in current_graphemes:
+                self.viewer_tree.delete(item_id)
         # If there was a previously selected grapheme, reselect its new corresponding item ID
         if selected_grapheme:
-            for item_id in items:
+            for item_id in self.viewer_tree.get_children():
                 if self.viewer_tree.item(item_id, "values")[1] == selected_grapheme:
                     self.viewer_tree.selection_set(item_id)
                     self.viewer_tree.item(item_id, tags=('selected',))
                     self.viewer_tree.see(item_id)
                     break
-    
+
     def on_tree_selection(self, event):
         # Get the selected items and all items once
         selected_items = set(self.viewer_tree.selection())
