@@ -36,6 +36,7 @@ LOCAL = P('./Templates/Localizations')
 ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
 CACHE = P('./Cache')
+AUTOSAVES = P('./Autosaves and Backups')
 
 # for treeview only but ruamel.yaml will handle them automatically
 def escape_special_characters(phoneme):
@@ -570,12 +571,17 @@ class Dictionary(tk.Tk):
             self.loading_window.destroy()
 
     def load_yaml_file(self):
-        filepath = filedialog.askopenfilename(title="Open YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
+        filepath = filedialog.askopenfilename(
+            title="Open YAML File",
+            filetypes=[("YAML files", "*.yaml"), ("Y'ALL files", "*yaml.y'all"), ("All files", "*.*")]
+        )
         if not filepath:
             messagebox.showinfo("No File", "No file was selected.")
             return
+        
         self.load_window()
         self.loading_window.update_idletasks()
+        
         try:
             # Handle file opening to update title
             self.current_filename = filepath
@@ -586,7 +592,7 @@ class Dictionary(tk.Tk):
             os.makedirs(cache_dir, exist_ok=True)
 
             # Create a unique cache file path
-            cache_filename = (filepath).replace('/', '-').replace(':', '') + '.y\'all'
+            cache_filename = filepath.replace('/', '-').replace(':', '') + '.y\'all'
             cache_filepath = os.path.join(cache_dir, cache_filename)
 
             # Check if the cache file exists and is up-to-date
@@ -606,7 +612,6 @@ class Dictionary(tk.Tk):
                     if data is None:
                         self.loading_window.destroy()
                         raise ValueError("The YAML file is empty or has an incorrect format.")
-                        
                 # Save to cache
                 try:
                     with gzip.open(cache_filepath, 'wb') as cache_file:
@@ -614,12 +619,9 @@ class Dictionary(tk.Tk):
                 except Exception as e:
                     self.loading_window.destroy()
                     raise ValueError(f"Error occurred while saving to cache: {e}")
-
-            entries = []
-            if 'entries' in data and isinstance(data['entries'], list):
-                entries = data['entries']
-            else:
-                # Attempt to collect entries as a list of entries
+            # Load entries
+            entries = data.get('entries', [])
+            if not isinstance(entries, list):
                 if isinstance(data, list):
                     for item in data:
                         if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item:
@@ -627,48 +629,41 @@ class Dictionary(tk.Tk):
                 elif isinstance(data, dict):
                     if 'grapheme' in data and 'phonemes' in data:
                         entries.append(data)
-            if not isinstance(entries, list):
-                self.loading_window.destroy()
-                raise ValueError("The 'entries' key must be associated with a list.")
 
             self.dictionary = {}
             self.data_list = []  # Initialize data_list
-            symbols = []
-            if 'symbols' in data and isinstance(data['symbols'], list):
-                symbols = data['symbols']
-            else:
-                self.loading_window.destroy()
-                raise ValueError("The 'symbols' key must be associated with a list.")
-            self.symbols = {}
-            self.symbols_list = []  # Initialize symbols_list
-
-            for item in symbols:
-                if not isinstance(item, dict):
-                    self.loading_window.destroy()
-                    raise ValueError("Entry format incorrect. Each entry must be a dictionary.")
-                symbol = item.get('symbol')
-                type_ = item.get('type')
-                if symbol is None or type_ is None:
-                    self.loading_window.destroy()
-                    raise ValueError("Symbol entry is incomplete.")
-                if not isinstance(type_, str): 
-                    self.loading_window.destroy()
-                    raise ValueError("Type must be a string representing the category.")
-                self.symbols[symbol] = [type_]
-                # Append the loaded data to symbols_list
-                self.symbols_list.append({'symbol': symbol, 'type': [type_]})
-
             for item in entries:
                 if not isinstance(item, dict):
                     raise ValueError("Entry format incorrect. Each entry must be a dictionary.")
                 grapheme = item.get('grapheme')
                 phonemes = item.get('phonemes', [])
-                #if grapheme is None or not isinstance(phonemes, list):
-                #    self.loading_window.destroy()
-                #    raise ValueError("Each entry must have a 'grapheme' key and a list of 'phonemes'.")
+                if grapheme is None or not isinstance(phonemes, list):
+                    self.loading_window.destroy()
+                    raise ValueError("Each entry must have a 'grapheme' key and a list of 'phonemes'.")
                 self.dictionary[grapheme] = phonemes
                 # Append the loaded data to data_list
                 self.data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
+            # Load symbols if available
+            symbols = data.get('symbols', [])
+            if isinstance(symbols, list):
+                self.symbols = {}
+                self.symbols_list = []  # Initialize symbols_list
+                
+                for item in symbols:
+                    if not isinstance(item, dict):
+                        self.loading_window.destroy()
+                        raise ValueError("Symbol entry format incorrect. Each entry must be a dictionary.")
+                    symbol = item.get('symbol')
+                    type_ = item.get('type')
+                    if symbol is None or type_ is None:
+                        self.loading_window.destroy()
+                        raise ValueError("Symbol entry is incomplete.")
+                    if not isinstance(type_, str):
+                        self.loading_window.destroy()
+                        raise ValueError("Type must be a string representing the category.")
+                    self.symbols[symbol] = [type_]
+                    # Append the loaded data to symbols_list
+                    self.symbols_list.append({'symbol': symbol, 'type': [type_]})
             self.update_entries_window()
         except (YAMLError, ValueError) as e:
             self.loading_window.destroy()
@@ -830,6 +825,8 @@ class Dictionary(tk.Tk):
             save_templ = ttk.Button(action_button_frame1, style='Accent.TButton', text="Save to Templates", command=self.save_yaml_template)
             save_templ.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
             self.localizable_widgets['save_templ'] = save_templ
+
+            self.symbol_editor_window.bind("<Escape>", lambda event: self.symbol_editor_window.destroy())
 
         self.refresh_treeview_symbols()
         if self.symbol_editor_window.winfo_exists():
@@ -1269,6 +1266,8 @@ class Dictionary(tk.Tk):
                 self.entries_window.bind("<Control-c>", lambda event: self.copy_entry())
                 self.entries_window.bind("<Control-x>", lambda event: self.cut_entry())
                 self.entries_window.bind("<Control-v>", lambda event: self.paste_entry())
+                self.entries_window.bind('<Control-f>', lambda event: self.search_entry.focus_set())
+                self.entries_window.bind('<Control-h>', lambda event: self.regex_replace_dialog())
             elif os_name == "Darwin":
                 # macOS key bindings (uses Command key)
                 self.entries_window.bind("<Command-a>", lambda event: self.select_all_entries())
@@ -1277,12 +1276,16 @@ class Dictionary(tk.Tk):
                 self.entries_window.bind("<Command-c>", lambda event: self.copy_entry())
                 self.entries_window.bind("<Command-x>", lambda event: self.cut_entry())
                 self.entries_window.bind("<Command-v>", lambda event: self.paste_entry())
+                self.entries_window.bind('<Command-f>', lambda event: self.search_entry.focus_set())
+                self.entries_window.bind('<Command-h>', lambda event: self.regex_replace_dialog())
             else:
                 self.entries_window.bind('<Control-z>', lambda event: self.undo())
                 self.entries_window.bind('<Control-y>', lambda event: self.redo())
                 self.entries_window.bind("<Control-c>", lambda event: self.copy_entry())
                 self.entries_window.bind("<Control-x>", lambda event: self.cut_entry())
                 self.entries_window.bind("<Control-v>", lambda event: self.paste_entry())
+                self.entries_window.bind('<Control-f>', lambda event: self.search_entry.focus_set())
+                self.entries_window.bind('<Control-h>', lambda event: self.regex_replace_dialog())
             # Buttons for saving or discarding changes
             button_frame = tk.Frame(self.entries_window)
             button_frame.pack(fill=tk.X, expand=False)
@@ -1560,6 +1563,8 @@ class Dictionary(tk.Tk):
             find_button.grid(row=0, column=2, padx=(0,5), pady=10, sticky="ew")
             self.localizable_widgets['find'] = find_button
 
+            self.replace_window.bind("<Escape>", lambda event: self.replace_window.destroy())
+
         if self.replace_window.winfo_exists():
             self.apply_localization()
 
@@ -1810,7 +1815,7 @@ class Dictionary(tk.Tk):
             yaml_string = yaml_string.replace("'", "")
             # Copy the YAML string to clipboard
             pyperclip.copy(yaml_string)
-            messagebox.showinfo("Copy", "Selected entries have been copied to the clipboard.")
+            #messagebox.showinfo("Copy", "Selected entries have been copied to the clipboard.")
         else:
             messagebox.showinfo("Copy", "No entry selected.")
 
@@ -2370,6 +2375,9 @@ class Dictionary(tk.Tk):
         self.dictionary = new_dictionary
         self.update_entries_window()
     
+    def on_closing(self):
+        self.quit()
+    
     def create_widgets(self):
         # Main notebook to contain tabs
         self.notebook = ttk.Notebook(self)
@@ -2401,6 +2409,8 @@ class Dictionary(tk.Tk):
         self.main_editor_widgets()
         self.settings_widgets()
         self.other_widgets()
+
+        self.bind("<Escape>", self.on_closing())
     
     def main_editor_widgets(self):
         # Options Frame setup
@@ -2546,8 +2556,10 @@ class Dictionary(tk.Tk):
         theme_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['def_theme'] = theme_select
         theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim",
-                         "Electric Blue", "Fern", "Lemon Ginger", "Lightning Yellow",
-                         "Mint", "Orange", "Pear", "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance"] # Theme options
+                         "Electric Blue", "Fern", "Lemon Ginger", "Light See Green", "Lightning Yellow",
+                         "Mint","Orange", "Payne's Gray", "Pear",
+                         "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance", "Sky Magenta", "Sunny Yellow",
+                         "Yellow Green"] # Theme options
         theme_combobox = ttk.Combobox(self.theming, textvariable=self.accent_var, values=theme_options, state="readonly")
         theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
