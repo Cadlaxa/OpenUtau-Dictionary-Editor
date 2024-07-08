@@ -65,3 +65,15 @@ g2p_check: "Buksan ang G2P"
 # Tab names
 tab1: "Entry Editor"
 tab2: "Settings"
+
+# Context Menus
+cont_deselect: "I-deselect"
+cont_edit: "I-edit"
+cont_delete: "Tanggalin"
+cont_undo: "I-undo"
+cont_redo: "I-redo"
+cont_copy: "Kopyahin"
+cont_cut: "Gupitin"
+cont_paste: "I-paste"
+cont_select: "Piliin Lahat"
+cont_more: "Higit pa:"

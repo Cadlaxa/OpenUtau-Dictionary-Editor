@@ -28,7 +28,6 @@ import onnxruntime as ort
 import numpy as np
 import pyperclip
 import io
-import pandas as pd
 
 
 # Directories
@@ -205,18 +204,25 @@ class Dictionary(tk.Tk):
         self.font_tc = 'Noto Sans TC Bold'
 
         # Define fonts for different languages
+        n = 10
+        s = 9
         if self.current_local.lower() == 'english':
-            self.font = tkFont.Font(family=self.font_en, size=10)
+            self.font = tkFont.Font(family=self.font_en, size=n)
+            self.font_s = tkFont.Font(family=self.font_en, size=s)
         elif self.current_local.lower() == 'japanese':
-            self.font = tkFont.Font(family=self.font_jp, size=10)
+            self.font = tkFont.Font(family=self.font_jp, size=n)
+            self.font_s = tkFont.Font(family=self.font_jp, size=s)
         elif self.current_local.lower() == 'chinese (traditional)':
-            self.font = tkFont.Font(family=self.font_tc, size=10)
+            self.font = tkFont.Font(family=self.font_tc, size=n)
+            self.font_s = tkFont.Font(family=self.font_tc, size=s)
         elif self.current_local.lower() == 'chinese (simplified)':
-            self.font = tkFont.Font(family=self.font_sc, size=10)
+            self.font = tkFont.Font(family=self.font_sc, size=n)
+            self.font_s = tkFont.Font(family=self.font_sc, size=s)
         elif self.current_local.lower() == 'cantonese':
-            self.font = tkFont.Font(family=self.font_hk, size=10)
+            self.font = tkFont.Font(family=self.font_hk, size=n)
         else:
-            self.font = tkFont.Font(family=self.font_en, size=10)
+            self.font = tkFont.Font(family=self.font_en, size=n)
+            self.font_s = tkFont.Font(family=self.font_en, size=s)
         self.widget_style()
     
     def widget_style(self):
@@ -1232,7 +1238,7 @@ class Dictionary(tk.Tk):
             frame.pack(fill=tk.BOTH, expand=True)
 
             # Create the Treeview
-            self.viewer_tree = ttk.Treeview(frame, columns=('Index', 'Grapheme', 'Phonemes'), show='headings', height=18)
+            self.viewer_tree = ttk.Treeview(frame, columns=('Index', 'Grapheme', 'Phonemes'),show='headings', height=18)
             self.viewer_tree.heading('Index', text='Index')
             self.viewer_tree.heading('Grapheme', text='Grapheme')
             self.viewer_tree.heading('Phonemes', text='Phonemes')
@@ -1247,7 +1253,7 @@ class Dictionary(tk.Tk):
 
             # deselect
             self.viewer_tree.bind("<Button-2>", self.deselect_entry)
-            self.viewer_tree.bind("<Button-3>", self.deselect_entry)
+            #self.viewer_tree.bind("<Button-3>", self.deselect_entry)
             # select
             self.viewer_tree.bind("<<TreeviewSelect>>", self.on_tree_selection)
             # mouse drag
@@ -1255,10 +1261,11 @@ class Dictionary(tk.Tk):
             self.viewer_tree.bind("<B1-Motion>", self.on_drag)
             self.viewer_tree.bind("<ButtonRelease-1>", self.stop_drag)
             self.viewer_tree.bind("<Double-1>", self.edit_cell)
-            self.viewer_tree.bind("<Return>", self.edit_cell)
+            self.viewer_tree.bind("<Button-3>", self.show_context_menu)
             # keyboard entries
             self.viewer_tree.bind("<Delete>", lambda event: self.delete_manual_entry())
             self.entries_window.bind("<Escape>", lambda event: self.close())
+            self.viewer_tree.bind("<Return>", self.edit_cell)
             os_name = platform.system()
             if os_name == "Windows":
                 # Windows key bindings
@@ -1311,7 +1318,6 @@ class Dictionary(tk.Tk):
                     batch = entries[i:i+batch_size]
                     for index, (grapheme, phonemes) in enumerate(batch, start=i):
                         self.viewer_tree.insert("", "end", values=(index+1, grapheme, phonemes))
-                        self.update_idletasks()
                         self.viewer_tree.update()
 
             # Refresh the Treeview
@@ -1320,10 +1326,54 @@ class Dictionary(tk.Tk):
             self.apply_localization()
         self.refresh_treeview()
     
+    def show_context_menu(self, event):
+        self.context_menu = tk.Menu(self.viewer_tree, tearoff=0)
+
+        # Essential commands directly in the context menu
+        self.context_menu.add_command(
+            label=self.localization.get('cont_deselect', 'Deselect'), 
+            command=self.deselect_entry_func)
+        self.context_menu.add_command(
+            label=self.localization.get('cont_edit', 'Edit'), 
+            command=self.edit_cell)
+        self.context_menu.add_command(
+            label=self.localization.get('cont_delete', 'Delete'), 
+            command=self.delete_manual_entry)
+        self.context_menu.add_command(
+            label=self.localization.get('cont_undo', 'Undo'), 
+            command=self.undo)
+        self.context_menu.add_command(
+            label=self.localization.get('cont_redo', 'Redo'), 
+            command=self.redo)
+        
+        # Cascading menu for less frequently used actions
+        advanced_menu = tk.Menu(self.context_menu, tearoff=0)
+        advanced_menu.add_command(
+            label=self.localization.get('cont_copy', 'Copy'), 
+            command=self.copy_entry)
+        advanced_menu.add_command(
+            label=self.localization.get('cont_cut', 'Cut'), 
+            command=self.cut_entry)
+        advanced_menu.add_command(
+            label=self.localization.get('cont_paste', 'Paste'), 
+            command=self.paste_entry)
+        advanced_menu.add_command(
+            label=self.localization.get('cont_select', 'Select all'), 
+            command=self.select_all_entries)
+        self.context_menu.add_cascade(
+            label=self.localization.get('cont_more', 'More'), 
+            menu=advanced_menu)
+
+        self.context_menu.config(font=self.font_s)
+        advanced_menu.config(font=self.font_s)
+        try:
+            self.context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.context_menu.grab_release()
+
     def edit_cell(self, event):
         selected_item = self.viewer_tree.selection()[0]
         column = self.viewer_tree.identify_column(event.x)
-        col_index = int(column[1]) - 1
 
         # Define the column identifiers
         G2P_column = "#1"
@@ -1400,6 +1450,7 @@ class Dictionary(tk.Tk):
         g2p_correction.bind("<Return>", on_validate)
         self.entry_popup_g.bind("<Return>", on_validate)
         self.entry_popup_p.bind("<Return>", on_validate)
+        self.viewer_tree.bind("<Return>", on_validate)
 
     def is_g2p(self):
         if not self.g2p_checkbox_var.get():
@@ -1867,49 +1918,38 @@ class Dictionary(tk.Tk):
         # Setup tag configurations for normal and bold fonts
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
-
-        # Capture the grapheme of the currently selected item
+        
+        # Capture the grapheme of the currently selected item before clearing entries
         selected_grapheme = None
         selected = self.viewer_tree.selection()
         if selected:
             selected_item_id = selected[0]
             selected_item_values = self.viewer_tree.item(selected_item_id, "values")
             selected_grapheme = selected_item_values[1] if selected_item_values else None
-
-        # Create a DataFrame from the dictionary
-        data = [{"Index": index + 1, "Grapheme": grapheme, "Phonemes": phonemes}
-                for index, (grapheme, phonemes) in enumerate(self.dictionary.items())]
-
-        df = pd.DataFrame(data)
-
-        # Apply transformations if necessary
-        if self.lowercase_phonemes_var.get():
-            df["Phonemes"] = df["Phonemes"].apply(lambda x: [phoneme.lower() for phoneme in x])
-        if self.remove_numbered_accents_var.get():
-            df["Phonemes"] = df["Phonemes"].apply(lambda x: self.remove_numbered_accents(x))
         
-        df["Phonemes"] = df["Phonemes"].apply(lambda x: ', '.join(escape_special_characters(str(phoneme)) for phoneme in x))
+        # Disable the treeview update during data loading
+        self.viewer_tree.configure(displaycolumns=())
 
-        # Create a mapping from grapheme to item ID for quick lookup
-        grapheme_to_item_id = {self.viewer_tree.item(item)["values"][1]: item for item in self.viewer_tree.get_children()}
+        # Clear all current entries from the treeview
+        self.viewer_tree.delete(*self.viewer_tree.get_children())
 
-        # Update existing items and add new ones if necessary
-        for _, row in df.iterrows():
-            grapheme = row["Grapheme"]
-            if grapheme in grapheme_to_item_id:
-                item_id = grapheme_to_item_id[grapheme]
-                self.viewer_tree.item(item_id, values=(row["Index"], row["Grapheme"], row["Phonemes"]), tags=('normal',))
-            else:
-                self.viewer_tree.insert('', 'end', values=(row["Index"], row["Grapheme"], row["Phonemes"]), tags=('normal',))
+        items = []
+        # Insert new entries into the treeview
+        for index, (grapheme, phonemes) in enumerate(self.dictionary.items(), start=1):
+            if self.lowercase_phonemes_var.get():
+                phonemes = [phoneme.lower() for phoneme in phonemes]
+            if self.remove_numbered_accents_var.get():
+                phonemes = self.remove_numbered_accents(phonemes)
+            escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
+            item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
+            items.append(item_id)
 
-        # Remove items that are no longer in the dictionary
-        current_graphemes = set(df["Grapheme"])
-        for grapheme, item_id in grapheme_to_item_id.items():
-            if grapheme not in current_graphemes:
-                self.viewer_tree.delete(item_id)
+        # Re-enable the treeview
+        self.viewer_tree.configure(displaycolumns="#all")
+
         # If there was a previously selected grapheme, reselect its new corresponding item ID
         if selected_grapheme:
-            for item_id in self.viewer_tree.get_children():
+            for item_id in items:
                 if self.viewer_tree.item(item_id, "values")[1] == selected_grapheme:
                     self.viewer_tree.selection_set(item_id)
                     self.viewer_tree.item(item_id, tags=('selected',))
@@ -1917,24 +1957,19 @@ class Dictionary(tk.Tk):
                     break
 
     def on_tree_selection(self, event):
-        # Get the selected items and all items once
         selected_items = set(self.viewer_tree.selection())
         all_items = set(self.viewer_tree.get_children())
         items_to_reset = all_items - selected_items
 
-        # Configure the 'normal' tag only once
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
-        
-        # Apply 'normal' tag to all non-selected items
+
         for item in items_to_reset:
             self.viewer_tree.item(item, tags=('normal',))
 
-        # Apply 'selected' tag to all selected items
         for item in selected_items:
             self.viewer_tree.item(item, tags=('selected',))
 
-        # Handle multiple selections for displaying grapheme and phoneme data
         if selected_items:
             graphemes = []
             phoneme_lists = []
@@ -1946,23 +1981,25 @@ class Dictionary(tk.Tk):
                     graphemes.append(grapheme)
                     phoneme_lists.append(phonemes)
 
-            # Concatenate all graphemes for display
             graphemes_text = ', '.join(graphemes)
 
-            # Formatting phonemes appropriately based on selection count
             if len(phoneme_lists) > 1:
                 phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
                 phonemes_text = f"[{phonemes_text}]"
             else:
                 phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0])
 
-            # Update the word_entry and phoneme_entry fields
             self.word_entry.delete(0, tk.END)
             self.word_entry.insert(0, graphemes_text)
             self.phoneme_entry.delete(0, tk.END)
             self.phoneme_entry.insert(0, phonemes_text)
-    
+        else:
+            self.word_entry.delete(0, tk.END)
+            self.phoneme_entry.delete(0, tk.END)
+
     def deselect_entry(self, event):
+        self.deselect_entry_func()
+    def deselect_entry_func(self):
         # Check if there is currently a selection
         selected_items = self.viewer_tree.selection()
         if selected_items:

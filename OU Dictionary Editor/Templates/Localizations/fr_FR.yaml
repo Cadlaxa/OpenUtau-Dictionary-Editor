@@ -1,0 +1,80 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+Language: French
+File: fr_FR.yaml
+
+# Entry Editor (tab 1)
+# Entry Options
+entry_option: "Options d'entrée"
+select_template: "Sélectionner un modèle :"
+remove_accents: "Supprimer les accents numériques"
+lowercase_phonemes: "Mettre les phonèmes en minuscules"
+
+# Manual Entry
+man_entry: "Entrée manuelle"
+delete_entry: "Supprimer l'entrée"
+add_entry: "Ajouter une entrée"
+
+# Main Buttons UI
+convert_cmudict: "Importer CMUDict"
+export_cmudict: "Exporter CMUDict"
+append_yaml: "Ajouter un fichier YAML"
+open_yaml: "Ouvrir un fichier YAML"
+save_ou: "Enregistrer le dictionnaire OU"
+save_ds: "Enregistrer le dictionnaire DS"
+edit_sym: "Modifier les symboles"
+
+# Entry Viewer
+search: "Rechercher:"
+rep_button: "Remplacer"
+close: "Fermer"
+refresh: "Rafraîchir"
+clear_all: "Effacer toutes les entrées"
+drag: "Glisser esthétique"
+
+# Themes
+theme: "Thèmes"
+def_theme: "Sélectionner un thème:"
+
+# Regex Dialog
+reg_pattern: "Motif Regex:"
+replacement: "Remplacement:"
+apply: "Remplacer"
+apply1: "Tout remplacer"
+find: "Trouver"
+
+# Symbol Editor
+del: "Supprimer"
+add: "Ajouter"
+save_templ: "Enregistrer dans les modèles"
+
+# Settings (tab 2)
+select_local: "Sélectionner la localisation:"
+local_op: "Options de localisation"
+update: "Mises à jour"
+update_b: "Vérifier les mises à jour"
+
+# Others (tab 3)
+import: "Importer un dictionnaire"
+export: "Exporter un dictionnaire"
+g2p: "Suggestions G2P:"
+g2p_check: "Activer G2P"
+
+# Tab names
+tab1: "Éditeur d'entrée"
+tab2: "Paramètres"
+tab3: "Autres"
+
+# Context Menus
+cont_deselect: "Désélectionner"
+cont_edit: "Modifier"
+cont_delete: "Supprimer"
+cont_undo: "Annuler"
+cont_redo: "Refaire"
+cont_copy: "Copier"
+cont_cut: "Couper"
+cont_paste: "Coller"
+cont_select: "Tout sélectionner"
+cont_more: "Plus:"

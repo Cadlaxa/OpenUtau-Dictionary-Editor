@@ -11,6 +11,7 @@
 - Revamp drag message UI
 - New keyboard shortcut: [`Enter` = adding new entry/symbol, `Ctrl/Command + f` = search, `Ctrl/Command + h` = Replace window, `Esc` = close the windows]
 - New 5 themes: (`Sunny Yellow`, `Yellow Green`, `Payne's Gray`, `Sky Magenta`, `Light See Green`)
+- Update Localizations + New Localizations (`French`, `Russian`)
 
 **`(6/30/24)`**
 - Added G2p Suggestions

@@ -1,0 +1,79 @@
+# note for translators:
+# | in YAML allows for multi-line strings that retain linebreaks.
+# it doesn't use "" but it's still a string, so don't put many special characters in there.
+
+Language: Russian
+File: ru_RU.yaml
+
+# Entry Editor (tab 1)
+entry_option: "Опции записи"
+select_template: "Выбрать шаблон:"
+remove_accents: "Удалить ударения"
+lowercase_phonemes: "Сделать фонемы в нижнем регистре"
+
+# Manual Entry
+man_entry: "Ручной ввод"
+delete_entry: "Удалить запись"
+add_entry: "Добавить запись"
+
+# Main Buttons UI
+convert_cmudict: "Импорт CMUDict"
+export_cmudict: "Экспорт CMUDict"
+append_yaml: "Добавить в YAML файл"
+open_yaml: "Открыть YAML файл"
+save_ou: "Сохранить словарь OU"
+save_ds: "Сохранить словарь DS"
+edit_sym: "Редактировать символы"
+
+# Entry Viewer
+search: "Поиск:"
+rep_button: "Заменить"
+close: "Закрыть"
+refresh: "Обновить"
+clear_all: "Очистить все записи"
+drag: "Эстетический перетаскивание"
+
+# Themes
+theme: "Темы"
+def_theme: "Выбрать тему:"
+
+# Regex Dialog
+reg_pattern: "Шаблон регулярного выражения:"
+replacement: "Замена:"
+apply: "Применить"
+apply1: "Применить все"
+find: "Найти"
+
+# Symbol Editor
+del: "Удалить"
+add: "Добавить"
+save_templ: "Сохранить в шаблоны"
+
+# Settings (tab 2)
+select_local: "Выбрать локализацию:"
+local_op: "Опции локализации"
+update: "Обновления"
+update_b: "Проверить обновления"
+
+# Others (tab 3)
+import: "Импорт словаря"
+export: "Экспорт словаря"
+g2p: "Предложения G2P:"
+g2p_check: "Включить G2P"
+
+# Tab names
+tab1: "Редактор записей"
+tab2: "Настройки"
+tab3: "Другие"
+
+# Context Menus
+cont_deselect: "Снять выделение"
+cont_edit: "Редактировать"
+cont_delete: "Удалить"
+cont_undo: "Отменить"
+cont_redo: "Повторить"
+cont_copy: "Копировать"
+cont_cut: "Вырезать"
+cont_paste: "Вставить"
+cont_select: "Выбрать все"
+cont_more: "Ещё:"
