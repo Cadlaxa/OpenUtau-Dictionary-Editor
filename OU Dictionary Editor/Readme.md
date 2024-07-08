@@ -12,6 +12,10 @@
 - New keyboard shortcut: [`Enter` = adding new entry/symbol, `Ctrl/Command + f` = search, `Ctrl/Command + h` = Replace window, `Esc` = close the windows]
 - New 5 themes: (`Sunny Yellow`, `Yellow Green`, `Payne's Gray`, `Sky Magenta`, `Light See Green`)
 - Update Localizations + New Localizations (`French`, `Russian`)
+- Show Context Menu on `Right-Click` (Only available to Entry Editor)
+- Fixed Blank combobox on the G2p suggestions
+- G2p Suggestion switch is now also saved on `settings.ini`
+- Set default theme and accent to `Mint Dark`
 
 **`(6/30/24)`**
 - Added G2p Suggestions

@@ -108,15 +108,15 @@ class Dictionary(tk.Tk):
         config = configparser.ConfigParser()
         config.read('settings.ini')
         selected_theme = config.get('Settings', 'theme', fallback='Dark')
-        selected_accent = config.get('Settings', 'accent', fallback='Electric Blue')
+        selected_accent = config.get('Settings', 'accent', fallback='Mint')
         self.theme_var = tk.StringVar(value=selected_theme)
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='English')
         self.localization_var = tk.StringVar(value=selected_local)
         self.current_local = config.get('Settings', 'current_local', fallback='English')
         self.local_var = tk.StringVar(value=self.current_local)
-        selected_g2p = config.get('Settings', 'G2P', fallback='Arpabet-Plus G2p')
-        self.g2p_var = tk.StringVar(value=selected_g2p)
+        self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
+        self.g2p_var = tk.StringVar(value=self.selected_g2p)
         self.current_version = "v0.9.7"
 
         # Set window title
@@ -420,6 +420,7 @@ class Dictionary(tk.Tk):
                 ttk.Style().theme_use(theme_map[theme_key])
         except (configparser.NoSectionError, configparser.NoOptionError):
             sv_ttk.set_theme("dark")
+            ttk.Style().theme_use("mint_dark")
         
     def load_cmudict(self):
         filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
@@ -1371,9 +1372,9 @@ class Dictionary(tk.Tk):
         finally:
             self.context_menu.grab_release()
 
-    def edit_cell(self, event):
+    def edit_cell(self, event=None):
         selected_item = self.viewer_tree.selection()[0]
-        column = self.viewer_tree.identify_column(event.x)
+        #column = self.viewer_tree.identify_column(event.x)
 
         # Define the column identifiers
         G2P_column = "#1"
@@ -2693,6 +2694,7 @@ class Dictionary(tk.Tk):
         g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
         g2p_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
         self.localizable_widgets['g2p_check'] = g2p_checkbox
+        self.load_g2p_checkbox_state()
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
@@ -2711,13 +2713,11 @@ class Dictionary(tk.Tk):
         config = configparser.ConfigParser()
         config.read(self.config_file)
         try:
-            model_name = config.get('Settings', 'g2p')
-            if self.g2p_selection['values']:
-                self.g2p_selection.set(model_name)
-            else:
-                self.g2p_selection.current(0)
+            self.selected_g2p = config.get('Settings', 'g2p', fallback='Arpabet-Plus G2p').strip()
         except (configparser.NoSectionError, configparser.NoOptionError):
-            sv_ttk.set_theme("dark")
+            messagebox.showinfo("Notice", "No G2P Model Found")
+            self.selected_g2p = 'Arpabet-Plus G2p'
+        self.g2p_selection.set(self.selected_g2p)
 
     def on_entry_change(self, event):
         if self.g2p_checkbox_var.get() and self.word_entry.get().strip():
@@ -2772,6 +2772,16 @@ class Dictionary(tk.Tk):
             self.g2p_model = None
             print("G2P is disabled.")
             self.save_g2p(selected_value)
+    
+    def load_g2p_checkbox_state(self):
+        # Load G2P checkbox state from config
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        try:
+            g2p_enabled = config.getboolean('Settings', 'G2P_Enabled')
+            self.g2p_checkbox_var.set(g2p_enabled)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            print("G2P checkbox state not found in config. Using default.")
 
     def save_g2p(self, selected_value):
         # Save the selected G2P model to settings.ini
@@ -2780,6 +2790,7 @@ class Dictionary(tk.Tk):
         if 'Settings' not in config.sections():
             config['Settings'] = {}
         config['Settings']['G2P'] = selected_value
+        config['Settings']['G2P_Enabled'] = str(self.g2p_checkbox_var.get())
         with open(self.config_file, 'w') as configfile:
             config.write(configfile)
         print(f"G2P model {selected_value} saved to config file.")
