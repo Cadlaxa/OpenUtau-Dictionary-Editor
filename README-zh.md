@@ -70,6 +70,23 @@
 
 # 變更日誌
 ---
+**`(7/--/24)`**
+- 雙擊或「輸入」按鈕直接編輯條目
+- 直接條目編輯的 G2P 建議按鈕
+- 更新在地化 (@zout)
+- 複製輸入功能現在可以透過系統剪貼簿複製數據
+- 貼上功能現在可以將資料貼到系統剪貼簿（僅接受 yaml 和 cmudict 格式）
+- 修正了 G2p 組合框，更改模型時也會自動更新音素條目
+- 改進了樹視圖效能，尤其是在較大的字典檔案上
+- 修改拖曳訊息 UI
+- 新的鍵盤快速鍵：[`Enter` = 新增條目/符號，`Ctrl/Command + f` = 搜索，`Ctrl/Command + h` = 取代窗口，`Esc` = 關閉視窗]
+- 新的 5 個主題：（`Sunny Yellow`、`Yellow Green`、`Payne's Grey`、`Sky Magenta`、`Light See Green`）
+- 更新在地化 + 新在地化（'French'、'Russian'）
+- 在「右鍵」上顯示上下文選單（僅適用於條目編輯器）
+- 修正了 G2p 建議上的空白組合框
+- G2p 建議開關現在也保存在 `settings.ini` 中
+- 將預設主題和口音設定為“Mint Dark”
+
 **`(28/6/24)`**
 - 新增了 G2p 建議
     - Arpabet-plus G2p (@Cadlaxa)
