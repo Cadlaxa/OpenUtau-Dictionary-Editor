@@ -77,7 +77,7 @@
 - 複製輸入功能現在可以透過系統剪貼簿複製數據
 - 貼上功能現在可以將資料貼到系統剪貼簿（僅接受 yaml 和 cmudict 格式）
 - 修正了 G2p 組合框，更改模型時也會自動更新音素條目
-- 改進了樹視圖效能，尤其是在較大的字典檔案上
+- 改進了樹視圖效能，尤其是在較大的辭典檔案上
 - 修改拖曳訊息 UI
 - 新的鍵盤快速鍵：[`Enter` = 新增條目/符號，`Ctrl/Command + f` = 搜索，`Ctrl/Command + h` = 取代窗口，`Esc` = 關閉視窗]
 - 新的 5 個主題：（`Sunny Yellow`、`Yellow Green`、`Payne's Grey`、`Sky Magenta`、`Light See Green`）
