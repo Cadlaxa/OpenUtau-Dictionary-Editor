@@ -2118,7 +2118,7 @@ class Dictionary(tk.Tk):
     
     def save_window(self):
         # Create a toplevel window to inform the user that the file is being saved
-        self.saving_window = Toplevel()
+        #self.saving_window = Toplevel()
         self.saving_window.overrideredirect(True)  # Remove window decorations
         self.saving_window.attributes("-topmost", True)
         # Set the desired width and height
