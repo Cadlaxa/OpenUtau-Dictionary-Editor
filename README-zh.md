@@ -83,10 +83,12 @@
 - 新的鍵盤快速鍵：[`Enter` = 新增條目/符號，`Ctrl/Command + f` = 搜索，`Ctrl/Command + h` = 取代窗口，`Esc` = 關閉視窗]
 - 新的 5 個主題：（`Sunny Yellow`、`Yellow Green`、`Payne's Grey`、`Sky Magenta`、`Light See Green`）
 - 更新在地化 + 新在地化（'French'、'Russian'）
+- 新增訊息框的在地化
 - 在「右鍵」上顯示上下文選單（僅適用於條目編輯器）
 - 修正了 G2p 建議上的空白組合框
 - G2p 建議開關現在也保存在 `settings.ini` 中
 - 將預設主題和色調設定為“Mint Dark”
+- 在開啟「條目檢視器」的情況下關閉「主 GUI」將提示一則訊息，而不是立即關閉 GUI
 
 **`(28/6/24)`**
 - 新增了 G2p 建議
