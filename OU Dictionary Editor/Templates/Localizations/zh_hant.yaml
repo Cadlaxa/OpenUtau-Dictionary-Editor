@@ -83,7 +83,7 @@ cont_more: "更多:"
 cmudict_nofile: "未選擇檔案"
 json_nofile: "未選擇檔案"
 json_empty: "JSON 檔案不包含資料"
-json_inv_entry: "每個條目必須有一個帶有字串值的“w”鍵和一個帶有字串值的“p”鍵。"
+json_inv_entry: "每個條目必須有一個帶有字串值的"w"鍵和一個帶有字串值的"p"鍵。"
 yaml_nofile: "未選擇檔案"
 merge_yaml_nofile: "未選擇任何檔案"
 yaml_temp_ns: "沒有要儲存的條目。請在儲存之前新增項目。"
@@ -122,38 +122,38 @@ load_loc_err: "找不到‘Localizations’子資料夾或它是空的。"
 loc_s_config: "未找到所選語言設定。"
 
 # Messagebox (with python variables)
-update_error：“無法檢查更新：”
-cmudict_err_read：“從快取讀取時發生錯誤：”
-cmudict_err_enc：“使用備用編碼讀取檔案時發生錯誤：”
-cmudict_err_1：“讀取檔案時發生錯誤：”
-load_cmudict_procc：“處理行時發生錯誤”
-cmudict_cache_err：“儲存到快取時發生錯誤：”
-json_cache_err：“從快取讀取時發生錯誤：”
-json_save_cache:“儲存到快取時發生錯誤：”
-json_parse_file:“解析 JSON 檔案時發生錯誤：”
-json_read_ex:“讀取 JSON 檔案時發生錯誤：”
-yaml_load_err：“發生錯誤：”
-yaml_unex_err：“發生意外錯誤：”
-merge_yaml_err_parse：“解析 YAML 檔案時發生錯誤”
-merge_yaml_read_err:“讀取 YAML 檔案時發生錯誤”
-yaml_template_inv：“無效的 YAML 資料：”
+update_error:"無法檢查更新:"
+cmudict_err_read:"從快取讀取時發生錯誤:"
+cmudict_err_enc:"使用備用編碼讀取檔案時發生錯誤:"
+cmudict_err_1:"讀取檔案時發生錯誤:"
+load_cmudict_procc:"處理行時發生錯誤"
+cmudict_cache_err:"儲存到快取時發生錯誤:"
+json_cache_err:"從快取讀取時發生錯誤:"
+json_save_cache:"儲存到快取時發生錯誤:"
+json_parse_file:"解析 JSON 檔案時發生錯誤:"
+json_read_ex:"讀取 JSON 檔案時發生錯誤:"
+yaml_load_err:"發生錯誤:"
+yaml_unex_err:"發生意外錯誤:"
+merge_yaml_err_parse:"解析 YAML 檔案時發生錯誤"
+merge_yaml_read_err:"讀取 YAML 檔案時發生錯誤"
+yaml_template_inv:"無效的 YAML 資料:"
 templ_saved: "模板已儲存到"
 del_sym_nf: "在符號中找不到。"
-del_sym_id:“未找到項目 ID 的資料”
-del_ent_nf: "在字典中找不到。')"
+del_sym_id:"未找到項目 ID 的資料"
+del_ent_nf: "在辭典中找不到。')"
 del_ent_id: "未找到項目 ID 的資料"
-save_yaml_cache：“儲存快取時發生錯誤：”
-save_yaml_saved: "字典儲存到"
-save_yaml_f：“儲存檔案失敗：”
-json_cache_err_save：“儲存快取時發生錯誤：”
-json_save_dict: "字典儲存到"
-json_err_save：“儲存 JSON 檔案時發生錯誤：”
-cmudict_cache_err_save：“儲存快取時發生錯誤：”
-cmudict_saved_dict: "字典保存到"
-temp_combo_err: "讀取目錄失敗："
+save_yaml_cache:"儲存快取時發生錯誤:"
+save_yaml_saved: "辭典儲存到"
+save_yaml_f:"儲存檔案失敗:"
+json_cache_err_save:"儲存快取時發生錯誤:"
+json_save_dict: "辭典儲存到"
+json_err_save:"儲存 JSON 檔案時發生錯誤:"
+cmudict_cache_err_save:"儲存快取時發生錯誤:"
+cmudict_saved_dict: "辭典保存到"
+temp_combo_err: "讀取目錄失敗:"
 update_avail: "可用。現在要更新嗎？"
-update_err_check: "無法檢查更新："
-dl_cannot：“無法下載更新：”
+update_err_check: "無法檢查更新:"
+dl_cannot:"無法下載更新:"
 update_process_err: "更新過程中發生錯誤:"
-loc_load_err：“無法載入本地化檔案：”
+loc_load_err:"無法載入本地化檔案:"
 
