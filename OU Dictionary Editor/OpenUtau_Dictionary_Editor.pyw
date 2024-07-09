@@ -117,7 +117,7 @@ class Dictionary(tk.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v0.9.7"
+        self.current_version = "v1.1.5"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"

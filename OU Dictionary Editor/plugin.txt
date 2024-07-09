@@ -1,2 +1,2 @@
-name=Dictionary Editor v0.9.7
+name=Dictionary Editor v1.1.5
 execute=OpenUtau_Dictionary_Editor.exe
