@@ -1237,9 +1237,9 @@ class Dictionary(tk.Tk):
             # Create a Frame to hold the Treeview and the Scrollbar
             frame = tk.Frame(self.entries_window)
             frame.pack(fill=tk.BOTH, expand=True)
-
+            
             # Create the Treeview
-            self.viewer_tree = ttk.Treeview(frame, columns=('Index', 'Grapheme', 'Phonemes'),show='headings', height=18)
+            self.viewer_tree = ttk.Treeview(frame, columns=('Index', 'Grapheme', 'Phonemes'),show='headings', height=20)
             self.viewer_tree.heading('Index', text='Index')
             self.viewer_tree.heading('Grapheme', text='Grapheme')
             self.viewer_tree.heading('Phonemes', text='Phonemes')
@@ -1914,6 +1914,29 @@ class Dictionary(tk.Tk):
                     insert_index += 1
         else:
             messagebox.showinfo("Paste", "Clipboard is empty or data is invalid.")
+    
+    def load_data(self):
+        items = []
+        end_index = min(self.start_index + self.batch_size, len(self.dictionary))
+        for index, (grapheme, phonemes) in enumerate(list(self.dictionary.items())[self.start_index:end_index], start=self.start_index + 1):
+            escaped_phonemes = ', '.join(self.escape_special_characters(str(phoneme)) for phoneme in phonemes)
+            items.append((index, grapheme, escaped_phonemes))
+        for item in items:
+            self.viewer_tree.insert('', 'end', values=item)
+        self.start_index = end_index
+
+    def on_treeview_expose(self, event):
+        self.lazy_load_data()
+
+    def on_treeview_configure(self, event):
+        self.lazy_load_data()
+
+    def lazy_load_data(self):
+        # Load more data if the scroll position is near the bottom
+        if self.start_index < len(self.dictionary):
+            visible_items = self.viewer_tree.get_children()
+            if visible_items and self.viewer_tree.bbox(visible_items[-1])[1] < self.viewer_tree.winfo_height():
+                self.load_data()
     
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
