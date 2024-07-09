@@ -117,7 +117,7 @@ class Dictionary(tk.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v0.9.7"
+        self.current_version = "v1.1.5"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -182,7 +182,7 @@ class Dictionary(tk.Tk):
             if self.latest_version_tag > self.current_version:
                 self.check_for_updates()
         except requests.RequestException as e:
-            messagebox.showerror("Update Error", f"Could not check for updates: {str(e)}")
+            messagebox.showerror("Update Error", f"{self.localization.get('update_error', 'Could not check for updates: ')} {str(e)}")
     
     def icon(self, window=None):
         if window is None:
@@ -425,7 +425,7 @@ class Dictionary(tk.Tk):
     def load_cmudict(self):
         filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
         if not filepath:
-            messagebox.showinfo("No File", "No file was selected.")
+            messagebox.showinfo("No File", f"{self.localization.get('cmudict_nofile', 'No file was selected.')}")
             return
         
         self.load_window()
@@ -454,7 +454,7 @@ class Dictionary(tk.Tk):
                     self.loading_window.destroy()
                     return
             except Exception as e:
-                messagebox.showerror("Error", f"Error occurred while reading from cache: {e}")
+                messagebox.showerror("Error", f"{self.localization.get('cmudict_err_read', 'Error occurred while reading from cache: ')} {e}")
 
         # Load from original file if cache is not available or outdated
         try:
@@ -466,11 +466,11 @@ class Dictionary(tk.Tk):
                     lines = file.readlines()
             except Exception as e:
                 self.loading_window.destroy()
-                messagebox.showerror("Error", f"Error occurred while reading file with alternate encoding: {e}")
+                messagebox.showerror("Error", f"{self.localization.get('cmudict_err_enc', 'Error occurred while reading file with alternate encoding: ')} {e}")
                 return
         except Exception as e:
             self.loading_window.destroy()
-            messagebox.showerror("Error", f"Error occurred while reading file: {e}")
+            messagebox.showerror("Error", f"{self.localization.get('cmudict_err_1', 'Error occurred while reading file: ')} {e}")
             return
 
         dictionary = {}
@@ -491,7 +491,7 @@ class Dictionary(tk.Tk):
                     raise ValueError(f"Invalid format in line: {line.strip()}")
             except Exception as e:
                 self.loading_window.destroy()
-                messagebox.showerror("Error", f"Error occurred while processing line '{line.strip()}'")
+                messagebox.showerror("Error", f"{self.localization.get('load_cmudict_procc', 'Error occurred while processing line ')} '{line.strip()}'")
                 error_occurred = True
                 break
 
@@ -505,7 +505,7 @@ class Dictionary(tk.Tk):
                 with gzip.open(cache_filepath, 'wb') as cache_file:
                     pickle.dump((self.dictionary, self.comments), cache_file)
             except Exception as e:
-                messagebox.showerror("Error", f"Error occurred while saving to cache: {e}")
+                messagebox.showerror("Error", f"{self.localization.get('cmudict_cache_err', 'Error occurred while saving to cache: ')} {e}")
 
         self.loading_window.destroy()
 
@@ -515,7 +515,7 @@ class Dictionary(tk.Tk):
     def load_json_file(self):
         filepath = filedialog.askopenfilename(title="Open JSON File", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
         if not filepath:
-            messagebox.showinfo("No File", "No file was selected.")
+            messagebox.showinfo("No File", f"{self.localization.get('json_nofile', 'No file was selected.')}")
             return
 
         self.load_window()
@@ -541,7 +541,7 @@ class Dictionary(tk.Tk):
                         entries = pickle.load(cache_file)
                 except Exception as e:
                     self.loading_window.destroy()
-                    messagebox.showerror("Error", f"Error occurred while reading from cache: {e}")
+                    messagebox.showerror("Error", f"{self.localization.get('json_cache_err', 'Error occurred while reading from cache: ')} {e}")
                     return
             else:
                 with open(filepath, 'r', encoding='utf-8') as file:
@@ -549,7 +549,7 @@ class Dictionary(tk.Tk):
                     entries = data.get('data', [])
                     if not entries:
                         self.loading_window.destroy()
-                        messagebox.showinfo("Empty Data", "The JSON file contains no data.")
+                        messagebox.showinfo("Empty Data", f"{self.localization.get('json_empty', 'The JSON file contains no data.')}")
                         return
                 # Save to cache
                 try:
@@ -557,7 +557,7 @@ class Dictionary(tk.Tk):
                         pickle.dump(entries, cache_file)
                 except Exception as e:
                     self.loading_window.destroy()
-                    messagebox.showerror("Error", f"Error occurred while saving to cache: {e}")
+                    messagebox.showerror("Error", f"{self.localization.get('json_save_cache', 'Error occurred while saving to cache: ')} {e}")
 
             # Process entries
             self.dictionary.clear()
@@ -565,16 +565,16 @@ class Dictionary(tk.Tk):
                 grapheme = item.get('w')
                 phonemes = item.get('p')
                 if not (isinstance(grapheme, str) and isinstance(phonemes, str)):
-                    messagebox.showerror("Invalid Entry", "Each entry must have a 'w' key with a string value and a 'p' key with a string value.")
+                    messagebox.showerror("Invalid Entry", f"{self.localization.get('json_inv_entry', 'Each entry must have a (w) key with a string value and a (p) key with a string value.')}")
                     continue
                 phoneme_list = [phoneme.strip() for phoneme in phonemes.split()]
                 self.dictionary[grapheme] = phoneme_list
 
             self.update_entries_window()
         except json.JSONDecodeError as je:
-            messagebox.showerror("JSON Syntax Error", f"An error occurred while parsing the JSON file: {str(je)}")
+            messagebox.showerror("JSON Syntax Error", f"{self.localization.get('json_parse_file', 'An error occurred while parsing the JSON file: ')} {str(je)}")
         except Exception as e:
-            messagebox.showerror("Error", f"An error occurred while reading the JSON file: {str(e)}")
+            messagebox.showerror("Error", f"{self.localization.get('json_read_ex', 'An error occurred while reading the JSON file: ')} {str(e)}")
         finally:
             self.loading_window.destroy()
 
@@ -584,7 +584,7 @@ class Dictionary(tk.Tk):
             filetypes=[("YAML files", "*.yaml"), ("Y'ALL files", "*yaml.y'all"), ("All files", "*.*")]
         )
         if not filepath:
-            messagebox.showinfo("No File", "No file was selected.")
+            messagebox.showinfo("No File", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
             return
         
         self.load_window()
@@ -675,17 +675,17 @@ class Dictionary(tk.Tk):
             self.update_entries_window()
         except (YAMLError, ValueError) as e:
             self.loading_window.destroy()
-            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+            messagebox.showerror("Error", f"{self.localization.get('yaml_load_err', 'An error occurred: ')} {str(e)}")
         except Exception as e:
             self.loading_window.destroy()
-            messagebox.showerror("Error", f"An unexpected error occurred: {str(e)}")
+            messagebox.showerror("Error", f"{self.localization.get('yaml_unex_err', 'An unexpected error occurred: ')} {str(e)}")
         finally:
             self.loading_window.destroy()
 
     def merge_yaml_files(self):
         filepaths = filedialog.askopenfilenames(title="Open YAML Files", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
         if not filepaths:
-            messagebox.showinfo("No File", "No files were selected.")
+            messagebox.showinfo("No File", f"{self.localization.get('merge_yaml_nofile', 'No files were selected.')}")
             return
         yaml = YAML(typ='safe')
         for filepath in filepaths:
@@ -737,11 +737,11 @@ class Dictionary(tk.Tk):
 
             except YAMLError as ye:
                 self.loading_window.destroy()
-                messagebox.showerror("YAML Syntax Error", f"An error occurred while parsing the YAML file {filepath}: {str(ye)}")
+                messagebox.showerror("YAML Syntax Error", f"{self.localization.get('merge_yaml_err_parse', 'An error occurred while parsing the YAML file ')} {filepath}: {str(ye)}")
                 continue
             except Exception as e:
                 self.loading_window.destroy()
-                messagebox.showerror("Error", f"An error occurred while reading the YAML file {filepath}: {str(e)}")
+                messagebox.showerror("Error", f"{self.localization.get('merge_yaml_read_err', 'An error occurred while reading the YAML file ')} {filepath}: {str(e)}")
                 continue
         self.update_entries_window()
         self.loading_window.destroy()
@@ -842,7 +842,7 @@ class Dictionary(tk.Tk):
 
     def save_yaml_template(self):
         if not self.symbols:
-            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
+            messagebox.showinfo("Warning", f"{self.localization.get('yaml_temp_ns', 'No entries to save. Please add entries before saving.')}")
             return
 
         # Ensure the templates directory exists
@@ -888,14 +888,14 @@ class Dictionary(tk.Tk):
         try:
             yaml.load('\n'.join(existing_data_text))
         except YAMLError as exc:
-            messagebox.showerror("Error", f"Invalid YAML data: {exc}")
+            messagebox.showerror("Error", f"{self.localization.get('yaml_template_inv', 'Invalid YAML data: ')} {exc}")
             return
 
         # Save changes if the user has selected a file path
         with open(template_path, 'w', encoding='utf-8') as file:
             file.writelines(existing_data_text)
             self.update_template_combobox(self.template_combobox)
-        messagebox.showinfo("Success", f"Templates saved to {template_path}.")
+        messagebox.showinfo("Success", f"{self.localization.get('templ_saved', 'Templates saved to ')} {template_path}")
 
     def deselect_symbols(self, event):
         # Check if there is currently a selection
@@ -920,7 +920,7 @@ class Dictionary(tk.Tk):
             self.phoneme_edit.delete(0, tk.END)
             self.word_edit.delete(0, tk.END)
         else:
-            messagebox.showinfo("Error", "Please provide both phonemes and its respective value for the entry.")
+            messagebox.showinfo("Error", f"{self.localization.get('add_sym_ent', 'Please provide both phonemes and its respective value for the entry.')}")
 
     def delete_symbol_entry(self):
         selected_items = self.symbol_treeview.selection()
@@ -935,9 +935,9 @@ class Dictionary(tk.Tk):
                     self.phoneme_edit.delete(0, tk.END)
                     self.word_edit.delete(0, tk.END)
                 else:
-                    messagebox.showinfo("Notice", f"Symbol: {symbol} not found in symbols.")
+                    messagebox.showinfo("Notice", f"Symbol: {symbol} {self.localization.get('del_sym_nf', ' not found in symbols.')}")
             else:
-                messagebox.showinfo("Notice", f"No data found for item ID {item_id}.")
+                messagebox.showinfo("Notice", f"{self.localization.get('del_sym_id', 'No data found for item ID ')} {item_id}.")
 
     def add_symbols_treeview(self, word=None, value=None):
         if word and value:
@@ -1044,11 +1044,12 @@ class Dictionary(tk.Tk):
 
         self.entry_popup_sym.bind("<Return>", on_validate)
         self.entry_popup_val.bind("<Return>", on_validate)
+        self.symbol_treeview.bind("<Return>", on_validate)
     
     def delete_selected_symbols(self):
         selected_items = self.symbol_treeview.selection()
         if not selected_items:
-            messagebox.showinfo("Info", "No symbols selected.")
+            messagebox.showinfo("Info", f"{self.localization.get('del_symb', 'No symbols selected.')}")
             return
 
         # Delete from the dictionary if you are syncing it with the tree view
@@ -1160,7 +1161,7 @@ class Dictionary(tk.Tk):
             self.word_entry.delete(0, tk.END)
             self.phoneme_entry.delete(0, tk.END)
         else:
-            messagebox.showinfo("Error", "Please provide both word and phonemes for the entry.")
+            messagebox.showinfo("Error", f"{self.localization.get('add_manual_ent', 'Please provide both word and phonemes for the entry.')}")
 
     def delete_manual_entry(self):
         selected_items = self.viewer_tree.selection()
@@ -1175,16 +1176,16 @@ class Dictionary(tk.Tk):
                     self.word_entry.delete(0, tk.END)
                     self.phoneme_entry.delete(0, tk.END)
                 else:
-                    messagebox.showinfo("Notice", f"Grapheme: {grapheme} not found in dictionary.")
+                    messagebox.showinfo("Notice", f"Grapheme: {grapheme} {self.localization.get('del_ent_nf', ' not found in dictionary.')}")
             else:
-                messagebox.showinfo("Notice", f"No data found for item ID {item_id}.")
+                messagebox.showinfo("Notice", f"{('del_ent_id', 'No data found for item ID ')} {item_id}.")
 
     def delete_all_entries(self):
         if not self.dictionary:
-            messagebox.showinfo("Info", "No entries to delete.")
+            messagebox.showinfo("Info", f"{self.localization.get('del_all_ent', 'No entries to delete.')}")
             return
 
-        if messagebox.askyesno("Confirm", "Are you sure you want to delete all entries?"):
+        if messagebox.askyesno("Confirm", f"{self.localization.get('dell_all_ques', 'Are you sure you want to delete all entries?')}"):
             self.save_state_before_change()
             self.dictionary.clear()
             self.viewer_tree.delete(*self.viewer_tree.get_children())
@@ -1195,7 +1196,7 @@ class Dictionary(tk.Tk):
     def delete_selected_entries(self):
         selected_items = self.viewer_tree.selection()
         if not selected_items:
-            messagebox.showinfo("Info", "No entries selected.")
+            messagebox.showinfo("Info", f"{self.localization.get('dell_s_ent', 'No entries selected.')}")
             return
 
         # Delete from the dictionary if you are syncing it with the tree view
@@ -1239,7 +1240,7 @@ class Dictionary(tk.Tk):
             frame.pack(fill=tk.BOTH, expand=True)
 
             # Create the Treeview
-            self.viewer_tree = ttk.Treeview(frame, columns=('Index', 'Grapheme', 'Phonemes'),show='headings', height=18)
+            self.viewer_tree = ttk.Treeview(frame, columns=('Index', 'Grapheme', 'Phonemes'),show='headings', height=20)
             self.viewer_tree.heading('Index', text='Index')
             self.viewer_tree.heading('Grapheme', text='Grapheme')
             self.viewer_tree.heading('Phonemes', text='Phonemes')
@@ -1455,7 +1456,7 @@ class Dictionary(tk.Tk):
 
     def is_g2p(self):
         if not self.g2p_checkbox_var.get():
-            messagebox.showwarning("G2P Disabled", "The G2P option is currently disabled. Please enable it to use this feature.")
+            messagebox.showwarning("G2P Disabled", f"{self.localization.get('is_g2p_enabled', 'The G2P option is currently disabled. Please enable it to use this feature.')}")
         elif self.g2p_checkbox_var.get():
             self.direct_entry_change()
 
@@ -1719,7 +1720,7 @@ class Dictionary(tk.Tk):
         # Set the selection to the items found
         self.viewer_tree.selection_set(items_to_highlight)
         if not items_to_highlight:
-            messagebox.showinfo("No Matches", "No matches found.")
+            messagebox.showinfo("No Matches", f"{self.localization.get('find_matches', 'No matches found.')}")
     
     def find_next(self, direction=None, pattern=None, target=None):
         items = self.viewer_tree.get_children()
@@ -1773,7 +1774,7 @@ class Dictionary(tk.Tk):
                         self.viewer_tree.see(item)
                         return
         # If no match found, inform the user
-        messagebox.showinfo("No Match", "No matching entry found.")
+        messagebox.showinfo("No Match", f"{self.localization.get('find_next_dia', 'No matching entry found.')}")
     
     def clear_entries(self):
         self.word_entry.delete(0, tk.END)
@@ -1786,7 +1787,7 @@ class Dictionary(tk.Tk):
             if not self.dictionary:
                 self.entries_window.destroy()
             else:
-                response = messagebox.askyesno("Notice", "There are entries in the viewer. Closing this window will clear them all. Are you sure you want to proceed?")
+                response = messagebox.askyesno("Notice", f"{self.localization.get('notice', 'There are entries in the viewer. Closing this window will clear them all. Are you sure you want to proceed?')}")
                 if response:
                     self.title(self.base_title)
                     self.viewer_tree.delete(*self.viewer_tree.get_children())
@@ -1823,7 +1824,7 @@ class Dictionary(tk.Tk):
             self.dictionary = self.undo_stack.pop()
             self.refresh_treeview()
         else:
-            messagebox.showinfo("Undo", "No more actions to undo.")
+            messagebox.showinfo("Undo", f"{self.localization.get('undo_mess', 'No more actions to undo.')}")
 
     def redo(self):
         if self.redo_stack:
@@ -1833,7 +1834,7 @@ class Dictionary(tk.Tk):
             self.dictionary = self.redo_stack.pop()
             self.refresh_treeview()
         else:
-            messagebox.showinfo("Redo", "No more actions to redo.")
+            messagebox.showinfo("Redo", f"{self.localization.get('redo_mess', 'No more actions to redo.')}")
     
     def copy_entry(self):
         selected_items = self.viewer_tree.selection()
@@ -1872,7 +1873,7 @@ class Dictionary(tk.Tk):
             pyperclip.copy(yaml_string)
             #messagebox.showinfo("Copy", "Selected entries have been copied to the clipboard.")
         else:
-            messagebox.showinfo("Copy", "No entry selected.")
+            messagebox.showinfo("Copy", f"{self.localization.get('copy_mess', 'No entry selected.')}")
 
     def cut_entry(self):
         selected_items = self.viewer_tree.selection()
@@ -1880,7 +1881,7 @@ class Dictionary(tk.Tk):
             self.copy_entry()  # Copy entry first
             self.delete_selected_entries()
         else:
-            messagebox.showinfo("Cut", "No entry selected.")
+            messagebox.showinfo("Cut", f"{self.localization.get('cut_mess', 'No entry selected.')}")
 
     def paste_entry(self):
         self.save_state_before_change()
@@ -1913,7 +1914,30 @@ class Dictionary(tk.Tk):
                 if insert_index != 'end':
                     insert_index += 1
         else:
-            messagebox.showinfo("Paste", "Clipboard is empty or data is invalid.")
+            messagebox.showinfo("Paste", f"{self.localization.get('paste_mess', 'Clipboard is empty or data is invalid.')}")
+    
+    def load_data(self):
+        items = []
+        end_index = min(self.start_index + self.batch_size, len(self.dictionary))
+        for index, (grapheme, phonemes) in enumerate(list(self.dictionary.items())[self.start_index:end_index], start=self.start_index + 1):
+            escaped_phonemes = ', '.join(self.escape_special_characters(str(phoneme)) for phoneme in phonemes)
+            items.append((index, grapheme, escaped_phonemes))
+        for item in items:
+            self.viewer_tree.insert('', 'end', values=item)
+        self.start_index = end_index
+
+    def on_treeview_expose(self, event):
+        self.lazy_load_data()
+
+    def on_treeview_configure(self, event):
+        self.lazy_load_data()
+
+    def lazy_load_data(self):
+        # Load more data if the scroll position is near the bottom
+        if self.start_index < len(self.dictionary):
+            visible_items = self.viewer_tree.get_children()
+            if visible_items and self.viewer_tree.bbox(visible_items[-1])[1] < self.viewer_tree.winfo_height():
+                self.load_data()
     
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
@@ -2158,7 +2182,7 @@ class Dictionary(tk.Tk):
         selected_template = self.template_var.get()
         # If "Current Template" is selected, ask the user to select a file to load and save.
         if not self.dictionary:
-            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
+            messagebox.showinfo("Warning", f"{self.localization.get('save_yaml_m', 'No entries to save. Please add entries before saving.')}")
             return
         if selected_template == "Current Template":
             template_path = filedialog.askopenfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
@@ -2236,26 +2260,26 @@ class Dictionary(tk.Tk):
                     with gzip.open(cache_filepath, 'wb') as cache_file:
                         pickle.dump(existing_data, cache_file)
                 except Exception as e:
-                    messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
+                    messagebox.showerror("Error", f"{self.localization.get('save_yaml_cache', 'Error occurred while saving cache: ')} {e}")
                 self.saving_window.destroy()
-                messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
+                messagebox.showinfo("Success", f"{self.localization.get('save_yaml_saved', 'Dictionary saved to ')} {output_file_path}.")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to save the file: {e}")
+                messagebox.showerror("Error", f"{self.localization.get('save_yaml_f', 'Failed to save the file: ')} {e}")
             finally:
                 self.saving_window.destroy()
         else:
             self.saving_window.destroy()
-            messagebox.showinfo("Cancelled", "Save operation cancelled.")
+            messagebox.showinfo("Cancelled", f"{self.localization.get('yaml_cancel', 'Save operation cancelled.')}")
     
     def export_json(self):
         if not self.dictionary:
-            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
+            messagebox.showinfo("Warning", f"{self.localization.get('save_json_m', 'No entries to save. Please add entries before saving.')}")
             return
 
         # Prompt user for output file path using a file dialog
         output_file_path = filedialog.asksaveasfilename(title="Save JSON File", defaultextension=".json", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
         if not output_file_path:
-            messagebox.showinfo("Cancelled", "Save operation cancelled.")
+            messagebox.showinfo("Cancelled", f"{self.localization.get('json_cancel', 'Save operation cancelled.')}")
             return
         
         if output_file_path:
@@ -2290,22 +2314,22 @@ class Dictionary(tk.Tk):
                 with gzip.open(cache_filepath, 'wb') as cache_file:
                     pickle.dump(data, cache_file)
             except Exception as e:
-                messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
+                messagebox.showerror("Error", f"{self.localization.get('json_cache_err', 'Error occurred while saving cache: ')} {e}")
 
-            messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
+            messagebox.showinfo("Success", f"{self.localization.get('json_save_dict', 'Dictionary saved to ')} {output_file_path}.")
         except Exception as e:
             self.saving_window.destroy()
-            messagebox.showerror("Error", f"An error occurred while saving the JSON file: {str(e)}")
+            messagebox.showerror("Error", f"{self.localization.get('json_err_save', 'An error occurred while saving the JSON file: ')} {str(e)}")
     
     def export_cmudict(self):
         if not self.dictionary:
-            messagebox.showinfo("Warning", "No entries to save. Please add entries before saving.")
+            messagebox.showinfo("Warning", f"{self.localization.get('save_cmudict_m', 'No entries to save. Please add entries before saving.')}")
             return
         # Prompt user for output file path using a file dialog
         output_file_path = filedialog.asksaveasfilename(title="Save CMUDict File", defaultextension=".txt", filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
 
         if not output_file_path:
-            messagebox.showinfo("Cancelled", "Save operation cancelled.")
+            messagebox.showinfo("Cancelled", f"{self.localization.get('cmudict_cancel', 'Save operation cancelled.')}")
             return
         # Prepare entries as formatted strings
         self.clear_entries()
@@ -2337,10 +2361,10 @@ class Dictionary(tk.Tk):
                 with gzip.open(cache_filepath, 'wb') as cache_file:
                     pickle.dump((self.dictionary, self.comments), cache_file)
             except Exception as e:
-                messagebox.showerror("Error", f"Error occurred while saving cache: {e}")
+                messagebox.showerror("Error", f"{self.localization.get('cmudict_cache_err', 'Error occurred while saving cache: ')} {e}")
 
             self.saving_window.destroy()
-        messagebox.showinfo("Success", f"Dictionary saved to {output_file_path}.")
+        messagebox.showinfo("Success", f"{self.localization.get('cmudict_saved_dict', 'Dictionary saved to ')} {output_file_path}.")
 
     def load_template(self, selection):
         # Build the full path to the template file
@@ -2363,7 +2387,7 @@ class Dictionary(tk.Tk):
             self.template_var.set(options[0])
             self.template_combobox.bind("<<ComboboxSelected>>", self.on_template_selected)
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to read the directory: {str(e)}")
+            messagebox.showerror("Error", f"{self.localization.get('temp_combo_err', 'Failed to read the directory: ')} {str(e)}")
 
     def on_template_selected(self, event):
         selected_template = self.template_var.get()
@@ -2388,7 +2412,7 @@ class Dictionary(tk.Tk):
 
     def process_symbols(self, symbols):
         if not all(isinstance(item, dict) for item in symbols):
-            messagebox.showerror("Error", "All entries must be dictionaries.")
+            messagebox.showerror("Error", f"{self.localization.get('process_sym_m', 'All entries must be dictionaries.')}")
             return
         self.symbols.clear()
         self.symbols_list = []
@@ -2396,7 +2420,7 @@ class Dictionary(tk.Tk):
             symbol = item.get('symbol')
             type_ = item.get('type')
             if symbol is None or type_ is None or not isinstance(type_, str):
-                messagebox.showerror("Error", "Each symbol entry must have a 'symbol' and a 'type' (string).")
+                messagebox.showerror("Error", f"{self.localization.get('process_sym_err', 'Each symbol entry must have a (symbol) and a (type) (string).')}")
                 return
             self.symbols[symbol] = [type_]
             self.symbols_list.append({'symbol': symbol, 'type': type_})
@@ -2427,8 +2451,22 @@ class Dictionary(tk.Tk):
         self.dictionary = new_dictionary
         self.update_entries_window()
     
+    def it_closes(self, event):
+        self.on_closing()
+    
     def on_closing(self):
-        self.quit()
+        # Check if self.entries_window is not None and still exists
+        if self.entries_window and self.entries_window.winfo_exists():
+            # Check if the dictionary is empty
+            if not self.dictionary:
+                self.quit()  # Quit the application if dictionary is empty
+            else:
+                # Ask for confirmation before quitting if dictionary is not empty
+                response = messagebox.askyesno("Notice", f"{self.localization.get('gui_close', 'There are entries in the viewer. Closing this window will exit the application. Are you sure you want to proceed?')}")
+                if response:
+                    self.quit()
+        else:
+            self.quit()
     
     def create_widgets(self):
         # Main notebook to contain tabs
@@ -2436,6 +2474,7 @@ class Dictionary(tk.Tk):
         self.notebook.grid(row=0, column=0, padx=15, pady=10, sticky="nsew")
         self.notebook.grid_columnconfigure(0, weight=1)
         self.notebook.grid_rowconfigure(0, weight=1)
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
         
         # Create the first tab which will contain existing widgets
         self.options_tab = ttk.Frame(self.notebook)
@@ -2462,7 +2501,7 @@ class Dictionary(tk.Tk):
         self.settings_widgets()
         self.other_widgets()
 
-        self.bind("<Escape>", self.on_closing())
+        self.bind("<Escape>", self.it_closes)
     
     def main_editor_widgets(self):
         # Options Frame setup
@@ -2715,7 +2754,7 @@ class Dictionary(tk.Tk):
         try:
             self.selected_g2p = config.get('Settings', 'g2p', fallback='Arpabet-Plus G2p').strip()
         except (configparser.NoSectionError, configparser.NoOptionError):
-            messagebox.showinfo("Notice", "No G2P Model Found")
+            messagebox.showinfo("Notice", f"{self.localization.get('g2p_m_err', 'No G2P Model Found')}")
             self.selected_g2p = 'Arpabet-Plus G2p'
         self.g2p_selection.set(self.selected_g2p)
 
@@ -2805,7 +2844,7 @@ class Dictionary(tk.Tk):
     
     def check_for_updates(self):
         if not self.is_connected():
-            messagebox.showerror("Internet Error", "No internet connection. Please check your connection and try again.")
+            messagebox.showerror("Internet Error", f"{self.localization.get('no_internet', 'No internet connection. Please check your connection and try again.')}")
             return
         try:
             self.response = requests.get("https://api.github.com/repos/Cadlaxa/OpenUtau-Dictionary-Editor/releases/latest", timeout=5)
@@ -2814,12 +2853,12 @@ class Dictionary(tk.Tk):
             self.latest_version_tag = self.latest_release['tag_name']
             self.latest_asset = self.latest_release['assets'][0]  # first asset is the zip file
             if self.latest_version_tag > self.current_version:
-                if messagebox.askyesno("Update Available", f"Version {self.latest_version_tag} is available. Do you want to update now?"):
+                if messagebox.askyesno("Update Available", f"Version {self.latest_version_tag} {self.localization.get('update_avail', 'is available. Do you want to update now?')}"):
                     self.download_and_install_update(self.latest_asset['browser_download_url'])
             else:
-                messagebox.showinfo("No Updates", "You are up to date!")
+                messagebox.showinfo("No Updates", f"{self.localization.get('up_to_date', 'You are up to date!')}")
         except requests.RequestException as e:
-            messagebox.showerror("Update Error", f"Could not check for updates: {str(e)}")
+            messagebox.showerror("Update Error", f"{self.localization.get('update_err_check', 'Could not check for updates: ')} {str(e)}")
     
     def get_remote_file_size(self, url):
         try:
@@ -2883,7 +2922,7 @@ class Dictionary(tk.Tk):
             shutil.rmtree(temp_extraction_path)
             
             # Offer to open the directory
-            if messagebox.showinfo("Application Close", "The application will now close. Please move the downloaded file manually."):
+            if messagebox.showinfo("Application Close", f"{self.localization.get('app_close', 'The application will now close. Please move the downloaded file manually.')}"):
                 if os.name == 'nt':
                     os.startfile(target_path)
                     self.destroy()
@@ -2893,11 +2932,11 @@ class Dictionary(tk.Tk):
                     self.destroy()
 
         except requests.RequestException as e:
-            messagebox.showerror("Download Error", f"Could not download the update: {str(e)}")
+            messagebox.showerror("Download Error", f"{self.localization.get('dl_cannot', 'Could not download the update: ')} {str(e)}")
         except zipfile.BadZipFile:
-            messagebox.showerror("Unzip Error", "The downloaded file was not a valid zip file.")
+            messagebox.showerror("Unzip Error", f"{self.localization.get('zip_extr', 'The downloaded file was not a valid zip file.')}")
         except Exception as e:
-            messagebox.showerror("Update Error", f"An error occurred during the update process: {str(e)}")
+            messagebox.showerror("Update Error", f"{self.localization.get('update_process_err', 'An error occurred during the update process: ')} {str(e)}")
 
     def init_localization(self):
         # Read the last used localization file path
@@ -2937,9 +2976,9 @@ class Dictionary(tk.Tk):
                     combobox.set(sorted_languages[0])
                 self.language_file_map = language_dict
             else:
-                messagebox.showinfo("No Localizations Found", "No valid YAML files found in 'Localizations' subfolder.")
+                messagebox.showinfo("No Localizations Found", f"{self.localization.get('localization_subfolder', 'No valid YAML files found in (Localizations) subfolder.')}")
         else:
-            messagebox.showinfo("No Localizations Found", "No 'Localizations' subfolder found or it is empty.")
+            messagebox.showinfo("No Localizations Found", f"{self.localization.get('loc_folder_err', 'No (Localizations) subfolder found or it is empty.')}")
 
     def load_localization(self, file_path):
         template_dir = self.read_template_directory()
@@ -2951,10 +2990,10 @@ class Dictionary(tk.Tk):
                     data = yaml.load(file) 
                 self.localization = data 
             except Exception as e:
-                messagebox.showerror("Localization Error", f"Failed to load localization file: {str(e)}")
+                messagebox.showerror("Localization Error", f"{self.localization.get('loc_load_err', 'Failed to load localization file: ')} {str(e)}")
                 self.localization = {}
         else:
-            messagebox.showinfo("No Localizations Found", "No 'Localizations' subfolder found or it is empty.")
+            messagebox.showinfo("No Localizations Found", f"{self.localization.get('load_loc_err', 'No (Localizations) subfolder found or it is empty.')}")
             self.localization = {}
 
     def localization_selected(self, event):
@@ -2973,7 +3012,7 @@ class Dictionary(tk.Tk):
             # Save the human-readable language name and the full path to the config
             self.save_localization_file_to_config(localization_file_path, selected_language)
         else:
-            messagebox.showinfo("Localization Error", "Selected language configuration not found.")
+            messagebox.showinfo("Localization Error", f"{self.localization.get('loc_s_config', 'Selected language configuration not found.')}")
 
     def save_localization_file_to_config(self, get_local, selected_local):
         config = configparser.ConfigParser()

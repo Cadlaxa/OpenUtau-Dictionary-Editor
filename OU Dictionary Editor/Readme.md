@@ -1,6 +1,6 @@
 # Changelog
 ---
-**`(7/--/24)`**
+**`(7/09/24)`**
 - Directly edit the entry with double click or `enter` button
 - Button for G2P suggestions on direct entry edit
 - Update Localizations (@zout)
@@ -12,10 +12,13 @@
 - New keyboard shortcut: [`Enter` = adding new entry/symbol, `Ctrl/Command + f` = search, `Ctrl/Command + h` = Replace window, `Esc` = close the windows]
 - New 5 themes: (`Sunny Yellow`, `Yellow Green`, `Payne's Gray`, `Sky Magenta`, `Light See Green`)
 - Update Localizations + New Localizations (`French`, `Russian`)
-- Show Context Menu on `Right-Click` (Only available to Entry Editor)
+- Add localizations for messageboxes
+- Show Context Menu on `Right-Click` (Only available on Entry Editor)
 - Fixed Blank combobox on the G2p suggestions
 - G2p Suggestion switch is now also saved on `settings.ini`
 - Set default theme and accent to `Mint Dark`
+- closing the `Main GUI` with a open `Entry Viewer` instance will prompt a message instead of closing the GUI immediately
+- Code fixes and cleanup
 
 **`(6/30/24)`**
 - Added G2p Suggestions
