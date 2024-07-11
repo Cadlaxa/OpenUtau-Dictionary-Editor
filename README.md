@@ -25,6 +25,10 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/4d4b6537-2622-4c2c-b13e-a9838037ee95)
 - You can add the graphemes and phonemes onto the Manual Entry section. Pressing the **`[Add Entry]`** button will add them to the Entries viewer. Using the **`[Delete Entry]`** button or the delete button on your keyboard will delete the selected entry. By clicking the entries first then `shift` + `click` to other entries will highlight them so that users can batch delete the entries using the **`[Delete Entry]`** button or the delete keyboard button.
 - `Note: If creating a dictionary from scratch, choose a yaml template from the combobox picker`
+## Using G2P for Faster Dictionary Editing/Creation
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d4f2a6e7-2df5-4736-884d-073bd8a2f8e6)
+- You can turn on `G2P Suggestions` on the `Others` tab and it will generate phonemes automatically when you type the words on the word entry
+- Currently the G2p models are the same with [Openutau](https://github.com/stakira/OpenUtau) + Millefeuille French G2p model by [UFR](https://utaufrance.com/)
 ## Using OpenUtau YAML Templates or Custom Template
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7079a076-8933-44e2-8428-939c52da749a)
 - Using the combobox picker, users can choose their OpenUtau YAML template to create their dictionary. Also, users can add their own templates by placing them in the **`[Templates]`** folder so the GUI toolkit will recognize the files via the templates.ini and use them for dictionary creation.
@@ -42,23 +46,30 @@ A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for Op
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6f37b8d4-dff0-4408-9a20-954a245eeeea)
 - In the Entries Viewer, users can interact with the entries by clicking, deleting, adding, and arranging the entries.
 - ### Clicking the Entries to Edit
-- ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/2b85b200-d856-479f-840c-239ed4e2ecd5)
+  ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/2b85b200-d856-479f-840c-239ed4e2ecd5)
  - Users can `Ctrl` + click and `Shift` + click to select multiple entries in the viewer.
+- ## Double Clicking the Cell for Direct Entry Edit
+  ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/ee821fe7-19cf-4967-8d3d-087915805b74)
+  - By double clicking the selected entry or `right-click > edit`, users can directly edit the entry.
 - ### Dragging the Entries to Change Their Positions
-- ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/470c74b9-aa64-4048-8ed2-6d29086ab50f)
+  ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d131a01c-e4e7-489d-aa57-37aaa6d406c9)
  - Users can drag and drop the entries to change their positions manually.
 ## Using the Regex Function
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/8623971c-fcd2-42ff-83a7-5cce092e9123)
 - Users can use the Regex search and replace to replace the grapheme or the phonemes.
-## Saving the YAML Dictionary
-![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/aed1949e-caa1-4eba-9633-5dcfdbf50d94)
-- There are currently 2 saving buttons to save the YAML dictionary into these formats:
- - Normal OU YAML
- - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/fcf731ff-9d06-420e-8705-063314ceccc2)
- - Diffsinger Format
- - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/20a075ef-b8b3-4d4c-a228-2b3d39736a09)
+## Saving and Importing the Dictionary
+- There are currently 3 formats for saving the created/edited dictionary:
+  - **`OpenUtau YAML Format`**
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/a5259363-fd50-4dc1-ad5b-446fb2faba4a)
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d90fe642-791d-4507-884b-dd6761631814)
+  - **`CMUDICT Format`**
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d50030be-793f-488a-9327-0e5933b05d0c)
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/f7720ada-6693-4c8d-a19f-0193d75f9711)
+  - **`Synthv Format`**
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d06fc7cf-3206-47e9-9c1d-c135d39d6663)
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/5396f87c-4481-46d2-b115-d77c066fb311)
 ## Changing Themes and Color Accents
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/54450466-81e2-4e2f-9cc2-135d97602121)
-- Users change the theme and color accents of the GUI toolkit as they please. Currently there are **`18`** color accents to choose from corresponding with their **`Light`** and **`dark`** theme.
+- Users change the theme and color accents of the GUI toolkit as they please. Currently there are **`23`** color accents to choose from corresponding with their **`Light`** and **`dark`** theme.
 ---
 - And other features of this GUI Toolkit such as automatic `' '` for the special characters for the grapheme and phonemes, Light mode and Dark mode theming, Entry sorting, Remove number accents, Make phonemes lowercase and more.
