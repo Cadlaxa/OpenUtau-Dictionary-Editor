@@ -1,7 +1,9 @@
 **English** *[華語](./README-zh.md)*
 # OpenUtau-Dictionary-Editor
 A python GUI toolkit for creating and editing Aesthetic YAML dictionaries for OpenUtau 🥰😍
-![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
+
+<img width="1920" alt="ou dict prev layout" src="https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6b533bcb-0e2e-4d67-98ff-b4cd6adb94a9">
+
 - To use this GUI Toolkit, for **`Windows`** I recommend using the portable **`.exe`** file and for **`MacOs`** and **`Linux`** I recommend using the **`.pyw`** file and use **`python version 3.10 and above`** **`3.9 and below`** is untested and it may not work properly.
 - installing the modules for **`MacOs`** and **`Linux`**:
   ```
