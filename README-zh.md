@@ -5,7 +5,7 @@
 
 # OpenUtau辭典編輯器
 用於為 OpenUtau 建立和編輯美感的 YAML 辭典的 Python GUI 工具包 🥰😍
-![ou dictionary editor  6D4460C](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7e28a808-cd52-4c85-a4d0-f2166e32d750)
+<img width="1920" alt="ou dict prev layout" src="https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6b533bcb-0e2e-4d67-98ff-b4cd6adb94a9">
 - 要使用此GUI 工具包，對於 **`Windows`** ，我建議使用便攜式 **`.exe`** 文件，對於 **`MacOs`** 和 **`Linux`** ，我建議使用 **`.pyw`** 檔案並使用 **`Python 版本 3.10 及以上`**，  **`Python 3.9 及以下版本`** 未經測試，可能無法正常運作。
 - 在 **`MacOs`** 和 **`Linux`** 安裝必要組件：
   ```
@@ -30,6 +30,10 @@
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/4d4b6537-2622-4c2c-b13e-a9838037ee95)
 - 您可以將字素和音素新增到手動輸入部分。 按 **`[新增條目]`** 按鈕會將它們新增至條目檢視器。 使用 **`[刪除條目]`** 按鈕或鍵盤上的刪除按鈕將刪除所選條目。 透過先點選條目，然後對其他條目進行「Shift」+鼠標左鍵，會將其反白顯示，以便使用者可以使用 **`[刪除條目]`** 按鈕或刪除鍵盤按鈕批次刪除條目。
 - `注意：如果從頭開始建立辭典，請從 [選擇模板] 中選擇 yaml 模板`
+## 使用 G2P 加快辭典編輯/建立速度
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d4f2a6e7-2df5-4736-884d-073bd8a2f8e6)
+- 您可以在“其他”標籤上開啟“G2P建議”，當您在單字條目上輸入單字時，它會自動產生音素
+- 目前 G2p 模型與 [Openutau](https://github.com/stakira/OpenUtau) + Millefeuille French G2p model by [UFR](https://utaufrance.com/) 相同
 ## 使用 OpenUtau YAML 模板或自訂模板
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/7079a076-8933-44e2-8428-939c52da749a)
 - 使用 [選擇模板] ，使用者可以選擇 OpenUtau YAML 模板來建立辭典。 此外，使用者還可以新增自己的模板，將其放置在 **`[Templates]`** 資料夾中，以便 GUI 工具包將透過 templates.ini 識別這些檔案並使用它們來建立辭典。
@@ -47,24 +51,31 @@
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/6f37b8d4-dff0-4408-9a20-954a245eeeea)
 - 在條目檢視器中，使用者可以透過點擊、刪除、新增和排列條目來與條目互動。
 - ### 點擊要編輯的條目
-- ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/2b85b200-d856-479f-840c-239ed4e2ecd5)
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/2b85b200-d856-479f-840c-239ed4e2ecd5)
  - 使用者可以透過「Ctrl」+ 鼠標左鍵和「Shift」+ 鼠標左鍵來選擇檢視器中的多個條目。
+- ## 雙擊儲存格直接輸入編輯
+  ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/ee821fe7-19cf-4967-8d3d-087915805b74)
+  - 透過雙擊所選條目或“右鍵>編輯”，使用者可以直接編輯該條目。
 - ### 拖曳條目以更改其位置
-- ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/470c74b9-aa64-4048-8ed2-6d29086ab50f)
+![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d131a01c-e4e7-489d-aa57-37aaa6d406c9)
  - 使用者可以拖放條目以手動更改其位置。
 ## 使用正規表示式函數
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/8623971c-fcd2-42ff-83a7-5cce092e9123)
 - 使用者可以使用正規表示式搜尋和替換來取代字素或音素。
-## Saving the YAML Dictionary
-![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/aed1949e-caa1-4eba-9633-5dcfdbf50d94)
-- 目前有 2 個儲存按鈕可將 YAML 辭典儲存為以下格式：
- - 普通 OU YAML
- - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/fcf731ff-9d06-420e-8705-063314ceccc2)
- - Diffsinger 格式
- - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/20a075ef-b8b3-4d4c-a228-2b3d39736a09)
+## 保存和導入辭典
+- 目前創建/編輯的辭典有3種保存格式：
+  - **`OpenUtau YAML 格式`**
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/a5259363-fd50-4dc1-ad5b-446fb2faba4a)
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d90fe642-791d-4507-884b-dd6761631814)
+  - **`CMUDICT 格式`**
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d50030be-793f-488a-9327-0e5933b05d0c)
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/f7720ada-6693-4c8d-a19f-0193d75f9711)
+  - **`Synthv 格式`**
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/d06fc7cf-3206-47e9-9c1d-c135d39d6663)
+  - ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/5396f87c-4481-46d2-b115-d77c066fb311)
 ## 改變主題和顏色色調
 ![image](https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/assets/92255161/54450466-81e2-4e2f-9cc2-135d97602121)
-- 使用者可以隨意更改 GUI 工具包的主題和顏色。 目前有 **`18`** 顏色可供選擇，與其 **`淺色`** 和 **`深色`** 主題相對應。
+- 使用者可以隨意更改 GUI 工具包的主題和顏色。 目前有 **`23`** 顏色可供選擇，與其 **`淺色`** 和 **`深色`** 主題相對應。
 ---
 - 此 GUI 工具包的其他功能包括自動為字素和音素的特殊字元`' '`、淺色模式和深色模式主題、條目排序、刪除數字重音符號、使音素小寫等等。
 
