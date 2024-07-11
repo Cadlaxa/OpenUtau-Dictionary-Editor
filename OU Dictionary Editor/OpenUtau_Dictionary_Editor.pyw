@@ -117,7 +117,7 @@ class Dictionary(tk.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.1.5"
+        self.current_version = "v1.1.6"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -2142,7 +2142,8 @@ class Dictionary(tk.Tk):
     
     def save_window(self):
         # Create a toplevel window to inform the user that the file is being saved
-        #self.saving_window = Toplevel()
+        self.saving_window = Toplevel(self)
+        self.saving_window.transient(self)
         self.saving_window.overrideredirect(True)  # Remove window decorations
         self.saving_window.attributes("-topmost", True)
         # Set the desired width and height
@@ -2788,7 +2789,7 @@ class Dictionary(tk.Tk):
                 'Arpabet-Plus G2p': ('Assets.G2p.arpabet_plus', 'ArpabetPlusG2p'),
                 'French G2p': ('Assets.G2p.frenchG2p', 'FrenchG2p'),
                 'German G2p': ('Assets.G2p.germanG2p', 'GermanG2p'),
-                'Italian G2p': ('Assets.G2p.italianG2p', 'ItalianG2p'),
+                'Italian G2p': ('', 'ItalianG2p'),
                 'Japanese Monophone G2p': ('Assets.G2p.jp_mono', 'JapaneseMonophoneG2p'),
                 'Millefeuille (French) G2p': ('Assets.G2p.millefeuilleG2p', 'MillefeuilleG2p'),
                 'Portuguese G2p': ('Assets.G2p.portugueseG2p', 'PortugueseG2p'),

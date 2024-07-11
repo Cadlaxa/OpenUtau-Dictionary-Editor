@@ -17,7 +17,7 @@
 - Fixed Blank combobox on the G2p suggestions
 - G2p Suggestion switch is now also saved on `settings.ini`
 - Set default theme and accent to `Mint Dark`
-- closing the `Main GUI` with a open `Entry Viewer` instance will prompt a message instead of closing the GUI immediately
+- Closing the `Main GUI` with an open `Entry Viewer` instance will prompt a message instead of closing the GUI immediately
 - Code fixes and cleanup
 
 **`(6/30/24)`**
