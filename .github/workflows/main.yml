@@ -1,6 +1,7 @@
-name: Build with PyInstaller
+name: Build and Test OpenUtau
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -9,113 +10,100 @@ on:
       - main
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build-and-test:
+    runs-on: ${{ matrix.os.runs-on }}
+
+    strategy:
+      matrix:
+        os:
+          - runs-on: windows-latest
+            arch: win-x64
+            rid: win-x64
+          - runs-on: ubuntu-latest
+            arch: linux-x64
+            rid: linux-x64
+          - runs-on: macos-latest
+            arch: osx-x64
+            rid: osx-x64
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Steps to build and package your application for different platforms
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: '3.11'  # Specify your Python version
+          python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install dependencies and build
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          if (Test-Path "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt") { pip install -r "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt" }
+          if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
 
-      - name: Create Executable
-        run: pyinstaller --onefile --console --icon "OU Dictionary Editor\Assets\icon.ico" `
-                         --hidden-import "Assets.G2p.arpabet_plus" `
-                         --hidden-import "Assets.G2p.frenchG2p" `
-                         --hidden-import "Assets.G2p.germanG2p" `
-                         --hidden-import "Assets.G2p.italianG2p" `
-                         --hidden-import "Assets.G2p.jp_mono" `
-                         --hidden-import "Assets.G2p.millefeuilleG2p" `
-                         --hidden-import "Assets.G2p.portugueseG2p" `
-                         --hidden-import "Assets.G2p.russianG2p" `
-                         --hidden-import "Assets.G2p.spanishG2p" `
-                         "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
-      
-      - name: Upload Windows Artifact
-        uses: actions/upload-artifact@v2
+          # Build for Windows
+          if [ ${{ matrix.os.arch }} == 'win-x64' ]; then
+            pyinstaller --onefile --console \
+                        --hidden-import "Assets.G2p.arpabet_plus" \
+                        --hidden-import "Assets.G2p.frenchG2p" \
+                        --hidden-import "Assets.G2p.germanG2p" \
+                        --hidden-import "Assets.G2p.italianG2p" \
+                        --hidden-import "Assets.G2p.jp_mono" \
+                        --hidden-import "Assets.G2p.millefeuilleG2p" \
+                        --hidden-import "Assets.G2p.portugueseG2p" \
+                        --hidden-import "Assets.G2p.russianG2p" \
+                        --hidden-import "Assets.G2p.spanishG2p" \
+                        "OpenUtau_Dictionary_Editor.pyw"
+
+          # Build for Linux
+          elif [ ${{ matrix.os.arch }} == 'linux-x64' ]; then
+            pyinstaller --onefile --console \
+                        --hidden-import "Assets.G2p.arpabet_plus" \
+                        --hidden-import "Assets.G2p.frenchG2p" \
+                        --hidden-import "Assets.G2p.germanG2p" \
+                        --hidden-import "Assets.G2p.italianG2p" \
+                        --hidden-import "Assets.G2p.jp_mono" \
+                        --hidden-import "Assets.G2p.millefeuilleG2p" \
+                        --hidden-import "Assets.G2p.portugueseG2p" \
+                        --hidden-import "Assets.G2p.russianG2p" \
+                        --hidden-import "Assets.G2p.spanishG2p" \
+                        "OpenUtau_Dictionary_Editor.pyw"
+
+          # Build for macOS
+          elif [ ${{ matrix.os.arch }} == 'osx-x64' ]; then
+            pyinstaller --onefile --console \
+                        --hidden-import "Assets.G2p.arpabet_plus" \
+                        --hidden-import "Assets.G2p.frenchG2p" \
+                        --hidden-import "Assets.G2p.germanG2p" \
+                        --hidden-import "Assets.G2p.italianG2p" \
+                        --hidden-import "Assets.G2p.jp_mono" \
+                        --hidden-import "Assets.G2p.millefeuilleG2p" \
+                        --hidden-import "Assets.G2p.portugueseG2p" \
+                        --hidden-import "Assets.G2p.russianG2p" \
+                        --hidden-import "Assets.G2p.spanishG2p" \
+                        "OpenUtau_Dictionary_Editor.pyw"
+
+      # Upload artifacts based on OS
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: OU-Dict-Editor-windows
-          path: dist/OpenUtau_Dictionary_Editor.exe
+          name: OpenUtau-Dictionary-Editor-${{ matrix.os.arch }}
+          path: |
+            # Windows and Linux artifacts
+            if [ ${{ matrix.os.arch }} != 'osx-x64' ]; then
+              echo "bin/${{ matrix.os.arch }}"
+            else
+              # macOS artifact
+              echo "OpenUtau-Dictionary-Editor-osx-x64.dmg"
+            fi
 
-  build-linux:
+  download-artifact:
+    needs: build-and-test
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Download artifact
+        uses: actions/download-artifact@v4
         with:
-          python-version: '3.11'  # Specify your Python version
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
-
-      - name: Create Executable
-        run: pyinstaller --onefile --console `
-                         --hidden-import "Assets.G2p.arpabet_plus" `
-                         --hidden-import "Assets.G2p.frenchG2p" `
-                         --hidden-import "Assets.G2p.germanG2p" `
-                         --hidden-import "Assets.G2p.italianG2p" `
-                         --hidden-import "Assets.G2p.jp_mono" `
-                         --hidden-import "Assets.G2p.millefeuilleG2p" `
-                         --hidden-import "Assets.G2p.portugueseG2p" `
-                         --hidden-import "Assets.G2p.russianG2p" `
-                         --hidden-import "Assets.G2p.spanishG2p" `
-                         "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
-
-      - name: Upload Linux Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: OU-Dict-Editor-linux
-          path: dist/OpenUtau_Dictionary_Editor
-
-  build-macos:
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.11'  # Specify your Python version
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller
-          if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
-
-      - name: Create Executable
-        run: pyinstaller --onefile --console `
-                         --hidden-import "Assets.G2p.arpabet_plus" `
-                         --hidden-import "Assets.G2p.frenchG2p" `
-                         --hidden-import "Assets.G2p.germanG2p" `
-                         --hidden-import "Assets.G2p.italianG2p" `
-                         --hidden-import "Assets.G2p.jp_mono" `
-                         --hidden-import "Assets.G2p.millefeuilleG2p" `
-                         --hidden-import "Assets.G2p.portugueseG2p" `
-                         --hidden-import "Assets.G2p.russianG2p" `
-                         --hidden-import "Assets.G2p.spanishG2p" `
-                         "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
-
-      - name: Upload macOS Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: OU-Dict-Editor-macos
-          path: dist/OpenUtau_Dictionary_Editor.app
+          name: OpenUtau-Dictionary-Editor
+          path: artifacts
