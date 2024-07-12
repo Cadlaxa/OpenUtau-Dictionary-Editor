@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: '3.11'  # Specify your Python version
 
@@ -25,21 +25,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          if [ -f "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt"; fi
+          if (Test-Path "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt") { pip install -r "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt" }
 
       - name: Create Executable
-        run: |
-          pyinstaller --onefile --console --icon "OpenUtau-Dictionary-Editor\OU Dictionary Editor\Assets\icon.ico" \
-                      --hidden-import "Assets.G2p.arpabet_plus" \
-                      --hidden-import "Assets.G2p.frenchG2p" \
-                      --hidden-import "Assets.G2p.germanG2p" \
-                      --hidden-import "Assets.G2p.italianG2p" \
-                      --hidden-import "Assets.G2p.jp_mono" \
-                      --hidden-import "Assets.G2p.millefeuilleG2p" \
-                      --hidden-import "Assets.G2p.portugueseG2p" \
-                      --hidden-import "Assets.G2p.russianG2p" \
-                      --hidden-import "Assets.G2p.spanishG2p" \
-                      "OpenUtau-Dictionary-Editor\OU Dictionary Editor\OpenUtau_Dictionary_Editor.pyw"
+        run: pyinstaller --onefile --console --icon "OpenUtau-Dictionary-Editor\OU Dictionary Editor\Assets\icon.ico" `
+                         --hidden-import "Assets.G2p.arpabet_plus" `
+                         --hidden-import "Assets.G2p.frenchG2p" `
+                         --hidden-import "Assets.G2p.germanG2p" `
+                         --hidden-import "Assets.G2p.italianG2p" `
+                         --hidden-import "Assets.G2p.jp_mono" `
+                         --hidden-import "Assets.G2p.millefeuilleG2p" `
+                         --hidden-import "Assets.G2p.portugueseG2p" `
+                         --hidden-import "Assets.G2p.russianG2p" `
+                         --hidden-import "Assets.G2p.spanishG2p" `
+                         "OpenUtau-Dictionary-Editor\OU Dictionary Editor\OpenUtau_Dictionary_Editor.pyw"
 
   build-linux:
     runs-on: ubuntu-latest
@@ -49,7 +48,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: '3.11'  # Specify your Python version
 
@@ -60,18 +59,17 @@ jobs:
           if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
 
       - name: Create Executable
-        run: |
-          pyinstaller --onefile --console \
-                      --hidden-import "Assets.G2p.arpabet_plus" \
-                      --hidden-import "Assets.G2p.frenchG2p" \
-                      --hidden-import "Assets.G2p.germanG2p" \
-                      --hidden-import "Assets.G2p.italianG2p" \
-                      --hidden-import "Assets.G2p.jp_mono" \
-                      --hidden-import "Assets.G2p.millefeuilleG2p" \
-                      --hidden-import "Assets.G2p.portugueseG2p" \
-                      --hidden-import "Assets.G2p.russianG2p" \
-                      --hidden-import "Assets.G2p.spanishG2p" \
-                      "OpenUtau_Dictionary_Editor.pyw"
+        run: pyinstaller --onefile --console `
+                         --hidden-import "Assets.G2p.arpabet_plus" `
+                         --hidden-import "Assets.G2p.frenchG2p" `
+                         --hidden-import "Assets.G2p.germanG2p" `
+                         --hidden-import "Assets.G2p.italianG2p" `
+                         --hidden-import "Assets.G2p.jp_mono" `
+                         --hidden-import "Assets.G2p.millefeuilleG2p" `
+                         --hidden-import "Assets.G2p.portugueseG2p" `
+                         --hidden-import "Assets.G2p.russianG2p" `
+                         --hidden-import "Assets.G2p.spanishG2p" `
+                         "OpenUtau-Dictionary-Editor\OU Dictionary Editor\OpenUtau_Dictionary_Editor.pyw"
 
   build-macos:
     runs-on: macos-latest
@@ -81,7 +79,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: '3.11'  # Specify your Python version
 
@@ -92,15 +90,14 @@ jobs:
           if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
 
       - name: Create Executable
-        run: |
-          pyinstaller --onefile --console \
-                      --hidden-import "Assets.G2p.arpabet_plus" \
-                      --hidden-import "Assets.G2p.frenchG2p" \
-                      --hidden-import "Assets.G2p.germanG2p" \
-                      --hidden-import "Assets.G2p.italianG2p" \
-                      --hidden-import "Assets.G2p.jp_mono" \
-                      --hidden-import "Assets.G2p.millefeuilleG2p" \
-                      --hidden-import "Assets.G2p.portugueseG2p" \
-                      --hidden-import "Assets.G2p.russianG2p" \
-                      --hidden-import "Assets.G2p.spanishG2p" \
-                      "OpenUtau_Dictionary_Editor.pyw"
+        run: pyinstaller --onefile --console `
+                         --hidden-import "Assets.G2p.arpabet_plus" `
+                         --hidden-import "Assets.G2p.frenchG2p" `
+                         --hidden-import "Assets.G2p.germanG2p" `
+                         --hidden-import "Assets.G2p.italianG2p" `
+                         --hidden-import "Assets.G2p.jp_mono" `
+                         --hidden-import "Assets.G2p.millefeuilleG2p" `
+                         --hidden-import "Assets.G2p.portugueseG2p" `
+                         --hidden-import "Assets.G2p.russianG2p" `
+                         --hidden-import "Assets.G2p.spanishG2p" `
+                         "OpenUtau-Dictionary-Editor\OU Dictionary Editor\OpenUtau_Dictionary_Editor.pyw"
