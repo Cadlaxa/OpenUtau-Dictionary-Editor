@@ -20,7 +20,7 @@ jobs:
         uses: Martin005/pyinstaller-action@v1.2.0
         with:
           python_ver: '3.11'
-          spec: ''
+          spec: 'OpenUtau-Dictionary-Editor\OpenUtau_Dictionary_Editor.spec'
           requirements: 'OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt'
           options: --onefile --console --icon "OpenUtau-Dictionary-Editor\OU Dictionary Editor\Assets\icon.ico" \
                    --hidden-import "Assets.G2p.arpabet_plus" \
@@ -45,7 +45,7 @@ jobs:
         uses: Martin005/pyinstaller-action@v1.2.0
         with:
           python_ver: '3.11'
-          spec: ''
+          spec: 'OpenUtau-Dictionary-Editor\OpenUtau_Dictionary_Editor.spec'
           requirements: 'OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt'
           options: --onefile --console \
                    --hidden-import "Assets.G2p.arpabet_plus" \
@@ -70,7 +70,7 @@ jobs:
         uses: Martin005/pyinstaller-action@v1.2.0
         with:
           python_ver: '3.11'
-          spec: ''
+          spec: 'OpenUtau-Dictionary-Editor\OpenUtau_Dictionary_Editor.spec'
           requirements: 'OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt'
           options: --onefile --console \
                    --hidden-import "Assets.G2p.arpabet_plus" \
