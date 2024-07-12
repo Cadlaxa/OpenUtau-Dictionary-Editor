@@ -22,6 +22,7 @@ jobs:
           python_ver: '3.11'
           spec: 'OpenUtau-Dictionary-Editor\OpenUtau_Dictionary_Editor.spec'
           requirements: 'OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt'
+          upload_exe_with_name: 'OpenUtau_Dictionary_Editor'
           options: --onefile --console --icon "OpenUtau-Dictionary-Editor\OU Dictionary Editor\Assets\icon.ico" \
                    --hidden-import "Assets.G2p.arpabet_plus" \
                    --hidden-import "Assets.G2p.frenchG2p" \
@@ -47,6 +48,7 @@ jobs:
           python_ver: '3.11'
           spec: 'OpenUtau-Dictionary-Editor\OpenUtau_Dictionary_Editor.spec'
           requirements: 'OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt'
+          upload_exe_with_name: 'OpenUtau_Dictionary_Editor'
           options: --onefile --console \
                    --hidden-import "Assets.G2p.arpabet_plus" \
                    --hidden-import "Assets.G2p.frenchG2p" \
@@ -72,6 +74,7 @@ jobs:
           python_ver: '3.11'
           spec: 'OpenUtau-Dictionary-Editor\OpenUtau_Dictionary_Editor.spec'
           requirements: 'OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt'
+          upload_exe_with_name: 'OpenUtau_Dictionary_Editor'
           options: --onefile --console \
                    --hidden-import "Assets.G2p.arpabet_plus" \
                    --hidden-import "Assets.G2p.frenchG2p" \
