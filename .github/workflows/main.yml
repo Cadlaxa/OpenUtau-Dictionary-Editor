@@ -1,4 +1,4 @@
-name: Build and Release with PyInstaller
+name: Build with PyInstaller
 
 on:
   push:
@@ -28,33 +28,17 @@ jobs:
           if (Test-Path "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt") { pip install -r "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt" }
 
       - name: Create Executable
-        run: |
-          pyinstaller --onefile --console --icon "OU Dictionary Editor\Assets\icon.ico" `
-                      --hidden-import "Assets.G2p.arpabet_plus" `
-                      --hidden-import "Assets.G2p.frenchG2p" `
-                      --hidden-import "Assets.G2p.germanG2p" `
-                      --hidden-import "Assets.G2p.italianG2p" `
-                      --hidden-import "Assets.G2p.jp_mono" `
-                      --hidden-import "Assets.G2p.millefeuilleG2p" `
-                      --hidden-import "Assets.G2p.portugueseG2p" `
-                      --hidden-import "Assets.G2p.russianG2p" `
-                      --hidden-import "Assets.G2p.spanishG2p" `
-                      "OpenUtau-Dictionary-Editor\OU Dictionary Editor\OpenUtau_Dictionary_Editor.pyw"
-
-      - name: Package Executable
-        run: |
-          echo "Creating package..."
-          mkdir -p "OU Dictionary Editor"
-          cp -r "dist/OpenUtau_Dictionary_Editor.exe" "OU Dictionary Editor/"
-          zip -r "OU-Dict-Editor-windows.zip" "OU Dictionary Editor/"
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: OU-Dict-Editor-windows.zip
-          asset_name: OU-Dict-Editor-windows.zip
-          asset_content_type: application/zip
+        run: pyinstaller --onefile --console --icon "OU Dictionary Editor\Assets\icon.ico" `
+                         --hidden-import "Assets.G2p.arpabet_plus" `
+                         --hidden-import "Assets.G2p.frenchG2p" `
+                         --hidden-import "Assets.G2p.germanG2p" `
+                         --hidden-import "Assets.G2p.italianG2p" `
+                         --hidden-import "Assets.G2p.jp_mono" `
+                         --hidden-import "Assets.G2p.millefeuilleG2p" `
+                         --hidden-import "Assets.G2p.portugueseG2p" `
+                         --hidden-import "Assets.G2p.russianG2p" `
+                         --hidden-import "Assets.G2p.spanishG2p" `
+                         "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
 
   build-linux:
     runs-on: ubuntu-latest
@@ -75,33 +59,17 @@ jobs:
           if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
 
       - name: Create Executable
-        run: |
-          pyinstaller --onefile --console `
-                      --hidden-import "Assets.G2p.arpabet_plus" `
-                      --hidden-import "Assets.G2p.frenchG2p" `
-                      --hidden-import "Assets.G2p.germanG2p" `
-                      --hidden-import "Assets.G2p.italianG2p" `
-                      --hidden-import "Assets.G2p.jp_mono" `
-                      --hidden-import "Assets.G2p.millefeuilleG2p" `
-                      --hidden-import "Assets.G2p.portugueseG2p" `
-                      --hidden-import "Assets.G2p.russianG2p" `
-                      --hidden-import "Assets.G2p.spanishG2p" `
-                      "OpenUtau_Dictionary_Editor.pyw"
-
-      - name: Package Executable
-        run: |
-          echo "Creating package..."
-          mkdir -p "OU Dictionary Editor"
-          cp -r "dist/OpenUtau_Dictionary_Editor" "OU Dictionary Editor/"
-          zip -r "OU-Dict-Editor-linux.zip" "OU Dictionary Editor/"
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: OU-Dict-Editor-linux.zip
-          asset_name: OU-Dict-Editor-linux.zip
-          asset_content_type: application/zip
+        run: pyinstaller --onefile --console `
+                         --hidden-import "Assets.G2p.arpabet_plus" `
+                         --hidden-import "Assets.G2p.frenchG2p" `
+                         --hidden-import "Assets.G2p.germanG2p" `
+                         --hidden-import "Assets.G2p.italianG2p" `
+                         --hidden-import "Assets.G2p.jp_mono" `
+                         --hidden-import "Assets.G2p.millefeuilleG2p" `
+                         --hidden-import "Assets.G2p.portugueseG2p" `
+                         --hidden-import "Assets.G2p.russianG2p" `
+                         --hidden-import "Assets.G2p.spanishG2p" `
+                         "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
 
   build-macos:
     runs-on: macos-latest
@@ -122,30 +90,14 @@ jobs:
           if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
 
       - name: Create Executable
-        run: |
-          pyinstaller --onefile --console `
-                      --hidden-import "Assets.G2p.arpabet_plus" `
-                      --hidden-import "Assets.G2p.frenchG2p" `
-                      --hidden-import "Assets.G2p.germanG2p" `
-                      --hidden-import "Assets.G2p.italianG2p" `
-                      --hidden-import "Assets.G2p.jp_mono" `
-                      --hidden-import "Assets.G2p.millefeuilleG2p" `
-                      --hidden-import "Assets.G2p.portugueseG2p" `
-                      --hidden-import "Assets.G2p.russianG2p" `
-                      --hidden-import "Assets.G2p.spanishG2p" `
-                      "OpenUtau_Dictionary_Editor.pyw"
-
-      - name: Package Executable
-        run: |
-          echo "Creating package..."
-          mkdir -p "OU Dictionary Editor"
-          cp -r "dist/OpenUtau_Dictionary_Editor.app" "OU Dictionary Editor/"
-          zip -r "OU-Dict-Editor-macos.zip" "OU Dictionary Editor/"
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: OU-Dict-Editor-macos.zip
-          asset_name: OU-Dict-Editor-macos.zip
-          asset_content_type: application/zip
+        run: pyinstaller --onefile --console `
+                         --hidden-import "Assets.G2p.arpabet_plus" `
+                         --hidden-import "Assets.G2p.frenchG2p" `
+                         --hidden-import "Assets.G2p.germanG2p" `
+                         --hidden-import "Assets.G2p.italianG2p" `
+                         --hidden-import "Assets.G2p.jp_mono" `
+                         --hidden-import "Assets.G2p.millefeuilleG2p" `
+                         --hidden-import "Assets.G2p.portugueseG2p" `
+                         --hidden-import "Assets.G2p.russianG2p" `
+                         --hidden-import "Assets.G2p.spanishG2p" `
+                         "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
