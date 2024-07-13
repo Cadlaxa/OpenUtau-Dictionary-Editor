@@ -3,6 +3,7 @@
 **`(7/--/24)`**
 - Fixed Cmudict error message to show the errored line instead of the word only
 - Update Localizations
+- Revamp `Light Mode` color accents to certain ui elements
 
 
 **`(7/09/24)`**
