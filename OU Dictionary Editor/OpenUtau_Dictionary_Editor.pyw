@@ -476,10 +476,10 @@ class Dictionary(tk.Tk):
         dictionary = {}
         comments = []  # Store comments here if needed
         error_occurred = False
-        for line in lines:
+        for line_number, line in enumerate(lines, start=1):
             try:
                 if line.strip().startswith(';;;'):
-                    comments.append(line.strip()[3:]) 
+                    comments.append(line.strip()[3:])
                     continue
 
                 parts = line.strip().split('  ')  # Two spaces separate the key and values
@@ -488,10 +488,10 @@ class Dictionary(tk.Tk):
                     dictionary[grapheme] = phonemes
                 else:
                     self.loading_window.destroy()
-                    raise ValueError(f"Invalid format in line: {line.strip()}")
+                    raise ValueError(f"{self.localization.get('cmudict_invL', 'Invalid format in line:')} {line.strip()}")
             except Exception as e:
                 self.loading_window.destroy()
-                messagebox.showerror("Error", f"{self.localization.get('load_cmudict_procc', 'Error occurred while processing line ')} '{line.strip()}'")
+                messagebox.showerror("Error", f"{self.localization.get('load_cmudict_procc', 'Error occurred while processing line')} {line_number}: '{line.strip()}'\n{str(e)}")
                 error_occurred = True
                 break
 
@@ -610,7 +610,7 @@ class Dictionary(tk.Tk):
                         data = pickle.load(cache_file)
                 except Exception as e:
                     self.loading_window.destroy()
-                    raise ValueError(f"Error occurred while reading from cache: {e}")
+                    raise ValueError(f"{self.localization.get('yaml_cache_rv', 'Error occurred while reading from cache:')} {e}")
             else:
                 yaml = YAML(typ='safe')
                 yaml.prefix_colon = True
@@ -619,14 +619,14 @@ class Dictionary(tk.Tk):
                     data = yaml.load(file)
                     if data is None:
                         self.loading_window.destroy()
-                        raise ValueError("The YAML file is empty or has an incorrect format.")
+                        raise ValueError({self.localization.get('yaml_inc_format_rv', 'The YAML file is empty or has an incorrect format.')})
                 # Save to cache
                 try:
                     with gzip.open(cache_filepath, 'wb') as cache_file:
                         pickle.dump(data, cache_file)
                 except Exception as e:
                     self.loading_window.destroy()
-                    raise ValueError(f"Error occurred while saving to cache: {e}")
+                    raise ValueError(f"{self.localization.get('yaml_err_save_rv', 'Error occurred while saving to cache:')} {e}")
             # Load entries
             entries = data.get('entries', [])
             if not isinstance(entries, list):
@@ -642,12 +642,12 @@ class Dictionary(tk.Tk):
             self.data_list = []  # Initialize data_list
             for item in entries:
                 if not isinstance(item, dict):
-                    raise ValueError("Entry format incorrect. Each entry must be a dictionary.")
+                    raise ValueError({self.localization.get('yaml_dict_fromat_rv', 'Entry format incorrect. Each entry must be a dictionary.')})
                 grapheme = item.get('grapheme')
                 phonemes = item.get('phonemes', [])
                 if grapheme is None or not isinstance(phonemes, list):
                     self.loading_window.destroy()
-                    raise ValueError("Each entry must have a 'grapheme' key and a list of 'phonemes'.")
+                    raise ValueError({self.localization.get('yaml_type_rv', 'Each entry must have a (grapheme) key and a list of (phonemes).')})
                 self.dictionary[grapheme] = phonemes
                 # Append the loaded data to data_list
                 self.data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
@@ -660,15 +660,15 @@ class Dictionary(tk.Tk):
                 for item in symbols:
                     if not isinstance(item, dict):
                         self.loading_window.destroy()
-                        raise ValueError("Symbol entry format incorrect. Each entry must be a dictionary.")
+                        raise ValueError({self.localization.get('sym_inc_rv', 'Symbol entry format incorrect. Each entry must be a dictionary.')})
                     symbol = item.get('symbol')
                     type_ = item.get('type')
                     if symbol is None or type_ is None:
                         self.loading_window.destroy()
-                        raise ValueError("Symbol entry is incomplete.")
+                        raise ValueError({self.localization.get('sym_ent_inc_rv', 'Symbol entry is incomplete.')})
                     if not isinstance(type_, str):
                         self.loading_window.destroy()
-                        raise ValueError("Type must be a string representing the category.")
+                        raise ValueError({self.localization.get('sym_str_rv', 'Type must be a string representing the category.')})
                     self.symbols[symbol] = [type_]
                     # Append the loaded data to symbols_list
                     self.symbols_list.append({'symbol': symbol, 'type': [type_]})
@@ -695,7 +695,7 @@ class Dictionary(tk.Tk):
                     data = yaml.load(file)
                     if data is None:
                         self.loading_window.destroy()
-                        raise ValueError("The YAML file is empty or has an incorrect format.")
+                        raise ValueError({self.localization.get('yaml_merge_empt_rv', 'The YAML file is empty or has an incorrect format.')})
 
                     entries = []
                     if 'entries' in data and isinstance(data['entries'], list):
