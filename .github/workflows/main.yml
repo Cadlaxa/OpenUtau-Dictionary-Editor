@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -25,7 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          if (Test-Path "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt") { pip install -r "OpenUtau-Dictionary-Editor\OU Dictionary Editor\requirements.txt" }
+          if (Test-Path "OU Dictionary Editor\requirements.txt") { pip install -r "OU Dictionary Editor\requirements.txt" }
 
       - name: Create Executable
         run: pyinstaller --onefile --console --icon "OU Dictionary Editor\Assets\icon.ico" `
@@ -38,6 +38,7 @@ jobs:
                          --hidden-import "Assets.G2p.portugueseG2p" `
                          --hidden-import "Assets.G2p.russianG2p" `
                          --hidden-import "Assets.G2p.spanishG2p" `
+                         --hidden-import "Assets.modules.sv_ttk" `
                          "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
       
       - name: Upload Windows Artifact
@@ -51,7 +52,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -62,10 +63,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
+          if [ -f "OU Dictionary Editor/requirements.txt" ]; then pip install -r "OU Dictionary Editor/requirements.txt"; fi
 
       - name: Create Executable
-        run: pyinstaller --onefile --console `
+        run: pyinstaller --onefile --console --icon "OU Dictionary Editor\Assets\icon.png" `
                          --hidden-import "Assets.G2p.arpabet_plus" `
                          --hidden-import "Assets.G2p.frenchG2p" `
                          --hidden-import "Assets.G2p.germanG2p" `
@@ -75,6 +76,7 @@ jobs:
                          --hidden-import "Assets.G2p.portugueseG2p" `
                          --hidden-import "Assets.G2p.russianG2p" `
                          --hidden-import "Assets.G2p.spanishG2p" `
+                         --hidden-import "Assets.modules.sv_ttk" `
                          "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
 
       - name: Upload Linux Artifact
@@ -88,7 +90,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -99,10 +101,10 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          if [ -f "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt" ]; then pip install -r "OpenUtau-Dictionary-Editor/OU Dictionary Editor/requirements.txt"; fi
+          if [ -f "OU Dictionary Editor/requirements.txt" ]; then pip install -r "OU Dictionary Editor/requirements.txt"; fi
 
       - name: Create Executable
-        run: pyinstaller --onefile --console `
+        run: pyinstaller --onefile --console --icon "OU Dictionary Editor\Assets\icon.png" `
                          --hidden-import "Assets.G2p.arpabet_plus" `
                          --hidden-import "Assets.G2p.frenchG2p" `
                          --hidden-import "Assets.G2p.germanG2p" `
@@ -112,6 +114,7 @@ jobs:
                          --hidden-import "Assets.G2p.portugueseG2p" `
                          --hidden-import "Assets.G2p.russianG2p" `
                          --hidden-import "Assets.G2p.spanishG2p" `
+                         --hidden-import "Assets.modules.sv_ttk" `
                          "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw" 
 
       - name: Upload macOS Artifact
