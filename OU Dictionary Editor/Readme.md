@@ -4,6 +4,7 @@
 - Fixed Cmudict error message to show the errored line instead of the word only
 - Update Localizations
 - Revamp `Light Mode` color accents to certain ui elements
+- Fix Treeview selection color on `Light Mode`
 
 
 **`(7/09/24)`**
