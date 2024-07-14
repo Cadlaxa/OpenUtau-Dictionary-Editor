@@ -117,7 +117,7 @@ class Dictionary(tk.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.1.6"
+        self.current_version = "v1.2.1"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -1165,20 +1165,38 @@ class Dictionary(tk.Tk):
 
     def delete_manual_entry(self):
         selected_items = self.viewer_tree.selection()
+        if not selected_items:
+            messagebox.showinfo("Notice", self.localization.get('del_no_sel', 'No items selected.'))
+            return
+        self.save_state_before_change()
+        items_to_delete = []
         for item_id in selected_items:
-            self.save_state_before_change()
             item_data = self.viewer_tree.item(item_id, 'values')
             if item_data:
                 grapheme = item_data[1]
                 if grapheme in self.dictionary:
-                    del self.dictionary[grapheme]  # Delete the entry from the dictionary
-                    self.viewer_tree.delete(item_id)  # Remove the item from the treeview
-                    self.word_entry.delete(0, tk.END)
-                    self.phoneme_entry.delete(0, tk.END)
+                    items_to_delete.append(item_id)
                 else:
                     messagebox.showinfo("Notice", f"Grapheme: {grapheme} {self.localization.get('del_ent_nf', ' not found in dictionary.')}")
             else:
-                messagebox.showinfo("Notice", f"{('del_ent_id', 'No data found for item ID ')} {item_id}.")
+                messagebox.showinfo("Notice", f"{self.localization.get('del_ent_id', 'No data found for item ID ')} {item_id}.")
+        # If all selected items are to be deleted, we can clear the dictionary and Treeview
+        if len(items_to_delete) == len(self.dictionary):
+            self.dictionary.clear()
+            self.viewer_tree.delete(*self.viewer_tree.get_children())
+        else:
+            # Otherwise, delete items one by one
+            for item_id in items_to_delete:
+                item_data = self.viewer_tree.item(item_id, 'values')
+                if item_data:
+                    grapheme = item_data[1]
+                    if grapheme in self.dictionary:
+                        del self.dictionary[grapheme]
+            self.viewer_tree.delete(*items_to_delete)
+        # Clear the entries once after all deletions
+        self.word_entry.delete(0, tk.END)
+        self.phoneme_entry.delete(0, tk.END)
+        self.refresh_treeview()
 
     def delete_all_entries(self):
         if not self.dictionary:
@@ -1198,17 +1216,27 @@ class Dictionary(tk.Tk):
         if not selected_items:
             messagebox.showinfo("Info", f"{self.localization.get('dell_s_ent', 'No entries selected.')}")
             return
+        self.save_state_before_change()
+        # Check if all selected items are in the dictionary
+        all_items_in_dict = all(
+            self.viewer_tree.item(item, 'values')[1] in self.dictionary
+            for item in selected_items
+            if self.viewer_tree.item(item, 'values')
+        )
+        # If all selected items are in the dictionary, clear the dictionary and treeview in one go
+        if all_items_in_dict and len(selected_items) == len(self.viewer_tree.get_children()):
+            self.dictionary.clear()
+            self.viewer_tree.delete(*self.viewer_tree.get_children())
+        else:
+            # Otherwise, delete items one by one
+            for item in selected_items:
+                item_values = self.viewer_tree.item(item, 'values')
+                if item_values:
+                    key = item_values[1]  # Assuming the first column in tree view is the key for the dictionary
+                    if key in self.dictionary:
+                        del self.dictionary[key]
+            self.viewer_tree.delete(*selected_items)
 
-        # Delete from the dictionary if you are syncing it with the tree view
-        for item in selected_items:
-            item_values = self.viewer_tree.item(item, 'values')
-            self.save_state_before_change()
-            if item_values:
-                key = item_values[1]  # Assuming the first column in tree view is the key for the dictionary
-                if key in self.dictionary:
-                    del self.dictionary[key]
-        # Delete from the tree view
-        self.viewer_tree.delete(*selected_items)
         self.word_entry.delete(0, tk.END)
         self.phoneme_entry.delete(0, tk.END)
         self.update_entries_window()
@@ -1916,34 +1944,11 @@ class Dictionary(tk.Tk):
         else:
             messagebox.showinfo("Paste", f"{self.localization.get('paste_mess', 'Clipboard is empty or data is invalid.')}")
     
-    def load_data(self):
-        items = []
-        end_index = min(self.start_index + self.batch_size, len(self.dictionary))
-        for index, (grapheme, phonemes) in enumerate(list(self.dictionary.items())[self.start_index:end_index], start=self.start_index + 1):
-            escaped_phonemes = ', '.join(self.escape_special_characters(str(phoneme)) for phoneme in phonemes)
-            items.append((index, grapheme, escaped_phonemes))
-        for item in items:
-            self.viewer_tree.insert('', 'end', values=item)
-        self.start_index = end_index
-
-    def on_treeview_expose(self, event):
-        self.lazy_load_data()
-
-    def on_treeview_configure(self, event):
-        self.lazy_load_data()
-
-    def lazy_load_data(self):
-        # Load more data if the scroll position is near the bottom
-        if self.start_index < len(self.dictionary):
-            visible_items = self.viewer_tree.get_children()
-            if visible_items and self.viewer_tree.bbox(visible_items[-1])[1] < self.viewer_tree.winfo_height():
-                self.load_data()
-    
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
         self.viewer_tree.tag_configure('normal', font=self.tree_font)
         self.viewer_tree.tag_configure('selected', font=self.tree_font_b)
-        
+
         # Capture the grapheme of the currently selected item before clearing entries
         selected_grapheme = None
         selected = self.viewer_tree.selection()
@@ -1951,27 +1956,29 @@ class Dictionary(tk.Tk):
             selected_item_id = selected[0]
             selected_item_values = self.viewer_tree.item(selected_item_id, "values")
             selected_grapheme = selected_item_values[1] if selected_item_values else None
-        
-        # Disable the treeview update during data loading
-        self.viewer_tree.configure(displaycolumns=())
 
-        # Clear all current entries from the treeview
+        # Temporarily disable the treeview update during data loading
+        self.viewer_tree.configure(displaycolumns=())
         self.viewer_tree.delete(*self.viewer_tree.get_children())
 
+        # Prepare the new entries for the treeview
         items = []
-        # Insert new entries into the treeview
+        append_item = items.append
+        lowercase_phonemes = self.lowercase_phonemes_var.get()
+        remove_numbered_accents = self.remove_numbered_accents_var.get()
+
         for index, (grapheme, phonemes) in enumerate(self.dictionary.items(), start=1):
-            if self.lowercase_phonemes_var.get():
+            if lowercase_phonemes:
                 phonemes = [phoneme.lower() for phoneme in phonemes]
-            if self.remove_numbered_accents_var.get():
+            if remove_numbered_accents:
                 phonemes = self.remove_numbered_accents(phonemes)
             escaped_phonemes = ', '.join(escape_special_characters(str(phoneme)) for phoneme in phonemes)
             item_id = self.viewer_tree.insert('', 'end', values=(index, grapheme, escaped_phonemes), tags=('normal',))
-            items.append(item_id)
+            append_item(item_id)
 
         # Re-enable the treeview
         self.viewer_tree.configure(displaycolumns="#all")
-
+        '''
         # If there was a previously selected grapheme, reselect its new corresponding item ID
         if selected_grapheme:
             for item_id in items:
@@ -1980,6 +1987,7 @@ class Dictionary(tk.Tk):
                     self.viewer_tree.item(item_id, tags=('selected',))
                     self.viewer_tree.see(item_id)
                     break
+        '''
 
     def on_tree_selection(self, event):
         selected_items = set(self.viewer_tree.selection())
@@ -1991,7 +1999,6 @@ class Dictionary(tk.Tk):
 
         for item in items_to_reset:
             self.viewer_tree.item(item, tags=('normal',))
-
         for item in selected_items:
             self.viewer_tree.item(item, tags=('selected',))
 
@@ -2005,15 +2012,18 @@ class Dictionary(tk.Tk):
                     phonemes = self.dictionary.get(grapheme, [])
                     graphemes.append(grapheme)
                     phoneme_lists.append(phonemes)
-
-            graphemes_text = ', '.join(graphemes)
-
+            # Display only the first 3 items, with an ellipsis if there are more
+            if len(graphemes) > 3:
+                graphemes_text = ', '.join(graphemes[:3]) + ', ...'
+            else:
+                graphemes_text = ', '.join(graphemes)
             if len(phoneme_lists) > 1:
-                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
+                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists[:3])
+                if len(phoneme_lists) > 3:
+                    phonemes_text += ', ...'
                 phonemes_text = f"[{phonemes_text}]"
             else:
                 phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0])
-
             self.word_entry.delete(0, tk.END)
             self.word_entry.insert(0, graphemes_text)
             self.phoneme_entry.delete(0, tk.END)
@@ -2035,13 +2045,12 @@ class Dictionary(tk.Tk):
     
     def add_entry_treeview(self, new_word=None, new_phonemes=None, insert_index='end'):
         if new_word and new_phonemes:
-            # Convert phonemes list to a string for display
             phoneme_display = ', '.join(new_phonemes)
 
+            # Determine the actual insert index if 'end' and there are selected items
             if insert_index == 'end' and self.viewer_tree.selection():
-                insert_index = self.viewer_tree.index(self.viewer_tree.selection()[-1]) + 1  # Adjust to insert after the last selected item
+                insert_index = self.viewer_tree.index(self.viewer_tree.selection()[-1]) + 1
 
-            new_item_ids = [] 
             if new_word in self.dictionary:
                 # Update the existing item's phonemes
                 self.dictionary[new_word] = new_phonemes
@@ -2051,23 +2060,23 @@ class Dictionary(tk.Tk):
                         break
             else:
                 # Insert new entry if the grapheme does not exist
+                new_item_ids = []
                 if insert_index == 'end':
                     item_id = self.viewer_tree.insert('', 'end', values=(len(self.dictionary) + 1, new_word, phoneme_display), tags=('normal',))
-                    new_item_ids.append(item_id)  # Add the item ID to the list
-                    self.dictionary[new_word] = new_phonemes 
+                    new_item_ids.append(item_id)
+                    self.dictionary[new_word] = new_phonemes
                 else:
-                    # Insert at the specific position
                     item_id = self.viewer_tree.insert('', insert_index, values=(insert_index, new_word, phoneme_display), tags=('normal',))
                     new_item_ids.append(item_id)
-                    # Update dictionary and increment insert_index for possible next insertions
+                    # Insert the new entry into the dictionary at the correct position
                     items = list(self.dictionary.items())
                     items.insert(insert_index, (new_word, new_phonemes))
                     self.dictionary.clear()
                     self.dictionary.update(items)
-                    insert_index += 1
-            # Select the newly added items
-            self.viewer_tree.selection_set(new_item_ids) 
-        self.refresh_treeview()
+
+                self.viewer_tree.selection_set(new_item_ids)
+            self.refresh_treeview()
+
 
     def filter_treeview(self, exact_search=False):
         search_text = self.search_var.get().strip().lower()  # Get and normalize search text
