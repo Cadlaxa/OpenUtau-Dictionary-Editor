@@ -25,6 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
+          pip install pyglet
           if (Test-Path "OU Dictionary Editor\requirements.txt") { pip install -r "OU Dictionary Editor\requirements.txt" }
 
       - name: Create Executable
@@ -39,7 +40,6 @@ jobs:
                          --hidden-import "Assets.G2p.russianG2p" `
                          --hidden-import "Assets.G2p.spanishG2p" `
                          --hidden-import "Assets.modules.sv_ttk" `
-                         --hidden-import "pyglet" `
                          "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
       
       - name: Upload Windows Artifact
@@ -77,7 +77,6 @@ jobs:
                          --hidden-import "Assets.G2p.portugueseG2p" `
                          --hidden-import "Assets.G2p.russianG2p" `
                          --hidden-import "Assets.G2p.spanishG2p" `
-                         --hidden-import "Assets.modules.sv_ttk" `
                          "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw"
 
       - name: Upload Linux Artifact
@@ -115,7 +114,6 @@ jobs:
                          --hidden-import "Assets.G2p.portugueseG2p" `
                          --hidden-import "Assets.G2p.russianG2p" `
                          --hidden-import "Assets.G2p.spanishG2p" `
-                         --hidden-import "Assets.modules.sv_ttk" `
                          "OU Dictionary Editor/OpenUtau_Dictionary_Editor.pyw" 
 
       - name: Upload macOS Artifact
