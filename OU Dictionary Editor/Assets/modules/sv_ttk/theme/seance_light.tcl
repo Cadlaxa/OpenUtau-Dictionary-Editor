@@ -438,7 +438,7 @@ namespace eval ttk::theme::seance_light {
         -rowheight [expr {[font metrics SunValleyBodyFont -linespace] + 3}] \
         -font SunValleyBodyFont
 
-    ttk::style map Treeview -background {selected "#292929"} -foreground "selected $colors(-selfg)"
+    ttk::style map Treeview -background {selected "#e7e7e7"} -foreground {selected "#1c1c1c"}
 
     ttk::style element create Treeview.field image $I(card) -border 5 -width 0 -height 0
     
