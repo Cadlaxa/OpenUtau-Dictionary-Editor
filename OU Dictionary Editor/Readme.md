@@ -1,5 +1,11 @@
 # Changelog
 ---
+**`(7/--/24)`**
+- Fixed Cmudict error message to show the errored line instead of the word only
+- Update Localizations
+- Revamp `Light Mode` color accents to certain ui elements
+
+
 **`(7/09/24)`**
 - Directly edit the entry with double click or `enter` button
 - Button for G2P suggestions on direct entry edit
