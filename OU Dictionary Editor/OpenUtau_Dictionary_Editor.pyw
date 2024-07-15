@@ -8,26 +8,16 @@ from ruamel.yaml import YAML, YAMLError
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.compat import StringIO
 import tkinter.font as tkFont
-from tkinter import font
 import configparser
 from Assets.modules import requests
 import zipfile
 from zipfile import ZipFile
-import shutil
-import threading
-import copy
-import subprocess
+import shutil, threading, subprocess, copy, subprocess, platform, gzip, pyglet, pyperclip, io
 import ctypes as ct
-import platform
-import json
-import pickle
+import json, pickle, darkdetect
 from collections import defaultdict, OrderedDict
-import gzip
-import pyglet
 import onnxruntime as ort
 import numpy as np
-import pyperclip
-import io
 
 
 # Directories
@@ -126,6 +116,7 @@ class Dictionary(tk.Tk):
         self.file_modified = False
         self.localizable_widgets = {}
         self.current_entry_widgets = {}
+        self.session = requests.Session()
         
         # Template folder directory
         sv_ttk.set_theme("dark")
@@ -164,6 +155,9 @@ class Dictionary(tk.Tk):
         self.styling()
         self.create_widgets()
         self.init_localization()
+        t = threading.Thread(target=darkdetect.listener, args=(self.toggle_theme,))
+        t.daemon = True
+        t.start()
 
         self.icon()
         # Start update check in a non-blocking way
@@ -331,7 +325,12 @@ class Dictionary(tk.Tk):
             ("Middle Green Yellow", "Dark"): "middle-gy_dark"
         }
         # Apply the theme using sv_ttk
-        theme_key = (accent_name, theme_name)
+        if theme_name == 'System':
+            system_theme = darkdetect.theme()
+            theme_key = (accent_name, system_theme)
+        else:
+            theme_key = (accent_name, theme_name)
+
         if theme_key in theme_map:
             ttk.Style().theme_use(theme_map[theme_key])
             self.widget_style()
@@ -415,7 +414,11 @@ class Dictionary(tk.Tk):
                 ("Middle Green Yellow", "Dark"): "middle-green-yellow_dark"
             }
             # Apply the theme using sv_ttk
-            theme_key = (accent_name, theme_name)
+            if theme_name == 'System':
+                system_theme = darkdetect.theme()
+                theme_key = (accent_name, system_theme)
+            else:
+                theme_key = (accent_name, theme_name)
             if theme_key in theme_map:
                 ttk.Style().theme_use(theme_map[theme_key])
         except (configparser.NoSectionError, configparser.NoOptionError):
@@ -1978,7 +1981,6 @@ class Dictionary(tk.Tk):
 
         # Re-enable the treeview
         self.viewer_tree.configure(displaycolumns="#all")
-        '''
         # If there was a previously selected grapheme, reselect its new corresponding item ID
         if selected_grapheme:
             for item_id in items:
@@ -1987,7 +1989,6 @@ class Dictionary(tk.Tk):
                     self.viewer_tree.item(item_id, tags=('selected',))
                     self.viewer_tree.see(item_id)
                     break
-        '''
 
     def on_tree_selection(self, event):
         selected_items = set(self.viewer_tree.selection())
@@ -2076,7 +2077,6 @@ class Dictionary(tk.Tk):
 
                 self.viewer_tree.selection_set(new_item_ids)
             self.refresh_treeview()
-
 
     def filter_treeview(self, exact_search=False):
         search_text = self.search_var.get().strip().lower()  # Get and normalize search text
@@ -2561,18 +2561,18 @@ class Dictionary(tk.Tk):
         # Entries and buttons for manual entries
         self.word_entry = ttk.Entry(manual_frame)
         self.word_entry.bind("<KeyRelease>", self.on_entry_change)
-        self.word_entry.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        self.word_entry.grid(row=1, column=0, padx=(15, 5), pady=10, sticky="nsew")
         self.phoneme_entry = ttk.Entry(manual_frame)
-        self.phoneme_entry.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+        self.phoneme_entry.grid(row=1, column=1, padx=(5, 15), pady=10, sticky="nsew")
         self.word_entry.bind("<Return>", self.add_manual_entry_event)
         self.phoneme_entry.bind("<Return>", self.add_manual_entry_event)
 
         add_entry_button = ttk.Button(manual_frame, text="Add Entry", style='Accent.TButton', command=self.add_manual_entry)
-        add_entry_button.grid(row=2, column=1, columnspan=1, padx=5, pady=10)
+        add_entry_button.grid(row=2, column=1, columnspan=1, padx=5, pady=(5,15))
         self.localizable_widgets['add_entry'] = add_entry_button
 
         delete_entry_button = ttk.Button(manual_frame, text="Delete Entry", style='Accent.TButton', command=self.delete_manual_entry)
-        delete_entry_button.grid(row=2, column=0, columnspan=1, padx=5, pady=10)
+        delete_entry_button.grid(row=2, column=0, columnspan=1, padx=5, pady=(5,15))
         self.localizable_widgets['delete_entry'] = delete_entry_button
 
         # Create frames for each set of buttons
@@ -2581,7 +2581,7 @@ class Dictionary(tk.Tk):
         convert_frame.columnconfigure(0, weight=1)
         convert_frame.columnconfigure(1, weight=1)
         load_frame = ttk.Frame(self)
-        load_frame.grid(row=4, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
+        load_frame.grid(row=4, column=0, columnspan=1, padx=10, pady=5, sticky="ew")
         load_frame.columnconfigure(0, weight=1)
         load_frame.columnconfigure(1, weight=1)
         save_frame = ttk.Frame(self)
@@ -2651,6 +2651,7 @@ class Dictionary(tk.Tk):
         self.theming.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
         self.theming.columnconfigure(1, weight=1)
         self.theming.columnconfigure(1, weight=1)
+        
 
         # Label and combobox for Accent selection
         theme_select = ttk.Label(self.theming, text="Select Theme:", font=self.font)
@@ -2665,13 +2666,23 @@ class Dictionary(tk.Tk):
         theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
 
+        radio_frame = ttk.Frame(theme_frame)
+        radio_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=(0,20), sticky="ew")
+        radio_frame.columnconfigure(0, weight=1)
+        radio_frame.columnconfigure(1, weight=1)
+        radio_frame.columnconfigure(2, weight=1)
+
         # Radio button for light theme
-        light_theme_button = ttk.Radiobutton(theme_frame, text="Light", value="Light", variable=self.theme_var, command=self.toggle_theme)
-        light_theme_button.grid(row=1, column=0, pady=(0, 10))
+        light_theme_button = ttk.Radiobutton(radio_frame, text="Light", value="Light", variable=self.theme_var, command=self.toggle_theme)
+        light_theme_button.grid(row=1, column=0)
 
         # Radio button for dark theme
-        dark_theme_button = ttk.Radiobutton(theme_frame, text="Dark", value="Dark", variable=self.theme_var, command=self.toggle_theme)
-        dark_theme_button.grid(row=1, column=1, pady=(0, 10))
+        dark_theme_button = ttk.Radiobutton(radio_frame, text="Dark", value="Dark", variable=self.theme_var, command=self.toggle_theme)
+        dark_theme_button.grid(row=1, column=1)
+
+        # Radio button for system theme
+        dark_theme_button = ttk.Radiobutton(radio_frame, text="System", value="System", variable=self.theme_var, command=self.toggle_theme)
+        dark_theme_button.grid(row=1, column=2)
 
         # LabelFrame for localization selection on the options tab
         localization_frame = ttk.LabelFrame(self.additional_tab, text="Localization Options")
@@ -2707,7 +2718,7 @@ class Dictionary(tk.Tk):
 
         # Synthv Import/Export
         synthv_export = ttk.Button(synthv_frame, style='Accent.TButton', text="Export Dictionary", command=self.export_json)
-        synthv_export.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        synthv_export.grid(row=2, column=0, padx=10, pady=(5,10), sticky="ew")
         self.localizable_widgets['export'] = synthv_export
 
         synthv_import = ttk.Button(synthv_frame, text="Import Dictionary", style='TButton', command=self.load_json_file)
@@ -2733,7 +2744,7 @@ class Dictionary(tk.Tk):
 
         # Frame for G2P
         g2p_frame = ttk.LabelFrame(self.other_frame1, text="G2P Suggestions:")
-        g2p_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        g2p_frame.grid(row=0, column=0, padx=5, pady=0, sticky="nsew")
         g2p_frame.columnconfigure(0, weight=1)
         g2p_frame.columnconfigure(1, weight=1)
         self.localizable_widgets['g2p'] = g2p_frame
@@ -2741,12 +2752,12 @@ class Dictionary(tk.Tk):
         # Adding Checkbox
         self.g2p_checkbox_var = tk.BooleanVar()
         g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
-        g2p_checkbox.grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        g2p_checkbox.grid(row=0, column=0, padx=(20, 5), pady=15, sticky="w")
         self.localizable_widgets['g2p_check'] = g2p_checkbox
         self.load_g2p_checkbox_state()
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
-        self.g2p_selection.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
+        self.g2p_selection.grid(row=0, column=1, padx=(5, 20), pady=5, sticky="ew")
         self.g2p_selection['values'] = ('Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Italian G2p', 'Japanese Monophone G2p'
                                         , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p')
         
@@ -2872,7 +2883,7 @@ class Dictionary(tk.Tk):
     
     def get_remote_file_size(self, url):
         try:
-            r = requests.head(url, allow_redirects=True)
+            r = self.session.head(url, allow_redirects=True)
             return int(r.headers.get('content-length', 0))
         except requests.RequestException:
             return 0
@@ -2894,11 +2905,11 @@ class Dictionary(tk.Tk):
             progress_dialog = self.dl_window(self, total_size)
             
             # Download the file
-            with requests.get(download_url, stream=True) as r:
+            with self.session.get(download_url, stream=True) as r:
                 r.raise_for_status()
                 downloaded_size = 0
                 with open(local_zip_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
+                    for chunk in r.iter_content(chunk_size=1024 * 1024 * 6): # 6MB chunk size
                         if chunk:
                             f.write(chunk)
                             downloaded_size += len(chunk)
