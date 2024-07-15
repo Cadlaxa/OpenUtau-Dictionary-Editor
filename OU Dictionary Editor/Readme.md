@@ -1,5 +1,8 @@
 # Changelog
 ---
+**`(7/--/24)`**
+- Fixed download speed
+
 **`(7/13/24)`**
 - Fixed Cmudict error message to show the errored line instead of the word only
 - Update Localizations

@@ -126,6 +126,7 @@ class Dictionary(tk.Tk):
         self.file_modified = False
         self.localizable_widgets = {}
         self.current_entry_widgets = {}
+        self.session = requests.Session()
         
         # Template folder directory
         sv_ttk.set_theme("dark")
@@ -2077,7 +2078,6 @@ class Dictionary(tk.Tk):
                 self.viewer_tree.selection_set(new_item_ids)
             self.refresh_treeview()
 
-
     def filter_treeview(self, exact_search=False):
         search_text = self.search_var.get().strip().lower()  # Get and normalize search text
         # Clear previous selections
@@ -2872,7 +2872,7 @@ class Dictionary(tk.Tk):
     
     def get_remote_file_size(self, url):
         try:
-            r = requests.head(url, allow_redirects=True)
+            r = self.session.head(url, allow_redirects=True)
             return int(r.headers.get('content-length', 0))
         except requests.RequestException:
             return 0
@@ -2894,11 +2894,11 @@ class Dictionary(tk.Tk):
             progress_dialog = self.dl_window(self, total_size)
             
             # Download the file
-            with requests.get(download_url, stream=True) as r:
+            with self.session.get(download_url, stream=True) as r:
                 r.raise_for_status()
                 downloaded_size = 0
                 with open(local_zip_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
+                    for chunk in r.iter_content(chunk_size=1024 * 1024 * 6): # 6MB chunk size
                         if chunk:
                             f.write(chunk)
                             downloaded_size += len(chunk)
