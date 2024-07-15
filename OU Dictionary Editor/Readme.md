@@ -2,6 +2,8 @@
 ---
 **`(7/--/24)`**
 - Fixed download speed
+- Minor UI changes
+- Follow System theme option via `System` RadioButton
 
 **`(7/13/24)`**
 - Fixed Cmudict error message to show the errored line instead of the word only
