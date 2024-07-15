@@ -1979,7 +1979,6 @@ class Dictionary(tk.Tk):
 
         # Re-enable the treeview
         self.viewer_tree.configure(displaycolumns="#all")
-        '''
         # If there was a previously selected grapheme, reselect its new corresponding item ID
         if selected_grapheme:
             for item_id in items:
@@ -1988,7 +1987,6 @@ class Dictionary(tk.Tk):
                     self.viewer_tree.item(item_id, tags=('selected',))
                     self.viewer_tree.see(item_id)
                     break
-        '''
 
     def on_tree_selection(self, event):
         selected_items = set(self.viewer_tree.selection())
