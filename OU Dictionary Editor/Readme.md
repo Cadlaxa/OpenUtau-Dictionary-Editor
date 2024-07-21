@@ -5,6 +5,7 @@
 - Minor UI changes
 - Follow System theme option via `System` RadioButton via `darkdetect` module
 - `What's New` window for displaying the `Readme.md` file (`tkhtmlview` and `markdown2` modules are used)
+- Update Localizations
 
 **`(7/13/24)`**
 - Fixed Cmudict error message to show the errored line instead of the word only
