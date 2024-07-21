@@ -109,7 +109,7 @@ class Dictionary(tk.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.2.1"
+        self.current_version = "v1.2.5"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -166,6 +166,7 @@ class Dictionary(tk.Tk):
         threading.Thread(target=self.bg_updates, daemon=True).start()
 
         self.load_whats_new_state()
+        self.check_and_update_version()
         # Check if "What's New" should be displayed
         if not self.whats_new_opened or self.is_new_version:
             self.whats_new()
@@ -2932,7 +2933,7 @@ class Dictionary(tk.Tk):
         config.read(self.config_file)
         try:
             self.whats_new_opened = config.getboolean('Settings', 'Whats_new')
-            self.previous_version = config.get('Settings', 'App_Version', fallback='0.0.0')
+            self.previous_version = config.get('Settings', 'App_Version', fallback=self.current_version)
         except (configparser.NoSectionError, configparser.NoOptionError):
             self.whats_new_opened = False  # Default to False if not found
             self.previous_version = '0.0.0'  # Default to an old version if not found

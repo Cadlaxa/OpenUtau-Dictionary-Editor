@@ -1,6 +1,6 @@
 # Changelog
 ---
-**`(7/--/24)`**
+**`(7/21/24)`**
 - Fixed download speed
 - Minor UI changes
 - Follow System theme option via `System` RadioButton via `darkdetect` module
