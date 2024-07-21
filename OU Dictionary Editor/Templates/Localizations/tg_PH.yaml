@@ -55,6 +55,9 @@ select_local: "Piliin ang Lokalisasyon:"
 local_op: "Opsyons para sa Lokalisasyon:"
 update: "Mga Update"
 update_b: "Tignan para sa Updates"
+btn_git: "Tingnan ang Release sa Github"
+whats_new: "Ano'ng Bago"
+whats_new_cb: "Huwag nang ipakita ulit ito"
 
 # Others (tab 3)
 import: "I-import ang Diksyonaryo"

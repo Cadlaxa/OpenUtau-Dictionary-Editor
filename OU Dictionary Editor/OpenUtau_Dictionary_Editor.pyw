@@ -1,6 +1,6 @@
 import tkinter as tk
 from Assets.modules.sv_ttk import sv_ttk
-from tkinter import filedialog, messagebox, ttk, Toplevel, BOTH
+from tkinter import filedialog, messagebox, ttk, Toplevel, BOTH, scrolledtext
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
@@ -14,7 +14,8 @@ import zipfile
 from zipfile import ZipFile
 import shutil, threading, subprocess, copy, subprocess, platform, gzip, pyglet, pyperclip, io
 import ctypes as ct
-import json, pickle, darkdetect
+import json, pickle, darkdetect, webbrowser, markdown2
+from tkhtmlview import HTMLLabel
 from collections import defaultdict, OrderedDict
 import onnxruntime as ort
 import numpy as np
@@ -25,6 +26,7 @@ TEMPLATES = P('./Templates')
 LOCAL = P('./Templates/Localizations')
 ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
+ICON1 = P('./Assets/icon.ico')
 CACHE = P('./Cache')
 AUTOSAVES = P('./Autosaves and Backups')
 
@@ -82,7 +84,7 @@ class DownloadProgressDialog:
         if os.path.exists(ICON):
             img = tk.PhotoImage(file=ICON)
             window.tk.call('wm', 'iconphoto', window._w, img)
-    
+
     def center_window(self):
         self.progress_window.update_idletasks()
         width = self.progress_window.winfo_width()
@@ -162,6 +164,11 @@ class Dictionary(tk.Tk):
         self.icon()
         # Start update check in a non-blocking way
         threading.Thread(target=self.bg_updates, daemon=True).start()
+
+        self.load_whats_new_state()
+        # Check if "What's New" should be displayed
+        if not self.whats_new_opened or self.is_new_version:
+            self.whats_new()
     
     def bg_updates(self):
         if not self.is_connected():
@@ -2625,19 +2632,18 @@ class Dictionary(tk.Tk):
         update_frame = ttk.LabelFrame(self.additional_tab, text="Updates")
         update_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['update'] = update_frame
-        update_frame.columnconfigure(0, weight=1)
+        update_frame.columnconfigure(0, weight=3)
         update_frame.columnconfigure(1, weight=1)
-        update_frame.columnconfigure(2, weight=1)
-        update_frame.rowconfigure(0, weight=1)
-        update_frame.rowconfigure(1, weight=1)
-        update_frame.rowconfigure(2, weight=1)
 
         # Button to check for updates
         update_button = ttk.Button(update_frame, text="Check for Updates", style='Accent.TButton', command=self.check_for_updates)
-        update_button.grid(row=1, column=1, padx=10, pady=20, sticky="ew",)
+        update_button.grid(row=0, column=0, padx=(20,5), pady=20, sticky="ew",)
         self.localizable_widgets['update_b'] = update_button
-        # Make sure the frame expands with the window
-        update_frame.columnconfigure(0, weight=1)
+
+        # Button to what's new
+        nw_button = ttk.Button(update_frame, text="What's New", command=self.whats_new)
+        nw_button.grid(row=0, column=1, padx=(5, 20), pady=20, sticky="ew",)
+        self.localizable_widgets['whats_new'] = nw_button
 
         # LabelFrame for themes
         theme_frame = ttk.LabelFrame(self.additional_tab, text="Themes")
@@ -2862,6 +2868,92 @@ class Dictionary(tk.Tk):
             return True
         except requests.RequestException:
             return False
+    
+    #Define a callback function
+    def callback(self, url):
+        webbrowser.open_new_tab(url)
+    
+    def whats_new(self):
+        self.update_window = tk.Toplevel(self)
+        self.update_window.title("What's New")
+        self.update_window.geometry("600x500")
+        
+        # Center the window
+        self.update_window.update_idletasks()
+        width = self.update_window.winfo_width()
+        height = self.update_window.winfo_height()
+        x = (self.update_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.update_window.winfo_screenheight() // 2) - (height // 2) - 30
+        self.update_window.geometry(f'{width}x{height}+{x}+{y}')
+
+        container = ttk.Frame(self.update_window)
+        container.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
+
+        # Load and convert the markdown file
+        with open("readme.md", "r") as file:
+            readme_content = file.read()
+        html_content = markdown2.markdown(readme_content, extras=["fenced-code-blocks", "tables", "code-friendly", "footnotes", "toc", "cuddled-lists", "metadata"])
+
+        # HTMLLabel to display the HTML content
+        html_label = HTMLLabel(container, html=html_content)
+        html_label.pack(fill=tk.BOTH, expand=True)
+
+        # Add buttons below the scrollable content
+        button_frame = ttk.Frame(container)
+        button_frame.pack(pady=(10,0), fill=tk.X)
+
+        btn_close = ttk.Button(button_frame, text="Close", command=self.on_closing_whats_new)
+        btn_close.pack(side=tk.RIGHT, padx=5)
+        self.localizable_widgets['close'] = btn_close
+
+        btn_see = ttk.Button(button_frame, text="See Release on Github", style='Accent.TButton')
+        btn_see.pack(side=tk.RIGHT, padx=5)
+        self.localizable_widgets['btn_git'] = btn_see
+        btn_see.bind("<Button-1>", lambda e:
+        self.callback("https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases/latest"))
+
+        # Add a checkbox to not show the "What's New" window next time
+        self.show_whats_new_var = tk.BooleanVar(value=False)
+        chk_show_whats_new = ttk.Checkbutton(button_frame, text="Do not show this again", variable=self.show_whats_new_var)
+        chk_show_whats_new.pack(side=tk.LEFT, pady=10, anchor='w')
+        self.localizable_widgets['whats_new_cb'] = chk_show_whats_new
+
+        self.icon(self.update_window)
+        self.update_window.protocol("WM_DELETE_WINDOW", self.on_closing_whats_new)
+
+    def on_closing_whats_new(self):
+        # Save the state when closing the "What's New" window
+        self.save_whats_new_state(self.show_whats_new_var.get())
+        self.update_window.destroy()
+    
+    def load_whats_new_state(self):
+        # Load "What's New" state from config
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        try:
+            self.whats_new_opened = config.getboolean('Settings', 'Whats_new')
+            self.previous_version = config.get('Settings', 'App_Version', fallback='0.0.0')
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            self.whats_new_opened = False  # Default to False if not found
+            self.previous_version = '0.0.0'  # Default to an old version if not found
+
+    def save_whats_new_state(self, state):
+        # Save the "What's New" state to config
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        if 'Settings' not in config.sections():
+            config['Settings'] = {}
+        config['Settings']['Whats_new'] = str(state)
+        config['Settings']['App_Version'] = self.current_version
+        with open(self.config_file, 'w') as configfile:
+            config.write(configfile)
+        print(f"'What's New' state {state} and version {self.current_version} saved to config file.")
+
+    def check_and_update_version(self):
+        # Check if the app version is updated and update the config
+        self.is_new_version = self.current_version != self.previous_version
+        if self.is_new_version:
+            self.save_whats_new_state(self.whats_new_opened)
     
     def check_for_updates(self):
         if not self.is_connected():

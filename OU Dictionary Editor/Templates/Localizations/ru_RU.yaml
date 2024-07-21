@@ -54,6 +54,9 @@ select_local: "Выбрать локализацию:"
 local_op: "Опции локализации"
 update: "Обновления"
 update_b: "Проверить обновления"
+btn_git: "Смотреть релиз на Github"
+whats_new: "Что нового"
+whats_new_cb: "Больше не показывать это"
 
 # Others (tab 3)
 import: "Импорт словаря"

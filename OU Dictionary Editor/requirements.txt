@@ -3,3 +3,5 @@ ruamel.yaml
 numpy>=1.16.5,<1.29.0
 pyperclip
 darkdetect
+tkhtmlview
+markdown2

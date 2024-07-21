@@ -58,6 +58,9 @@ select_local: "ローカライズを選択:"
 local_op: "ローカライズオプション"
 update: "アップデート"
 update_b: "アップデートを確認"
+btn_git: GitHubでリリースを見る
+whats_new: 新着情報
+whats_new_cb: これを再表示しない
 
 # Others (tab 3)
 import: "辞書をインポート"

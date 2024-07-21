@@ -3,7 +3,8 @@
 **`(7/--/24)`**
 - Fixed download speed
 - Minor UI changes
-- Follow System theme option via `System` RadioButton
+- Follow System theme option via `System` RadioButton via `darkdetect` module
+- `What's New` window for displaying the `Readme.md` file (`tkhtmlview` and `markdown2` modules are used)
 
 **`(7/13/24)`**
 - Fixed Cmudict error message to show the errored line instead of the word only
@@ -11,7 +12,6 @@
 - Revamp `Light Mode` color accents to certain ui elements
 - Fix Treeview selection color on `Light Mode`
 - Performance Fixes
-
 
 **`(7/09/24)`**
 - Directly edit the entry with double click or `enter` button

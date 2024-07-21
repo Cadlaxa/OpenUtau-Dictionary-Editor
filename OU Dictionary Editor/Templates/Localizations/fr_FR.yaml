@@ -55,6 +55,9 @@ select_local: "Sélectionner la localisation:"
 local_op: "Options de localisation"
 update: "Mises à jour"
 update_b: "Vérifier les mises à jour"
+btn_git: "Voir la version sur Github"
+whats_new: "Quoi de neuf"
+whats_new_cb: "Ne plus afficher ceci"
 
 # Others (tab 3)
 import: "Importer un dictionnaire"
