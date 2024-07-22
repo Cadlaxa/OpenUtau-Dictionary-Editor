@@ -1677,27 +1677,18 @@ class Dictionary(tk.Tk):
             # Prepare to track modifications
             items_modified = 0
             # Iterate over all items in the tree view
-            for item in self.viewer_tree.get_children():
-                item_values = self.viewer_tree.item(item, "values")
+            for grapheme, phonemes in list(self.dictionary.items()):
                 if target == "Graphemes":
-                    # Direct replacement for graphemes
-                    new_grapheme = compiled_pattern.sub(replacement, item_values[1])
-                    if new_grapheme != item_values[1]:
-                        self.viewer_tree.item(item, values=(new_grapheme, item_values[2]))
-                        if item_values[1] in self.dictionary:
-                            self.dictionary[new_grapheme] = self.dictionary.pop(item_values[1])
+                    new_grapheme = compiled_pattern.sub(replacement, grapheme)
+                    if new_grapheme != grapheme:
+                        self.dictionary[new_grapheme] = self.dictionary.pop(grapheme)
                         items_modified += 1
                 elif target == "Phonemes":
-                    # Handle phoneme list, considering sequences like 'ax, r'
-                    phonemes_string = item_values[2].strip()
-                    # Perform regex replacement directly on the whole phoneme string
+                    phonemes_string = ', '.join(phonemes)
                     modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
                     if modified_phoneme_string != phonemes_string:
-                        # Updating tree and dictionary
-                        self.viewer_tree.item(item, values=(item_values[1], modified_phoneme_string))
-                        # Update dictionary: Split to list, removing extra spaces
                         new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
-                        self.dictionary[item_values[1]] = new_phoneme_list
+                        self.dictionary[grapheme] = new_phoneme_list
                         items_modified += 1
             self.refresh_treeview()
             self.word_entry.delete(0, tk.END)

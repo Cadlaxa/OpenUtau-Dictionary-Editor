@@ -1,5 +1,9 @@
 # Changelog
 ---
+**`(7/--/24)`**
+- Regex replace now directly edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview
+
+
 **`(7/21/24)`**
 - Fixed download speed
 - Minor UI changes
