@@ -8,6 +8,7 @@ U	vowel
 SP	vowel
 a	vowel
 b	stop
+by	stop
 ch	affricate
 cl	stop
 d	stop
@@ -28,6 +29,7 @@ m	nasal
 my	nasal
 n	nasal
 ng	nasal
+ngy	nasal
 ny	nasal
 o	vowel
 p	stop
