@@ -1,8 +1,10 @@
 # Changelog
 ---
-**`(7/--/24)`**
-- Regex replace now directly edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview
-
+**`(7/24/24)`**
+- Regex find and replace now directly iterates and edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview
+- [JA Monophone G2P] Add missing phonemes @lottev1991
+- Fixes to JA Monophone G2P splitting graphemes to phonemes
+- Fixes to fonts on treeview
 
 **`(7/21/24)`**
 - Fixed download speed

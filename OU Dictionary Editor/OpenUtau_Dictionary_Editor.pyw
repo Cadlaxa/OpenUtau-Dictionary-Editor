@@ -109,7 +109,7 @@ class Dictionary(tk.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.2.5"
+        self.current_version = "v1.2.9"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -135,12 +135,6 @@ class Dictionary(tk.Tk):
         self.undo_stack = []
         self.redo_stack = []
         self.copy_stack = []
-
-        # Fonts
-        self.tree_font = tkFont.Font(family="Helvetica", size=10, weight="normal")
-        self.tree_font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
-        self.font = tkFont.Font(family="Helvetica", size=10, weight="normal")
-        self.font_b = tkFont.Font(family="Helvetica", size=10, weight="bold")
 
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
@@ -193,6 +187,7 @@ class Dictionary(tk.Tk):
         window.tk.call('wm', 'iconphoto', window._w, img)
 
     def styling(self):
+        # Bold fonts
         pyglet.options['win32_gdi_font'] = True
         pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSans-Bold.ttf"))
         self.font_en = 'Noto Sans Bold'
@@ -205,28 +200,53 @@ class Dictionary(tk.Tk):
         pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansTC-Bold.ttf"))
         self.font_tc = 'Noto Sans TC Bold'
 
+        # Regular fonts
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSans-Regular.ttf"))
+        self.font_en_R = 'Noto Sans Regular'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansJP-Regular.ttf"))
+        self.font_jp_R = 'Noto Sans JP Regular'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansHK-Regular.ttf"))
+        self.font_hk_R = 'Noto Sans HK Regular'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansSC-Regular.ttf"))
+        self.font_sc_R = 'Noto Sans SC Regular'
+        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansTC-Regular.ttf"))
+        self.font_tc_R = 'Noto Sans TC Regular'
+
         # Define fonts for different languages
         n = 10
         s = 9
         if self.current_local.lower() == 'english':
             self.font = tkFont.Font(family=self.font_en, size=n)
             self.font_s = tkFont.Font(family=self.font_en, size=s)
+            self.tree_font = tkFont.Font(family=self.font_en_R, size=n)
+            self.tree_font_b = tkFont.Font(family=self.font_en, size=n)
         elif self.current_local.lower() == 'japanese':
             self.font = tkFont.Font(family=self.font_jp, size=n)
             self.font_s = tkFont.Font(family=self.font_jp, size=s)
+            self.tree_font = tkFont.Font(family=self.font_jp_R, size=n)
+            self.tree_font_b = tkFont.Font(family=self.font_jp, size=n)
         elif self.current_local.lower() == 'chinese (traditional)':
             self.font = tkFont.Font(family=self.font_tc, size=n)
             self.font_s = tkFont.Font(family=self.font_tc, size=s)
+            self.tree_font = tkFont.Font(family=self.font_tc_R, size=n)
+            self.tree_font_b = tkFont.Font(family=self.font_tc, size=n)
         elif self.current_local.lower() == 'chinese (simplified)':
             self.font = tkFont.Font(family=self.font_sc, size=n)
             self.font_s = tkFont.Font(family=self.font_sc, size=s)
+            self.tree_font = tkFont.Font(family=self.font_sc_R, size=n)
+            self.tree_font_b = tkFont.Font(family=self.font_sc, size=n)
         elif self.current_local.lower() == 'cantonese':
             self.font = tkFont.Font(family=self.font_hk, size=n)
+            self.font_s = tkFont.Font(family=self.font_hk, size=s)
+            self.tree_font = tkFont.Font(family=self.font_hk_R, size=n)
+            self.tree_font_b = tkFont.Font(family=self.font_hk, size=n)
         else:
             self.font = tkFont.Font(family=self.font_en, size=n)
             self.font_s = tkFont.Font(family=self.font_en, size=s)
+            self.tree_font = tkFont.Font(family=self.font_en_R, size=n)
+            self.tree_font_b = tkFont.Font(family=self.font_en, size=n)
         self.widget_style()
-    
+
     def widget_style(self):
         self.style = ttk.Style()
         self.style.configure("Accent.TButton", font=self.font)
@@ -1283,7 +1303,7 @@ class Dictionary(tk.Tk):
             self.viewer_tree.heading('Index', text='Index')
             self.viewer_tree.heading('Grapheme', text='Grapheme')
             self.viewer_tree.heading('Phonemes', text='Phonemes')
-            self.viewer_tree.column('Index', width=50, anchor='center')
+            self.viewer_tree.column('Index', width=50, anchor='center', stretch=False)
             self.viewer_tree.column('Grapheme', width=170, anchor='w')
             self.viewer_tree.column('Phonemes', width=230, anchor='w')
 
@@ -1737,25 +1757,32 @@ class Dictionary(tk.Tk):
 
     def find_matches(self, pattern, target):
         items_to_highlight = []
-        for item in self.viewer_tree.get_children():
-            item_values = self.viewer_tree.item(item, "values")
-            if target == "Graphemes" and re.search(pattern, item_values[1]):
-                items_to_highlight.append(item)
+        compiled_pattern = re.compile(pattern)
+
+        for index, (grapheme, phonemes) in enumerate(self.dictionary.items()):
+            if target == "Graphemes" and compiled_pattern.search(grapheme):
+                item_id = self.viewer_tree.get_children()[index]
+                items_to_highlight.append(item_id)
             elif target == "Phonemes":
-                phoneme_string = " ".join(item_values[2].split())
-                if re.search(pattern, phoneme_string):
-                    items_to_highlight.append(item)
+                phoneme_string = ", ".join(phonemes)
+                if compiled_pattern.search(phoneme_string):
+                    item_id = self.viewer_tree.get_children()[index]
+                    items_to_highlight.append(item_id)
         # Clear the current selection to ensure only new results are highlighted
         self.viewer_tree.selection_remove(self.viewer_tree.selection())
         # Set the selection to the items found
         self.viewer_tree.selection_set(items_to_highlight)
-        if not items_to_highlight:
-            messagebox.showinfo("No Matches", f"{self.localization.get('find_matches', 'No matches found.')}")
-    
+        if items_to_highlight:
+            self.viewer_tree.see(items_to_highlight[0])  # Ensure the first match is visible
+        else:
+            messagebox.showinfo("No Matches", self.localization.get('find_matches', 'No matches found.'))
+
     def find_next(self, direction=None, pattern=None, target=None):
-        items = self.viewer_tree.get_children()
+        compiled_pattern = re.compile(pattern)
+        items = list(self.dictionary.items())
         current_selection = self.viewer_tree.selection()
         start_index = 0
+        direction_multiplier = 1  # Default to forward direction
 
         if direction is not None:
             if direction == "▼":
@@ -1765,47 +1792,42 @@ class Dictionary(tk.Tk):
 
         if current_selection:
             try:
-                start_index = items.index(current_selection[0]) + direction_multiplier
-            except ValueError:
+                current_item = self.viewer_tree.item(current_selection[0], "values")
+                start_index = next(index for index, (grapheme, phonemes) in enumerate(items) if current_item[1] == grapheme) + direction_multiplier
+            except (ValueError, StopIteration):
                 pass
+
         # Wrap around if going beyond the last item or before the first item
         if start_index >= len(items) and direction == "▼":
             start_index = 0
         elif start_index < 0 and direction == "▲":
             start_index = len(items) - 1
-        # Iterate from the start index to the end if going down
+
+        # Function to check for a match
+        def check_match(index):
+            grapheme, phonemes = items[index]
+            if target == "Graphemes" and compiled_pattern.search(grapheme):
+                return True
+            if target == "Phonemes" and compiled_pattern.search(", ".join(phonemes)):
+                return True
+            return False
+
+        # Iterate in the specified direction
         if direction == "▼":
-            for index in range(start_index, len(items)):
-                item = items[index]
-                item_values = self.viewer_tree.item(item, "values")
-                if target == "Graphemes" and re.search(pattern, item_values[1]):
-                    self.viewer_tree.selection_set(item)
-                    self.viewer_tree.see(item)
-                    return
-                elif target == "Phonemes":
-                    phoneme_string = " ".join(item_values[2].split())
-                    if re.search(pattern, phoneme_string):
-                        self.viewer_tree.selection_set(item)
-                        self.viewer_tree.see(item)
-                        return
-        # Iterate from the start index to the beginning if going up
-        elif direction == "▲":
-            for index in range(start_index, -1, -1):
-                item = items[index]
-                item_values = self.viewer_tree.item(item, "values")
-                if target == "Graphemes" and re.search(pattern, item_values[1]):
-                    self.viewer_tree.selection_set(item)
-                    self.viewer_tree.see(item)
-                    return
-                elif target == "Phonemes":
-                    phoneme_string = " ".join(item_values[2].split())
-                    if re.search(pattern, phoneme_string):
-                        self.viewer_tree.selection_set(item)
-                        self.viewer_tree.see(item)
-                        return
+            range_to_iterate = range(start_index, len(items))
+        else:
+            range_to_iterate = range(start_index, -1, -1)
+
+        for index in range_to_iterate:
+            if check_match(index):
+                # Find the corresponding item in the Treeview
+                item_id = self.viewer_tree.get_children()[index]
+                self.viewer_tree.selection_set(item_id)
+                self.viewer_tree.see(item_id)
+                return
         # If no match found, inform the user
-        messagebox.showinfo("No Match", f"{self.localization.get('find_next_dia', 'No matching entry found.')}")
-    
+        messagebox.showinfo("No Match", self.localization.get('find_next_dia', 'No matching entry found.'))
+
     def clear_entries(self):
         self.word_entry.delete(0, tk.END)
         self.phoneme_entry.delete(0, tk.END)
@@ -2587,7 +2609,7 @@ class Dictionary(tk.Tk):
         save_frame.grid(row=5, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         cad_frame = ttk.Frame(self)
         cad_frame.grid(row=6, column=0, columnspan=3, padx=10, pady=5, sticky="ew")
-        label_font = tkFont.Font(size=10)
+        label_font = self.tree_font
         label_color = "gray"
 
         # Add buttons to each frame

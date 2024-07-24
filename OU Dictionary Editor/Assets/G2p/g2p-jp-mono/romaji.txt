@@ -6,7 +6,7 @@ e  e
 o  o
 ka  k a
 ki  k i
-ki  k u
+ku  k u
 ke  k e
 ko  k o
 ga  g a
@@ -470,24 +470,30 @@ ngyan  ngy a N
 ngyun  ngy u N
 ngyon  ngy o N
 b  b
+ch  ch
 by  by
+bw  bw
 d  d
 dy  dy
+dw  dw
 f  f
 fy  fy
 g  g
 gy  gy
+gw  gw
 h  h
 hy  hy
 j  j
 jy  jy
 k  k
 ky  ky
+l  l
 m  m
 my  my
 ny  ny
 p  p
 py  py
+pw pw
 r  r
 ry  ry
 s  s
@@ -501,3 +507,4 @@ w  w
 y  y
 z  z
 zy  zy
+zh  j
