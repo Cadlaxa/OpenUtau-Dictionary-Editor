@@ -95,8 +95,8 @@ class DownloadProgressDialog:
         self.progress_window.geometry(f'{width}x{height}+{x}+{y}')
 
 class Dictionary(TkinterDnD.Tk):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         
         config = configparser.ConfigParser()
         config.read('settings.ini')
@@ -475,7 +475,7 @@ class Dictionary(TkinterDnD.Tk):
         os.makedirs(cache_dir, exist_ok=True)
 
         # Create a unique cache file path
-        cache_filename = (filepath).replace('/', '-').replace(':', '') + '.y\'all'
+        cache_filename = (filepath).replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
         cache_filepath = os.path.join(cache_dir, cache_filename)
 
         # Check if the cache file exists and is up-to-date
@@ -565,7 +565,7 @@ class Dictionary(TkinterDnD.Tk):
             os.makedirs(cache_dir, exist_ok=True)
             
             # Create a unique cache file path
-            cache_filename = (filepath).replace('/', '-').replace(':', '') + '.y\'all'
+            cache_filename = (filepath).replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
             cache_filepath = os.path.join(cache_dir, cache_filename)
 
             # Check if the cache file exists and is up-to-date
@@ -635,7 +635,7 @@ class Dictionary(TkinterDnD.Tk):
             os.makedirs(cache_dir, exist_ok=True)
 
             # Create a unique cache file path
-            cache_filename = filepath.replace('/', '-').replace(':', '') + '.y\'all'
+            cache_filename = filepath.replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
             cache_filepath = os.path.join(cache_dir, cache_filename)
 
             # Check if the cache file exists and is up-to-date
@@ -2543,10 +2543,32 @@ class Dictionary(TkinterDnD.Tk):
         self.bind("<Escape>", self.it_closes)
     
     def on_drop(self, event):
-        files = self.tk.splitlist(event.data)
-        for file in files:
-            print(f"File dropped: {file}")
-            ext = os.path.splitext(file)[1].lower()
+        # Retrieve raw data from the event
+        raw_data = event.data
+        print(f"Raw data: {raw_data}")
+
+        # If the event data is a single path, handle it as is
+        if isinstance(raw_data, str) and not raw_data.startswith('{'):
+            # Simulated event or single file drop with possible spaces in the filename
+            files = [raw_data]
+        else:
+            # Actual drop event here, the openned damn app
+            files = self.tk.splitlist(raw_data)
+
+        print(f"Files received: {files}")
+
+        if len(files) > 1:
+            messagebox.showinfo("Multiple Files", f"{self.localization.get('dnd_multi', 'Please drop only one file at a time.')}")
+            return
+        file = files[0]
+        if not os.path.isfile(file):
+            messagebox.showerror("Error Opening File", f"{self.localization.get('dnd_nf', 'File not found:')} {file}")
+            return
+
+        print(f"File dropped: {file}")
+        file = os.path.normpath(file)
+        ext = os.path.splitext(file)[1].lower()
+        try:
             if ext == '.yaml':
                 self.load_yaml_file(filepath=file)
             elif ext == '.txt':
@@ -2555,7 +2577,9 @@ class Dictionary(TkinterDnD.Tk):
                 self.load_json_file(filepath=file)
             else:
                 messagebox.showerror("Error Opening File", f"{self.localization.get('dnd_file', 'Unsupported file type:')} {file}")
-    
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+                
     def main_editor_widgets(self):
         # Options Frame setup
         options_frame = ttk.LabelFrame(self.options_tab, text="Entry options")
@@ -3210,6 +3234,33 @@ class Dictionary(TkinterDnD.Tk):
             print("No localizable widgets defined.")
         self.widget_style()
     
-if __name__ == "__main__":
+class Event:
+    def __init__(self, data):
+        self.data = data
+
+def process_files(file_paths):
     app = Dictionary()
+    app.update()
+    # Process each file path individually
+    for path in file_paths:
+        # Ensure the path is correctly formatted
+        path = os.path.normpath(path)
+        print(f"Processing file: {path}")
+        # Create the event with the path
+        simulated_event = Event(path)
+        app.on_drop(simulated_event)
+
     app.mainloop()
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:
+        try:
+            # Prepare file paths
+            file_paths = [arg for arg in sys.argv[1:]]
+            process_files(file_paths)
+        except Exception as e:
+            print(f"Error processing files: {str(e)}")
+    else:
+        app = Dictionary()
+        app.mainloop()
