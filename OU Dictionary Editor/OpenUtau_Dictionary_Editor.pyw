@@ -14,7 +14,7 @@ import zipfile
 from zipfile import ZipFile
 import shutil, threading, subprocess, copy, subprocess, platform, gzip, pyglet, pyperclip, io
 import ctypes as ct
-import json, pickle, darkdetect, webbrowser, markdown2, tkdnd
+import json, pickle, darkdetect, webbrowser, markdown2
 from tkhtmlview import HTMLLabel
 from collections import defaultdict, OrderedDict
 import onnxruntime as ort
