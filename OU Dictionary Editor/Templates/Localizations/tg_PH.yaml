@@ -170,3 +170,4 @@ sym_inc_rv: "Maling format ng entry ng simbolo. Ang bawat entry ay dapat na isan
 sym_ent_inc_rv: "Ang entry ng simbolo ay hindi kumpleto."
 sym_str_rv: "Dapat na string ang type na kumakatawan sa kategorya."
 yaml_merge_empt_rv: "Ang YAML file ay walang laman o may maling format."
+dnd_file: "Hindi suportadong uri ng file:"

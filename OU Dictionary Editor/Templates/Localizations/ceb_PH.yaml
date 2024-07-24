@@ -171,3 +171,4 @@ sym_inc_rv: "Sayop ang pormat sa simbolo nga entry. Kinahanglan nga matag entry 
 sym_ent_inc_rv: "Ang simbolo nga entry kulang."
 sym_str_rv: "Kinahanglan nga string nga nagrepresentar sa kategorya ang type."
 yaml_merge_empt_rv: "Ang YAML file walay sulod o sayop ang pormat."
+dnd_file: "Wala masuportahan nga klase sa file:"

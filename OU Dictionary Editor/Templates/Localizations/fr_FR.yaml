@@ -171,3 +171,4 @@ sym_inc_rv: "Format d'entrée de symbole incorrect. Chaque entrée doit être un
 sym_ent_inc_rv: "L'entrée de symbole est incomplète."
 sym_str_rv: "Le type doit être une chaîne représentant la catégorie."
 yaml_merge_empt_rv: "Le fichier YAML est vide ou a un format incorrect."
+dnd_file: "Type de fichier non pris en charge :"

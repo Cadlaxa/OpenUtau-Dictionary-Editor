@@ -1,5 +1,8 @@
 # Changelog
 ---
+**`(7/--/24)`**
+- Add file drag and drop file support to open them directly
+
 **`(7/24/24)`**
 - Regex find and replace now directly iterates and edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview
 - [JA Monophone G2P] Add missing phonemes @lottev1991

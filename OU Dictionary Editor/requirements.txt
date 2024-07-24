@@ -5,3 +5,4 @@ pyperclip
 darkdetect
 tkhtmlview
 markdown2
+tkinterdnd2

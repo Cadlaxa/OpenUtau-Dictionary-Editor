@@ -19,6 +19,7 @@ from tkhtmlview import HTMLLabel
 from collections import defaultdict, OrderedDict
 import onnxruntime as ort
 import numpy as np
+from tkinterdnd2 import TkinterDnD, DND_FILES
 
 
 # Directories
@@ -93,9 +94,9 @@ class DownloadProgressDialog:
         y = (self.progress_window.winfo_screenheight() // 2) - (height // 2) - 30
         self.progress_window.geometry(f'{width}x{height}+{x}+{y}')
 
-class Dictionary(tk.Tk):
-    def __init__(self, *args, **kwargs):
-        tk.Tk.__init__(self, *args, **kwargs)
+class Dictionary(TkinterDnD.Tk):
+    def __init__(self):
+        super().__init__()
         
         config = configparser.ConfigParser()
         config.read('settings.ini')
@@ -453,8 +454,9 @@ class Dictionary(tk.Tk):
             sv_ttk.set_theme("dark")
             ttk.Style().theme_use("mint_dark")
         
-    def load_cmudict(self):
-        filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+    def load_cmudict(self, filepath=None):
+        if filepath is None:
+            filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
         if not filepath:
             messagebox.showinfo("No File", f"{self.localization.get('cmudict_nofile', 'No file was selected.')}")
             return
@@ -543,8 +545,9 @@ class Dictionary(tk.Tk):
     def remove_numbered_accents(self, phonemes):
         return [phoneme[:-1] if phoneme[-1].isdigit() else phoneme for phoneme in phonemes]
     
-    def load_json_file(self):
-        filepath = filedialog.askopenfilename(title="Open JSON File", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+    def load_json_file(self, filepath=None):
+        if filepath is None:
+            filepath = filedialog.askopenfilename(title="Open JSON File", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
         if not filepath:
             messagebox.showinfo("No File", f"{self.localization.get('json_nofile', 'No file was selected.')}")
             return
@@ -609,14 +612,15 @@ class Dictionary(tk.Tk):
         finally:
             self.loading_window.destroy()
 
-    def load_yaml_file(self):
-        filepath = filedialog.askopenfilename(
-            title="Open YAML File",
-            filetypes=[("YAML files", "*.yaml"), ("Y'ALL files", "*yaml.y'all"), ("All files", "*.*")]
-        )
-        if not filepath:
-            messagebox.showinfo("No File", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
-            return
+    def load_yaml_file(self, filepath=None):
+        if filepath is None:
+            filepath = filedialog.askopenfilename(
+                title="Open YAML File",
+                filetypes=[("YAML files", "*.yaml"), ("Y'ALL files", "*yaml.y'all"), ("All files", "*.*")]
+            )
+            if not filepath:
+                messagebox.showinfo("No File", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
+                return
         
         self.load_window()
         self.loading_window.update_idletasks()
@@ -2532,7 +2536,25 @@ class Dictionary(tk.Tk):
         self.settings_widgets()
         self.other_widgets()
 
+        # Register the drop target
+        self.notebook.drop_target_register(DND_FILES)
+        self.notebook.dnd_bind('<<Drop>>', self.on_drop)
+
         self.bind("<Escape>", self.it_closes)
+    
+    def on_drop(self, event):
+        files = self.tk.splitlist(event.data)
+        for file in files:
+            print(f"File dropped: {file}")
+            ext = os.path.splitext(file)[1].lower()
+            if ext == '.yaml':
+                self.load_yaml_file(filepath=file)
+            elif ext == '.txt':
+                self.load_cmudict(filepath=file)
+            elif ext == '.json':
+                self.load_json_file(filepath=file)
+            else:
+                messagebox.showerror("Error Opening File", f"{self.localization.get('dnd_file', 'Unsupported file type:')} {file}")
     
     def main_editor_widgets(self):
         # Options Frame setup
@@ -2889,6 +2911,7 @@ class Dictionary(tk.Tk):
     
     def whats_new(self):
         self.update_window = tk.Toplevel(self)
+        self.icon(self.update_window)
         self.update_window.title("What's New")
         self.update_window.geometry("600x500")
         
@@ -2931,8 +2954,6 @@ class Dictionary(tk.Tk):
         chk_show_whats_new = ttk.Checkbutton(button_frame, text="Do not show this again", variable=self.show_whats_new_var)
         chk_show_whats_new.pack(side=tk.LEFT, pady=10, anchor='w')
         self.localizable_widgets['whats_new_cb'] = chk_show_whats_new
-
-        self.icon(self.update_window)
         self.update_window.protocol("WM_DELETE_WINDOW", self.on_closing_whats_new)
 
     def on_closing_whats_new(self):
