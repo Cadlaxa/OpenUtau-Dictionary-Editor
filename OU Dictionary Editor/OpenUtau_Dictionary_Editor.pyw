@@ -2662,6 +2662,11 @@ class Dictionary(TkinterDnD.Tk):
         self.notebook.dnd_bind('<<Drop>>', self.on_drop)
 
         self.bind("<Escape>", self.it_closes)
+    
+    def focus_on_plugins(self):
+        self.notebook.select(self.others_tab)
+        self.get_lyrics.focus_set()
+        self.after(1000, self.ui_import_button.focus_set)
                 
     def main_editor_widgets(self):
         # Options Frame setup
@@ -2693,6 +2698,10 @@ class Dictionary(TkinterDnD.Tk):
         edit_symbols = ttk.Button(options_frame, text="Edit Symbols", style='Accent.TButton', command=self.open_symbol_editor)
         edit_symbols.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['edit_sym'] = edit_symbols
+
+        plugin_focus = ttk.Button(options_frame, text="Plugins", style='Accent.TButton', command=self.focus_on_plugins)
+        plugin_focus.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['plugin_focus'] = plugin_focus
        
         # Sorting combobox
         self.sort_options_var = tk.StringVar()
@@ -2875,18 +2884,18 @@ class Dictionary(TkinterDnD.Tk):
         self.localizable_widgets['import'] = synthv_import
 
         # Frame for UI controls (placeholder name)
-        ui_frame = ttk.LabelFrame(self.other_frame, text="Plug-in")
-        ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
-        ui_frame.columnconfigure(0, weight=1)
-        self.localizable_widgets['plugin'] = ui_frame
+        self.ui_frame = ttk.LabelFrame(self.other_frame, text="Plug-in")
+        self.ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
+        self.ui_frame.columnconfigure(0, weight=1)
+        self.localizable_widgets['plugin'] = self.ui_frame
 
-        get_lyrics = ttk.Button(ui_frame, style='TButton', text="Get Lyrics from Track", command=self.get_lyrics_from_tmp)
-        get_lyrics.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-        self.localizable_widgets['get_lyrics'] = get_lyrics
+        self.get_lyrics = ttk.Button(self.ui_frame, style='TButton', text="Get Lyrics from Track", command=self.get_lyrics_from_tmp)
+        self.get_lyrics.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['get_lyrics'] = self.get_lyrics
 
-        ui_import_button = ttk.Button(ui_frame, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
-        ui_import_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
-        self.localizable_widgets['import_vb'] = ui_import_button
+        self.ui_import_button = ttk.Button(self.ui_frame, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
+        self.ui_import_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['import_vb'] = self.ui_import_button
 
         self.other_frame1 = ttk.Frame(self.others_tab)
         self.other_frame1.grid(row=1, column=0, columnspan=1, padx=5, pady=10, sticky="nsew")
