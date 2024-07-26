@@ -1956,7 +1956,8 @@ class Dictionary(TkinterDnD.Tk):
             
             for grapheme, phonemes in entries:
                 phonemes_list = [phoneme.strip("',[] \"") for phoneme in phonemes.split()]
-                original_grapheme = grapheme.strip()
+                grapheme = grapheme.strip("\"")
+                original_grapheme = grapheme
                 count = 1
                 match = re.match(r'^(.*)\((\d+)\)$', original_grapheme)
                 if match:
