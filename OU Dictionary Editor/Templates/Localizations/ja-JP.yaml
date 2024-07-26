@@ -177,3 +177,11 @@ yaml_merge_empt_rv: "YAMLファイルが空ですか、または間違った形�
 dnd_file: "サポートされていないファイルタイプ："
 dnd_multi: "一度に1つのファイルのみをドロップしてください。"
 dnd_nf: "ファイルが見つかりません:"
+
+# Plugin
+plugin: "プラグイン"
+get_lyrics: "トラックから歌詞を取得"
+import_vb: "VB辞書をインポート"
+voicedir: "テンポラリファイルにVoiceDirが見つかりません。"
+no_voicedir: "VoiceDir内に.yamlファイルが見つかりません。"
+multi_voicedir: "VoiceDir内に複数の.yamlファイルが見つかりました。選択するためにディレクトリを開きます。"

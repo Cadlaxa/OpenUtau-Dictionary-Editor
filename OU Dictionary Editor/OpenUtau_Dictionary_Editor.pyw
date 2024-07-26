@@ -14,7 +14,7 @@ import zipfile
 from zipfile import ZipFile
 import shutil, threading, subprocess, copy, subprocess, platform, gzip, pyglet, pyperclip, io
 import ctypes as ct
-import json, pickle, darkdetect, webbrowser, markdown2, pyutau
+import json, pickle, darkdetect, webbrowser, markdown2, glob
 from tkhtmlview import HTMLLabel
 from collections import defaultdict, OrderedDict
 import onnxruntime as ort
@@ -136,6 +136,7 @@ class Dictionary(TkinterDnD.Tk):
         self.undo_stack = []
         self.redo_stack = []
         self.copy_stack = []
+        self.plugin_file = None
 
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
@@ -2535,12 +2536,94 @@ class Dictionary(TkinterDnD.Tk):
             elif ext == '.json':
                 self.load_json_file(filepath=file)
             elif ext == '.tmp':
-                return
+                self.plugin_file = file
             else:
                 messagebox.showerror("Error Opening File", f"{self.localization.get('dnd_file', 'Unsupported file type:')} {file}")
         except Exception as e:
             messagebox.showerror("Error", f"{self.localization.get('yaml_load_err', 'An error occurred:')} {str(e)}")
     
+    def get_lyrics_from_tmp(self):
+        lyrics = []
+        with open(self.plugin_file, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+            for line in lines:
+                if line.startswith("Lyric="):
+                    lyric = line.strip().split("=")[1]
+                    if lyric and lyric not in {"R", "+", "-", "+~", "+*", "+-"}:
+                        lyrics.append(lyric)
+
+        # Ensure G2P is enabled
+        if not self.g2p_checkbox_var.get():
+            self.g2p_checkbox_var.set(True)  # Enable G2P if it is off
+            self.update_g2p_model()
+
+        # Convert lyrics (graphemes) to phonemes using G2P
+        if self.g2p_checkbox_var.get():
+            word_phoneme_pairs = []
+            for lyric in lyrics:
+                phonemes = self.g2p_model.predict(lyric)
+                joined_phonemes = ''.join(phonemes)
+                word_phoneme_pairs.append((lyric, joined_phonemes))
+        else:
+            word_phoneme_pairs = [(lyric, lyric) for lyric in lyrics]
+
+        # Update Treeview
+        self.update_entries_window()
+        selected = self.viewer_tree.selection()
+        insert_index = self.viewer_tree.index(selected[-1]) + 1 if selected else 'end'
+
+        for word, phoneme in word_phoneme_pairs:
+            phonemes_list = [phon.strip("',[]\"") for phon in phoneme.split()]
+            original_word = word.strip()
+            count = 1
+            match = re.match(r'^(.*)\((\d+)\)$', original_word)
+            if match:
+                original_word, count = match.groups()
+                count = int(count) + 1
+
+            while word in self.dictionary:
+                word = f"{original_word}({count})"
+                count += 1
+
+            self.add_entry_treeview(new_word=word, new_phonemes=phonemes_list, insert_index=insert_index)
+            if insert_index != 'end':
+                insert_index += 1
+    
+    def get_yaml_from_temp(self):
+        voice_dir = None
+        with open(self.plugin_file, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+            for line in lines:
+                if line.startswith("VoiceDir="):
+                    voice_dir = line.strip().split("=")[1]
+                    break
+
+        # Find all .yaml files in the VoiceDir, including subfolders, excluding specific files
+        excluded_files = {'character.yaml', 'dsconfig.yaml', 'enuconfig.yaml', 'config_rmdn.yaml', 'vocoder.yaml'}
+        yaml_files = [file for file in glob.glob(os.path.join(voice_dir, '**', '*.yaml'), recursive=True) 
+                    if os.path.basename(file) not in excluded_files]
+        
+        if not voice_dir:
+            messagebox.showerror("Error", f"{self.localization.get('voicedir', 'VoiceDir not found in the temp file.')}")
+            return None
+
+        if not yaml_files:
+            messagebox.showerror("Error", f"{self.localization.get('no_voicedir', 'No .yaml files found in the VoiceDir.')}")
+            return None
+
+        if len(yaml_files) > 1:
+            messagebox.showinfo("Multiple YAML files found", f"{self.localization.get('multi_voicedir', 'Multiple .yaml files found in the VoiceDir. Opening the directory for you to choose.')}")
+            selected_yaml_file = filedialog.askopenfilename(initialdir=voice_dir, title="Select YAML File", filetypes=(("YAML files", "*.yaml"), ("All files", "*.*")))
+            if not selected_yaml_file:
+                messagebox.showwarning("No file selected", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
+                return None
+        else:
+            selected_yaml_file = yaml_files[0]
+        
+        # Load the single YAML file found
+        self.load_yaml_file(selected_yaml_file)
+        return selected_yaml_file
+
     def create_widgets(self):
         # Main notebook to contain tabs
         self.notebook = ttk.Notebook(self)
@@ -2608,7 +2691,7 @@ class Dictionary(TkinterDnD.Tk):
         self.localizable_widgets['lowercase_phonemes'] = lowercase_phonemes_cb
 
         edit_symbols = ttk.Button(options_frame, text="Edit Symbols", style='Accent.TButton', command=self.open_symbol_editor)
-        edit_symbols.grid(row=3, column=1, padx=10, pady=(5,10), sticky="ew")
+        edit_symbols.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['edit_sym'] = edit_symbols
        
         # Sorting combobox
@@ -2792,17 +2875,18 @@ class Dictionary(TkinterDnD.Tk):
         self.localizable_widgets['import'] = synthv_import
 
         # Frame for UI controls (placeholder name)
-        ui_frame = ttk.LabelFrame(self.other_frame, text="Adding more in the future")
+        ui_frame = ttk.LabelFrame(self.other_frame, text="Plug-in")
         ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
         ui_frame.columnconfigure(0, weight=1)
+        self.localizable_widgets['plugin'] = ui_frame
 
-        ui_export_button = ttk.Button(ui_frame, state="disabled", style='Accent.TButton', text="Export Dictionary", command=self.export_json)
-        ui_export_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
-        #self.localizable_widgets['export'] = ui_export_button
+        get_lyrics = ttk.Button(ui_frame, style='TButton', text="Get Lyrics from Track", command=self.get_lyrics_from_tmp)
+        get_lyrics.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['get_lyrics'] = get_lyrics
 
-        ui_import_button = ttk.Button(ui_frame, state="disabled", text="Import Dictionary", style='TButton', command=self.load_json_file)
-        ui_import_button.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-        #self.localizable_widgets['import'] = ui_import_button
+        ui_import_button = ttk.Button(ui_frame, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
+        ui_import_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['import_vb'] = ui_import_button
 
         self.other_frame1 = ttk.Frame(self.others_tab)
         self.other_frame1.grid(row=1, column=0, columnspan=1, padx=5, pady=10, sticky="nsew")

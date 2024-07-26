@@ -173,3 +173,11 @@ yaml_merge_empt_rv: "Ang YAML file ay walang laman o may maling format."
 dnd_file: "Hindi suportadong uri ng file:"
 dnd_multi: "Mangyaring mag-drop lamang ng isang file sa bawat pagkakataon."
 dnd_nf: "Hindi mahanap ang file:"
+
+# Plugin
+plugin: "Plug-in"
+get_lyrics: "Kunin ang Lyrics mula sa Track"
+import_vb: "I-import ang VB Dictionary"
+voicedir: "Hindi natagpuan ang VoiceDir sa temp file."
+no_voicedir: "Walang .yaml na mga file na natagpuan sa VoiceDir."
+multi_voicedir: "Maraming .yaml na mga file ang natagpuan sa VoiceDir. Binubuksan ang direktoryo upang pumili ka."

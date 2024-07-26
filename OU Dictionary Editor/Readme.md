@@ -3,6 +3,8 @@
 **`(7/--/24)`**
 - Add file drag and drop file support to open them directly
 - Adds `open with` function to edit the dictionary files without opening the application first
+- Get lyrics from the track and add them to the treeview with the predicted phonemes from the selected G2p model
+- Import voicebank yaml dictionary (Can be used only when the GUI is used as an OpenUtau Plugin)
 
 **`(7/24/24)`**
 - Regex find and replace now directly iterates and edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview

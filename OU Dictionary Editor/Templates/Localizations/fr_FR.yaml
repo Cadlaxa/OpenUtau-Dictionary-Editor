@@ -174,3 +174,11 @@ yaml_merge_empt_rv: "Le fichier YAML est vide ou a un format incorrect."
 dnd_file: "Type de fichier non pris en charge :"
 dnd_multi: "Veuillez déposer un seul fichier à la fois."
 dnd_nf: "Fichier non trouvé :"
+
+# Plugin
+plugin: "Plugin"
+get_lyrics: "Obtenir les paroles de la piste"
+import_vb: "Importer le dictionnaire VB"
+voicedir: "VoiceDir non trouvé dans le fichier temporaire."
+no_voicedir: "Aucun fichier .yaml trouvé dans le VoiceDir."
+multi_voicedir: "Plusieurs fichiers .yaml trouvés dans le VoiceDir. Ouverture du répertoire pour que vous puissiez choisir."
