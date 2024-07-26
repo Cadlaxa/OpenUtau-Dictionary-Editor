@@ -12,7 +12,7 @@ import configparser
 from Assets.modules import requests
 import zipfile
 from zipfile import ZipFile
-import shutil, threading, subprocess, copy, subprocess, platform, gzip, pyglet, pyperclip, io
+import shutil, threading, subprocess, copy, platform, gzip, pyglet, pyperclip, io
 import ctypes as ct
 import json, pickle, darkdetect, webbrowser, markdown2, glob
 from tkhtmlview import HTMLLabel
@@ -29,6 +29,7 @@ ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
 ICON1 = P('./Assets/icon.ico')
 CACHE = P('./Cache')
+# soon
 AUTOSAVES = P('./Autosaves and Backups')
 
 # for treeview only but ruamel.yaml will handle them automatically
