@@ -14,7 +14,7 @@ import zipfile
 from zipfile import ZipFile
 import shutil, threading, subprocess, copy, platform, gzip, pyglet, pyperclip, io
 import ctypes as ct
-import json, pickle, darkdetect, webbrowser, markdown2, glob
+import json, pickle, darkdetect, webbrowser, markdown2, glob, chardet
 from tkhtmlview import HTMLLabel
 from collections import defaultdict, OrderedDict
 import onnxruntime as ort
@@ -2655,9 +2655,17 @@ class Dictionary(TkinterDnD.Tk):
         self.others_tab.grid_columnconfigure(0, weight=1)
         self.others_tab.grid_rowconfigure(0, weight=1)
 
+        # Fourth Tab
+        self.plugins_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.plugins_tab, text='Plug-ins')
+        self.localizable_widgets['tab4'] = self.plugins_tab 
+        self.plugins_tab.grid_columnconfigure(0, weight=1)
+        self.plugins_tab.grid_rowconfigure(0, weight=1)
+
         self.main_editor_widgets()
         self.settings_widgets()
         self.other_widgets()
+        self.plugin_widgets()
 
         # Register the drop target
         self.notebook.drop_target_register(DND_FILES)
@@ -2666,9 +2674,9 @@ class Dictionary(TkinterDnD.Tk):
         self.bind("<Escape>", self.it_closes)
     
     def focus_on_plugins(self):
-        self.notebook.select(self.others_tab)
+        self.notebook.select(self.plugins_tab)
         self.get_lyrics.focus_set()
-        self.after(1000, self.ui_import_button.focus_set)
+        self.after(1000, self.vb_import_button.focus_set)
                 
     def main_editor_widgets(self):
         # Options Frame setup
@@ -2886,18 +2894,17 @@ class Dictionary(TkinterDnD.Tk):
         self.localizable_widgets['import'] = synthv_import
 
         # Frame for UI controls (placeholder name)
-        self.ui_frame = ttk.LabelFrame(self.other_frame, text="Plug-in")
-        self.ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
-        self.ui_frame.columnconfigure(0, weight=1)
-        self.localizable_widgets['plugin'] = self.ui_frame
+        ui_frame = ttk.LabelFrame(self.other_frame, text="Adding more in the future")
+        ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
+        ui_frame.columnconfigure(0, weight=1)
 
-        self.get_lyrics = ttk.Button(self.ui_frame, style='TButton', text="Get Lyrics from Track", command=self.get_lyrics_from_tmp)
-        self.get_lyrics.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-        self.localizable_widgets['get_lyrics'] = self.get_lyrics
+        ui_export_button = ttk.Button(ui_frame, state="disabled", style='Accent.TButton', text="Export Dictionary", command=self.export_json)
+        ui_export_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        #self.localizable_widgets['export'] = ui_export_button
 
-        self.ui_import_button = ttk.Button(self.ui_frame, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
-        self.ui_import_button.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
-        self.localizable_widgets['import_vb'] = self.ui_import_button
+        ui_import_button = ttk.Button(ui_frame, state="disabled", text="Import Dictionary", style='TButton', command=self.load_json_file)
+        ui_import_button.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        #self.localizable_widgets['import'] = ui_import_button
 
         self.other_frame1 = ttk.Frame(self.others_tab)
         self.other_frame1.grid(row=1, column=0, columnspan=1, padx=5, pady=10, sticky="nsew")
@@ -2930,6 +2937,164 @@ class Dictionary(TkinterDnD.Tk):
         # Bind checkbox variable to a callback function
         self.g2p_checkbox_var.trace_add("write", self.on_checkbox_change)
     
+    def plugin_widgets(self):
+        self.plugin_frame = ttk.Frame(self.plugins_tab)
+        self.plugin_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=10, sticky="nsew")
+        self.plugin_frame.columnconfigure(0, weight=1)
+        self.plugin_frame.columnconfigure(1, weight=1)
+
+        # Frame for OU Plugin
+        self.plug_frame = ttk.LabelFrame(self.plugin_frame, text="Plug-in")
+        self.plug_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        self.plug_frame.columnconfigure(0, weight=1)
+        self.localizable_widgets['plugin'] = self.plug_frame
+
+        self.get_lyrics = ttk.Button(self.plug_frame, style='TButton', text="Get Lyrics from Track", command=self.get_lyrics_from_tmp)
+        self.get_lyrics.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['get_lyrics'] = self.get_lyrics
+
+        self.vb_import_button = ttk.Button(self.plug_frame, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
+        self.vb_import_button.grid(row=2, column=0, padx=10, pady=(5,10), sticky="ew")
+        self.localizable_widgets['import_vb'] = self.vb_import_button
+
+        # Frame for Terminal
+        self.terminal = ttk.LabelFrame(self.plugin_frame, text="YAML Generator")
+        self.terminal.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
+        self.terminal.columnconfigure(0, weight=1)
+        #self.localizable_widgets['console'] = self.terminal
+
+        self.dict_gen = ttk.Button(self.terminal, style='TButton', text="Reclist to Yaml Template", command=self.generate_yaml_template_from_reclist)
+        self.dict_gen.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        #self.localizable_widgets['open_console'] = self.dict_gen
+
+        self.vb_import_button = ttk.Button(self.terminal, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
+        self.vb_import_button.grid(row=2, column=0, padx=10, pady=(5,10), sticky="ew")
+        #self.localizable_widgets['import_vb'] = self.vb_import_button
+    
+    def generate_yaml_template_from_reclist(self):
+        # Open a file dialog to select the reclist file
+        filepath = filedialog.askopenfilename(
+            title="Select Reclist File",
+            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+        )
+        if not filepath:
+            # If no file is selected, show an info message and return
+            messagebox.showinfo("No File Selected", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
+            return
+        # Detect file encoding
+        with open(filepath, 'rb') as file:
+            raw_data = file.read()
+            result = chardet.detect(raw_data)
+            encoding = result['encoding']
+        # Read the reclist file with the detected encoding
+        try:
+            with open(filepath, 'r', encoding=encoding) as file:
+                lines = file.readlines()
+            # Process the lines as needed
+        except UnicodeDecodeError:
+            messagebox.showerror("Encoding Error", f"Failed to decode the file using detected encoding '{encoding}'.")
+            return
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+            return
+        # Initialize set to store unique phonemes
+        phoneme_set = set()
+        # Define vowels
+        vowels = {
+            'a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U', 
+            '{', 'V', '3', 'aI', 'eI', 'OI', 'aU', 'oU', 
+            'e@', 'e@n', 'e@m', 'eN', 'IN', 'Ar', 'Qr', 
+            'Er', 'Ir', 'Or', 'Ur', 'ir', 'ur', 'aIr', 
+            'aUr', 'A@', 'Q@', 'E@', 'I@', 'O@', 'U@', 
+            'i@', 'u@', 'aI@', 'aU@', 'Q', '1', 'Ol', 
+            'aUn', '@r', '@l', '@m', '@n', '@N', '@', 
+            'y', 'I\'', 'M', 'U\'', 'Y', '@\'', '@`', 
+            '3`', 'A`', 'Q`', 'E`', 'I`', 'O`', 
+            'U`', 'i`', 'u`', 'aI`', 'aU`', '}', 
+            '2', '3\'', '6', '7', '8', '9', '&', 
+            '{~', 'I~', 'aU~', 'VI', 'VU', '@U', 
+            'i:', 'u:', 'O:', 'e@0', 'ai', 'ei', 
+            'Oi', 'au', 'ou', 'Ou', '@u', 'E~', 
+            'e~', '3r', 'ar', 'or', '{l', 'Al', 
+            'al', 'El', 'Il', 'ul', 'Ul', 'mm', 
+            'nn', 'll', 'NN'
+        }
+        arpabet_vowels = {
+            "aa", "ax", "ae", "ah", "ao", "aw", "ay", "eh", "er", "ey", "ih", "iy", "ow", "oy", "uh", "uw", "a", "e", "i", "o", "u", "ai", "ei", "oi", "au", "ou", "ix", "ux",
+        "aar", "ar", "axr", "aer", "ahr", "aor", "or", "awr", "aur", "ayr", "air", "ehr", "eyr", "eir", "ihr", "iyr", "ir", "owr", "our", "oyr", "oir", "uhr", "uwr", "ur",
+        "aal", "al", "axl", "ael", "ahl", "aol", "ol", "awl", "aul", "ayl", "ail", "ehl", "el", "eyl", "eil", "ihl", "iyl", "il", "owl", "oul", "oyl", "oil", "uhl", "uwl", "ul",
+        "aan", "an", "axn", "aen", "ahn", "aon", "on", "awn", "aun", "ayn", "ain", "ehn", "en", "eyn", "ein", "ihn", "iyn", "in", "own", "oun", "oyn", "oin", "uhn", "uwn", "un",
+        "aang", "ang", "axng", "aeng", "ahng", "aong", "ong", "awng", "aung", "ayng", "aing", "ehng", "eng", "eyng", "eing", "ihng", "iyng", "ing", "owng", "oung", "oyng", "oing", "uhng", "uwng", "ung",
+        "aam", "am", "axm", "aem", "ahm", "aom", "om", "awm", "aum", "aym", "aim", "ehm", "em", "eym", "eim", "ihm", "iym", "im", "owm", "oum", "oym", "oim", "uhm", "uwm", "um", "oh",
+        "eu", "oe", "yw", "yx", "wx", "ox", "ex", "ea", "ia", "oa", "ua"
+        }
+        # Process each line and extract phonemes
+        for line in lines:
+            phoneme_groups = line.strip().replace('-', '_').replace('・', '_').replace(' ', '_').split('_')
+            for phoneme in phoneme_groups:
+                # If the phoneme is in ARPAbet vowels, add it directly
+                if phoneme in arpabet_vowels:
+                    phoneme_set.add(phoneme)
+                else:
+                    # Split CV sequences into consonants and vowels
+                    consonant = ''
+                    vowel = ''
+                    for i, char in enumerate(phoneme):
+                        if char in vowels:
+                            vowel = char
+                            if i > 0:
+                                consonant = phoneme[:i]
+                                phoneme_set.add(consonant)
+                            phoneme_set.add(vowel)
+                            break  # Exit after the first vowel to handle only CV pairs
+                    else:
+                        # If no vowels found, add the whole phoneme
+                        phoneme_set.add(phoneme)
+                
+        # Sort phonemes alphabetically
+        sorted_phonemes = sorted(phoneme_set)
+
+        # Read the reference YAML files to get symbol types
+        template_folder = TEMPLATES
+        symbol_types_reference = self.read_symbol_types_from_yaml(template_folder)
+
+        # Create the symbols section of the YAML data
+        self.symbols = {}
+        for phoneme in sorted_phonemes:
+            if phoneme:  # Skip empty strings
+                # Determine type of the phoneme from reference or default to 'unknown'
+                symbol_type = symbol_types_reference.get(phoneme, 'unknown')
+                self.symbols[phoneme] = symbol_type
+        
+        self.open_symbol_editor()
+        # Clear the Treeview before updating
+        self.symbol_treeview.delete(*self.symbol_treeview.get_children())
+        self.symbol_treeview['columns'] = ('symbol', 'type')
+        self.symbol_treeview.heading('symbol', text='Symbol')
+        self.symbol_treeview.heading('type', text='Type')
+
+        # Insert the symbols into the Treeview
+        for symbol, symbol_type in self.symbols.items():
+            self.add_symbols_treeview(word=symbol, value=[symbol_type])
+    
+    def read_symbol_types_from_yaml(self, folder_path):
+        yaml = YAML()
+        symbol_types = {}
+        for filename in os.listdir(folder_path):
+            if filename.endswith(".yaml"):
+                filepath = os.path.join(folder_path, filename)
+                with open(filepath, 'r') as file:
+                    data = yaml.load(file)
+                if 'symbols' in data and isinstance(data['symbols'], list):  # Ensure 'symbols' is in data and is a list
+                    for item in data['symbols']:
+                        if isinstance(item, dict) and 'symbol' in item and 'type' in item:
+                            symbol_types[item['symbol']] = item['type']
+                        else:
+                            print(f"Unexpected item format in {filename}: {item}")
+                else:
+                    print(f"Unexpected data format in {filename}: {data}")
+        return symbol_types
+
     def load_last_g2p(self):
         config = configparser.ConfigParser()
         config.read(self.config_file)

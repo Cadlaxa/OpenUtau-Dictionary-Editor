@@ -6,6 +6,8 @@
 - Get lyrics from the track and add them to the treeview with the predicted phonemes from the selected G2p model
 - Import voicebank yaml dictionary (Can be used only when the GUI is used as an OpenUtau Plugin)
 - Fix paste function for quoted graphemes
+- Added Regenate YAML template from reclist function
+- Separate `Plugins` tab
 
 **`(7/24/24)`**
 - Regex find and replace now directly iterates and edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview
