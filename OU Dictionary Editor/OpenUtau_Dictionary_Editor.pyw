@@ -20,6 +20,8 @@ from collections import defaultdict, OrderedDict
 import onnxruntime as ort
 import numpy as np
 from tkinterdnd2 import TkinterDnD, DND_FILES
+from Assets.plugins.generate_yaml_template import generate_yaml_template_from_reclist
+
 
 
 # Directories
@@ -2963,7 +2965,7 @@ class Dictionary(TkinterDnD.Tk):
         self.terminal.columnconfigure(0, weight=1)
         #self.localizable_widgets['console'] = self.terminal
 
-        self.dict_gen = ttk.Button(self.terminal, style='TButton', text="Reclist to Yaml Template", command=self.generate_yaml_template_from_reclist)
+        self.dict_gen = ttk.Button(self.terminal, style='TButton', text="Reclist to Yaml Template", command=self.import_gen_yaml_temp_data)
         self.dict_gen.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         #self.localizable_widgets['open_console'] = self.dict_gen
 
@@ -2971,129 +2973,19 @@ class Dictionary(TkinterDnD.Tk):
         self.vb_import_button.grid(row=2, column=0, padx=10, pady=(5,10), sticky="ew")
         #self.localizable_widgets['import_vb'] = self.vb_import_button
     
-    def generate_yaml_template_from_reclist(self):
-        # Open a file dialog to select the reclist file
-        filepath = filedialog.askopenfilename(
-            title="Select Reclist File",
-            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
-        )
-        if not filepath:
-            # If no file is selected, show an info message and return
-            messagebox.showinfo("No File Selected", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
-            return
-        # Detect file encoding
-        with open(filepath, 'rb') as file:
-            raw_data = file.read()
-            result = chardet.detect(raw_data)
-            encoding = result['encoding']
-        # Read the reclist file with the detected encoding
-        try:
-            with open(filepath, 'r', encoding=encoding) as file:
-                lines = file.readlines()
-            # Process the lines as needed
-        except UnicodeDecodeError:
-            messagebox.showerror("Encoding Error", f"Failed to decode the file using detected encoding '{encoding}'.")
-            return
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
-            return
-        # Initialize set to store unique phonemes
-        phoneme_set = set()
-        # Define vowels
-        vowels = {
-            'a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U', 
-            '{', 'V', '3', 'aI', 'eI', 'OI', 'aU', 'oU', 
-            'e@', 'e@n', 'e@m', 'eN', 'IN', 'Ar', 'Qr', 
-            'Er', 'Ir', 'Or', 'Ur', 'ir', 'ur', 'aIr', 
-            'aUr', 'A@', 'Q@', 'E@', 'I@', 'O@', 'U@', 
-            'i@', 'u@', 'aI@', 'aU@', 'Q', '1', 'Ol', 
-            'aUn', '@r', '@l', '@m', '@n', '@N', '@', 
-            'y', 'I\'', 'M', 'U\'', 'Y', '@\'', '@`', 
-            '3`', 'A`', 'Q`', 'E`', 'I`', 'O`', 
-            'U`', 'i`', 'u`', 'aI`', 'aU`', '}', 
-            '2', '3\'', '6', '7', '8', '9', '&', 
-            '{~', 'I~', 'aU~', 'VI', 'VU', '@U', 
-            'i:', 'u:', 'O:', 'e@0', 'ai', 'ei', 
-            'Oi', 'au', 'ou', 'Ou', '@u', 'E~', 
-            'e~', '3r', 'ar', 'or', '{l', 'Al', 
-            'al', 'El', 'Il', 'ul', 'Ul', 'mm', 
-            'nn', 'll', 'NN'
-        }
-        arpabet_vowels = {
-            "aa", "ax", "ae", "ah", "ao", "aw", "ay", "eh", "er", "ey", "ih", "iy", "ow", "oy", "uh", "uw", "a", "e", "i", "o", "u", "ai", "ei", "oi", "au", "ou", "ix", "ux",
-        "aar", "ar", "axr", "aer", "ahr", "aor", "or", "awr", "aur", "ayr", "air", "ehr", "eyr", "eir", "ihr", "iyr", "ir", "owr", "our", "oyr", "oir", "uhr", "uwr", "ur",
-        "aal", "al", "axl", "ael", "ahl", "aol", "ol", "awl", "aul", "ayl", "ail", "ehl", "el", "eyl", "eil", "ihl", "iyl", "il", "owl", "oul", "oyl", "oil", "uhl", "uwl", "ul",
-        "aan", "an", "axn", "aen", "ahn", "aon", "on", "awn", "aun", "ayn", "ain", "ehn", "en", "eyn", "ein", "ihn", "iyn", "in", "own", "oun", "oyn", "oin", "uhn", "uwn", "un",
-        "aang", "ang", "axng", "aeng", "ahng", "aong", "ong", "awng", "aung", "ayng", "aing", "ehng", "eng", "eyng", "eing", "ihng", "iyng", "ing", "owng", "oung", "oyng", "oing", "uhng", "uwng", "ung",
-        "aam", "am", "axm", "aem", "ahm", "aom", "om", "awm", "aum", "aym", "aim", "ehm", "em", "eym", "eim", "ihm", "iym", "im", "owm", "oum", "oym", "oim", "uhm", "uwm", "um", "oh",
-        "eu", "oe", "yw", "yx", "wx", "ox", "ex", "ea", "ia", "oa", "ua"
-        }
-        # Process each line and extract phonemes
-        for line in lines:
-            phoneme_groups = line.strip().replace('-', '_').replace('・', '_').replace(' ', '_').split('_')
-            for phoneme in phoneme_groups:
-                # If the phoneme is in ARPAbet vowels, add it directly
-                if phoneme in arpabet_vowels:
-                    phoneme_set.add(phoneme)
-                else:
-                    # Split CV sequences into consonants and vowels
-                    consonant = ''
-                    vowel = ''
-                    for i, char in enumerate(phoneme):
-                        if char in vowels:
-                            vowel = char
-                            if i > 0:
-                                consonant = phoneme[:i]
-                                phoneme_set.add(consonant)
-                            phoneme_set.add(vowel)
-                            break  # Exit after the first vowel to handle only CV pairs
-                    else:
-                        # If no vowels found, add the whole phoneme
-                        phoneme_set.add(phoneme)
-                
-        # Sort phonemes alphabetically
-        sorted_phonemes = sorted(phoneme_set)
+    def import_gen_yaml_temp_data(self):
+        filepath, symbols = generate_yaml_template_from_reclist()
+        if symbols:
+            self.open_symbol_editor()
+            # Clear the Treeview before updating
+            self.symbol_treeview.delete(*self.symbol_treeview.get_children())
+            self.symbol_treeview['columns'] = ('symbol', 'type')
+            self.symbol_treeview.heading('symbol', text='Symbol')
+            self.symbol_treeview.heading('type', text='Type')
 
-        # Read the reference YAML files to get symbol types
-        template_folder = TEMPLATES
-        symbol_types_reference = self.read_symbol_types_from_yaml(template_folder)
-
-        # Create the symbols section of the YAML data
-        self.symbols = {}
-        for phoneme in sorted_phonemes:
-            if phoneme:  # Skip empty strings
-                # Determine type of the phoneme from reference or default to 'unknown'
-                symbol_type = symbol_types_reference.get(phoneme, 'unknown')
-                self.symbols[phoneme] = symbol_type
-        
-        self.open_symbol_editor()
-        # Clear the Treeview before updating
-        self.symbol_treeview.delete(*self.symbol_treeview.get_children())
-        self.symbol_treeview['columns'] = ('symbol', 'type')
-        self.symbol_treeview.heading('symbol', text='Symbol')
-        self.symbol_treeview.heading('type', text='Type')
-
-        # Insert the symbols into the Treeview
-        for symbol, symbol_type in self.symbols.items():
-            self.add_symbols_treeview(word=symbol, value=[symbol_type])
-    
-    def read_symbol_types_from_yaml(self, folder_path):
-        yaml = YAML()
-        symbol_types = {}
-        for filename in os.listdir(folder_path):
-            if filename.endswith(".yaml"):
-                filepath = os.path.join(folder_path, filename)
-                with open(filepath, 'r') as file:
-                    data = yaml.load(file)
-                if 'symbols' in data and isinstance(data['symbols'], list):  # Ensure 'symbols' is in data and is a list
-                    for item in data['symbols']:
-                        if isinstance(item, dict) and 'symbol' in item and 'type' in item:
-                            symbol_types[item['symbol']] = item['type']
-                        else:
-                            print(f"Unexpected item format in {filename}: {item}")
-                else:
-                    print(f"Unexpected data format in {filename}: {data}")
-        return symbol_types
+            # Insert the symbols into the Treeview
+            for symbol, symbol_type in symbols.items():
+                self.add_symbols_treeview(word=symbol, value=[symbol_type])
 
     def load_last_g2p(self):
         config = configparser.ConfigParser()
