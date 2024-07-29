@@ -12,7 +12,7 @@ import configparser
 from Assets.modules import requests
 import zipfile
 from zipfile import ZipFile
-import shutil, threading, subprocess, copy, platform, gzip, pyglet, pyperclip, io
+import shutil, threading, subprocess, copy, platform, gzip, pyglet, pyperclip, io, csv
 import ctypes as ct
 import json, pickle, darkdetect, webbrowser, markdown2, glob, chardet
 from tkhtmlview import HTMLLabel
@@ -33,6 +33,7 @@ ASSETS = P('./Assets')
 ICON = P('./Assets/icon.png')
 ICON1 = P('./Assets/icon.ico')
 CACHE = P('./Cache')
+PHONEME_SYSTEMS = TEMPLATES / P('phoneme systems.csv')
 # soon
 AUTOSAVES = P('./Autosaves and Backups')
 
@@ -142,6 +143,8 @@ class Dictionary(TkinterDnD.Tk):
         self.redo_stack = []
         self.copy_stack = []
         self.plugin_file = None
+        self.phoneme_map = {}
+        self.systems = []
 
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
@@ -1635,36 +1638,69 @@ class Dictionary(TkinterDnD.Tk):
     def regex_replace_dialog(self):
         if self.replace_window is None or not self.replace_window.winfo_exists():
             self.replace_window = tk.Toplevel(self)
+            self.replace_window.resizable(False, False)
             self.replace_window.title("Regex Replace")
             self.save_state_before_change()
+            self.load_csv()
 
-            reg_frame = ttk.Frame(self.replace_window, style='Card.TFrame')
-            reg_frame.pack(padx=10, pady=10, fill="x")
+            card_frame = ttk.Frame(self.replace_window, style='Card.TFrame')
+            card_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+            reg_frame = ttk.Frame(card_frame, style='Card.TFrame')
+            reg_frame.grid(padx=10, pady=10, sticky='nsew', row=1)
             reg_frame.grid_columnconfigure(0, weight=1)
             reg_frame.grid_columnconfigure(1, weight=1)
+
+            reg_frame1 = ttk.Frame(card_frame)
+            reg_frame1.grid(padx=10, pady=10, sticky='nsew', row=0)
+            reg_frame1.grid_columnconfigure(0, weight=1)
+            reg_frame1.grid_columnconfigure(1, weight=20)
             
             # Fields for entering regex pattern and replacement text
-            reg_pat = ttk.Label(reg_frame, text="Regex Pattern:", font=self.font)
+            reg_pat = ttk.Label(reg_frame1, text="Regex Pattern:", font=self.font)
             reg_pat.grid(row=0, column=0, padx=10, pady=20)
             self.localizable_widgets['reg_pattern'] = reg_pat
             regex_var = tk.StringVar()
-            regex_entry = ttk.Entry(reg_frame, textvariable=regex_var, width=30)
-            regex_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+            regex_entry = ttk.Entry(reg_frame1, textvariable=regex_var, width=30)
+            regex_entry.grid(row=0, column=1, padx=15, pady=5, sticky="ew")
 
-            reg_rep = ttk.Label(reg_frame, text="Replacement:", font=self.font)
+            reg_rep = ttk.Label(reg_frame1, text="Replacement:", font=self.font)
             reg_rep.grid(row=1, column=0, padx=10, pady=5)
             self.localizable_widgets['replacement'] = reg_rep
             replace_var = tk.StringVar()
-            replace_entry = ttk.Entry(reg_frame, textvariable=replace_var, width=30)
-            replace_entry.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+            replace_entry = ttk.Entry(reg_frame1, textvariable=replace_var, width=30)
+            replace_entry.grid(row=1, column=1, padx=15, pady=5, sticky="ew")
 
             # Radio buttons to select target (graphemes or phonemes)
             target_var = tk.StringVar(value="Phonemes")
-            ttk.Radiobutton(reg_frame, text="Graphemes", style="TRadiobutton", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=10, pady=(20, 5), sticky="w")
-            ttk.Radiobutton(reg_frame, text="Phonemes", style="TRadiobutton", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=10, pady=(20, 5), sticky="w")
+            ttk.Radiobutton(reg_frame, text="Graphemes", style="TRadiobutton", variable=target_var, value="Graphemes").grid(row=2, column=0, padx=(50,10), pady=(20, 5), sticky="w")
+            ttk.Radiobutton(reg_frame, text="Phonemes", style="TRadiobutton", variable=target_var, value="Phonemes").grid(row=2, column=1, padx=(50,10), pady=(20, 5), sticky="w")
+
+            # Combobox for `From Selected Phonetic System`
+            phone_frame_from = ttk.Frame(reg_frame)
+            phone_frame_from.grid(padx=(15,0), pady=(10,0), sticky="nsew", row=3, column=0)
+            phone_frame_from.grid_columnconfigure(0, weight=30)
+            phone_frame_from.grid_columnconfigure(1, weight=0)
+
+            self.combo_from = ttk.Combobox(phone_frame_from, values=self.systems, state="readonly")
+            self.combo_from.grid(row=0, column=0, sticky='nsew')
+            self.combo_from.set("Phonetic System")
+
+            to_tove_lo = ttk.Button(phone_frame_from, style='Accent.TButton', text="▶", command=self.system_phonemes)
+            to_tove_lo.grid(row=0, column=1, padx=10)
+
+            # Combobox for `To Selected Phonetic System`
+            phone_frame_to = ttk.Frame(reg_frame)
+            phone_frame_to.grid(padx=(0,15), pady=(10,0), sticky='nsew', row=3, column=1)
+            phone_frame_to.grid_columnconfigure(0, weight=1)
+            phone_frame_to.grid_columnconfigure(1, weight=0)
+
+            self.combo_to = ttk.Combobox(phone_frame_to, values=self.systems, state="readonly")
+            self.combo_to.grid(row=0, column=0, sticky='nsew')
+            self.combo_to.set("Phonetic System")
 
             rep_frame = ttk.Frame(reg_frame)
-            rep_frame.grid(padx=10, pady=10, sticky="nsew", row=3, column=1)
+            rep_frame.grid(padx=(10,15), pady=5, sticky="nsew", row=4, column=1)
             rep_frame.grid_columnconfigure(0, weight=1)
             rep_frame.grid_columnconfigure(1, weight=3)
 
@@ -1678,7 +1714,7 @@ class Dictionary(TkinterDnD.Tk):
             self.localizable_widgets['apply1'] = apply_button1
 
             find_frame = ttk.Frame(reg_frame)
-            find_frame.grid(padx=(10,0), pady=10, sticky="nsew", row=3, column=0)
+            find_frame.grid(padx=(10,0), pady=5, sticky="nsew", row=4, column=0)
             find_frame.grid_columnconfigure(0, weight=0)
             find_frame.grid_columnconfigure(1, weight=0)
             find_frame.grid_columnconfigure(2, weight=5)
@@ -1765,9 +1801,73 @@ class Dictionary(TkinterDnD.Tk):
                 self.phoneme_entry.delete(0, tk.END)
             if self.search_var.get():
                 self.filter_treeview()
-            self.replace_window.destroy()
         self.icon(self.replace_window)
         self.apply_localization()
+    
+    def system_phonemes(self):
+        system_from = self.combo_from.get()
+        system_to = self.combo_to.get()
+        self.save_state_before_change()
+
+        # Ensure systems are selected
+        if not system_from or not system_to:
+            messagebox.showinfo("Error", "Please select both 'From' and 'To' phonetic systems.")
+            return
+
+        # Ensure the selected systems are in the phoneme map
+        if system_from not in self.phoneme_map or system_to not in self.phoneme_map:
+            messagebox.showinfo("Error", "Selected systems are not available.")
+            return
+
+        phoneme_map_from = self.phoneme_map[system_from]
+        phoneme_map_to = self.phoneme_map[system_to]
+
+        # Create a reverse mapping for phoneme_map_to
+        inverse_phoneme_map_to = {v: k for k, v in phoneme_map_to.items()}
+
+        def replace_phonemes(phoneme_sequence):
+            replaced_sequence = []
+            i = 0
+            while i < len(phoneme_sequence):
+                match_found = False
+                # Check for the longest possible match from current position
+                for j in range(len(phoneme_sequence), i, -1):
+                    substring = ' '.join(phoneme_sequence[i:j])
+                    if substring in phoneme_map_from:
+                        source_phoneme = phoneme_map_from[substring]
+                        replacement = inverse_phoneme_map_to.get(source_phoneme, substring)
+                        # Split multi-phoneme replacements by commas
+                        if ' ' in replacement:
+                            replaced_sequence.extend(replacement.split(' '))
+                        else:
+                            replaced_sequence.append(replacement)
+                        i = j
+                        match_found = True
+                        break
+                if not match_found:
+                    replaced_sequence.append(phoneme_sequence[i])
+                    i += 1
+            return replaced_sequence
+
+        # Iterate through the dictionary and update phonemes
+        for key, value in self.dictionary.items():
+            if isinstance(value, list):
+                self.dictionary[key] = replace_phonemes(value)
+            else:
+                print(f"Unexpected value type for key {key}: {type(value)}")
+        self.refresh_treeview()
+    
+    def load_csv(self):
+        csv_file_path = PHONEME_SYSTEMS
+        with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            self.systems = next(reader)
+            for row in reader:
+                for i, system in enumerate(self.systems):
+                    if system not in self.phoneme_map:
+                        self.phoneme_map[system] = {}
+                    if row[i]:
+                        self.phoneme_map[system][row[i]] = row[0]  # Map phoneme to its replacement
 
     def find_matches(self, pattern, target):
         items_to_highlight = []

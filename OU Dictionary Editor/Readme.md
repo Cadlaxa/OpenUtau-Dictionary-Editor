@@ -8,6 +8,7 @@
 - Fix paste function for quoted graphemes
 - Added Regenate YAML template from reclist function
 - Separate `Plugins` tab
+- Added Phonetic System replace (Users can add other phonetic systems by editing the `phoneme systems.csv` on the `Templates` folder)
 
 **`(7/24/24)`**
 - Regex find and replace now directly iterates and edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview
