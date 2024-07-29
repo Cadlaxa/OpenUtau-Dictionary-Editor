@@ -20,6 +20,8 @@ from collections import defaultdict, OrderedDict
 import onnxruntime as ort
 import numpy as np
 from tkinterdnd2 import TkinterDnD, DND_FILES
+
+# Plugins
 from Assets.plugins.generate_yaml_template import generate_yaml_template_from_reclist
 
 
@@ -220,27 +222,31 @@ class Dictionary(TkinterDnD.Tk):
         # Define fonts for different languages
         n = 10
         s = 9
-        if self.current_local.lower() == 'english':
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        language = config.get('Settings', 'current_local')
+
+        if language == "English":
             self.font = tkFont.Font(family=self.font_en, size=n)
             self.font_s = tkFont.Font(family=self.font_en, size=s)
             self.tree_font = tkFont.Font(family=self.font_en_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_en, size=n)
-        elif self.current_local.lower() == 'japanese':
+        elif language == "Japanese":
             self.font = tkFont.Font(family=self.font_jp, size=n)
             self.font_s = tkFont.Font(family=self.font_jp, size=s)
             self.tree_font = tkFont.Font(family=self.font_jp_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_jp, size=n)
-        elif self.current_local.lower() == 'chinese (traditional)':
+        elif language == "Chinese (Traditional)":
             self.font = tkFont.Font(family=self.font_tc, size=n)
             self.font_s = tkFont.Font(family=self.font_tc, size=s)
             self.tree_font = tkFont.Font(family=self.font_tc_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_tc, size=n)
-        elif self.current_local.lower() == 'chinese (simplified)':
+        elif language == "Chinese (Simplified)":
             self.font = tkFont.Font(family=self.font_sc, size=n)
             self.font_s = tkFont.Font(family=self.font_sc, size=s)
             self.tree_font = tkFont.Font(family=self.font_sc_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_sc, size=n)
-        elif self.current_local.lower() == 'cantonese':
+        elif language == "Cantonese":
             self.font = tkFont.Font(family=self.font_hk, size=n)
             self.font_s = tkFont.Font(family=self.font_hk, size=s)
             self.tree_font = tkFont.Font(family=self.font_hk_R, size=n)
@@ -2974,7 +2980,7 @@ class Dictionary(TkinterDnD.Tk):
         #self.localizable_widgets['import_vb'] = self.vb_import_button
     
     def import_gen_yaml_temp_data(self):
-        filepath, symbols = generate_yaml_template_from_reclist()
+        localization, filepath, symbols = generate_yaml_template_from_reclist()
         if symbols:
             self.open_symbol_editor()
             # Clear the Treeview before updating
@@ -2986,6 +2992,8 @@ class Dictionary(TkinterDnD.Tk):
             # Insert the symbols into the Treeview
             for symbol, symbol_type in symbols.items():
                 self.add_symbols_treeview(word=symbol, value=[symbol_type])
+        if localization:
+            self.localization.update(localization)
 
     def load_last_g2p(self):
         config = configparser.ConfigParser()
@@ -3364,9 +3372,8 @@ class Dictionary(TkinterDnD.Tk):
             with open('./Templates/Localizations/en_US.yaml', 'r') as file:
                 self.default_localization = yaml.load(file)
 
-        if hasattr(self, 'localizable_widgets'):
+        if self.localizable_widgets:
             for key, widget in self.localizable_widgets.items():
-                # Retrieve text from current localization or fall back to default localization
                 text = self.localization.get(key, self.default_localization.get(key))
                 if widget.winfo_exists():
                     if isinstance(widget, ttk.LabelFrame):
@@ -3384,7 +3391,7 @@ class Dictionary(TkinterDnD.Tk):
                         print(f"Widget type not handled for localization: {type(widget)}")
         else:
             print("No localizable widgets defined.")
-        self.widget_style()
+        self.styling()
     
 class Event:
     def __init__(self, data):

@@ -1,5 +1,5 @@
 from ruamel.yaml import YAML
-import os, chardet
+import os, chardet, configparser
 from tkinter import messagebox, filedialog
 from collections import defaultdict, OrderedDict
 
@@ -30,6 +30,7 @@ def read_symbol_types_from_yaml(folder_path):
     return symbol_types
 
 def generate_yaml_template_from_reclist():
+    localization = {}
     # Open a file dialog to select the reclist file
     filepath = filedialog.askopenfilename(
         title="Select Reclist File",
@@ -37,8 +38,8 @@ def generate_yaml_template_from_reclist():
     )
     if not filepath:
         # If no file is selected, show an info message and return
-        messagebox.showinfo("No File Selected", "No file was selected.")
-        return None, None
+        messagebox.showinfo("No File Selected", f"{localization.get('yaml_nofile', 'No file was selected')}")
+        return localization, filepath, {}
 
     # Detect file encoding
     with open(filepath, 'rb') as file:
@@ -52,10 +53,10 @@ def generate_yaml_template_from_reclist():
             lines = file.readlines()
     except UnicodeDecodeError:
         messagebox.showerror("Encoding Error", f"Failed to decode the file using detected encoding '{encoding}'.")
-        return None, None
+        return localization, filepath, {}
     except Exception as e:
         messagebox.showerror("Error", str(e))
-        return None, None
+        return localization, filepath, {}
 
     # Initialize set to store unique phonemes
     phoneme_set = set()
@@ -127,5 +128,6 @@ def generate_yaml_template_from_reclist():
             # Determine type of the phoneme from reference or default to 'unknown'
             symbol_type = symbol_types_reference.get(phoneme, 'unknown')
             symbols[phoneme] = symbol_type
-
-    return filepath, symbols
+    print(f"Localization: {localization}")
+    print(f"Filepath: {filepath}")
+    return localization, filepath, symbols
