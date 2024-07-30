@@ -3283,6 +3283,8 @@ class Dictionary(TkinterDnD.Tk):
         chk_show_whats_new.pack(side=tk.LEFT, pady=10, anchor='w')
         self.localizable_widgets['whats_new_cb'] = chk_show_whats_new
         self.update_window.protocol("WM_DELETE_WINDOW", self.on_closing_whats_new)
+        if self.update_window.winfo_exists():
+            self.apply_localization()
 
     def on_closing_whats_new(self):
         # Save the state when closing the "What's New" window
