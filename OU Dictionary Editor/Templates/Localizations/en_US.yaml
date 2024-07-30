@@ -69,6 +69,7 @@ g2p_check: "Enable G2P"
 tab1: "Entry Editor"
 tab2: "Settings"
 tab3: "Others"
+tab4: "Plug-ins"
 
 # Context Menus
 cont_deselect: "Deselect"
@@ -186,3 +187,9 @@ plugin_focus: "Plugins"
 phonetic_na: "Selected phonetic systems are not available."
 select_phonetic_sys: "Please select both From and To phonetic systems."
 no_temp_file: "No Lyrics found on track and on the temp file."
+console: "YAML Generator"
+rec_yaml_gen: "Reclist to Yaml Template"
+
+# Saving and Loading window
+save_win: "Saving, please wait..."
+load_win: "Loading, please wait..."

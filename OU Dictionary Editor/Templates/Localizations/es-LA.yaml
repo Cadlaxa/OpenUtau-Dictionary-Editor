@@ -69,6 +69,7 @@ g2p_check: "Habilitar G2P"
 tab1: "Editor de Entrada"
 tab2: "Configuraciones"
 tab3: "Otros"
+tab4: "Plug-ins"
 
 # Context Menus
 cont_deselect: "Deseleccionar"
@@ -186,3 +187,10 @@ plugin_focus: "Plugins"
 phonetic_na: "Los sistemas fonéticos seleccionados no están disponibles."
 select_phonetic_sys: "Por favor, seleccione tanto el sistema fonético de origen como el de destino."
 no_temp_file: "No se encontraron letras en la pista ni en el archivo temporal."
+console: "Generador YAML"
+rec_yaml_gen: "Reclist a Plantilla YAML"
+
+# Saving and Loading window
+save_win: "Guardando, por favor espere..."
+load_win: "Cargando, por favor espere..."
+

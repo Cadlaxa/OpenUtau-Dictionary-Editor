@@ -68,6 +68,8 @@ g2p_check: "Buksan ang G2P"
 # Tab names
 tab1: "Entry Editor"
 tab2: "Settings"
+tab3: "Others"
+tab4: "Plug-ins"
 
 # Context Menus
 cont_deselect: "I-deselect"
@@ -185,3 +187,9 @@ plugin_focus: "Plugins"
 phonetic_na: "Ang napiling mga ponetikong sistema ay hindi magagamit."
 select_phonetic_sys: "Pakiusap piliin ang parehong Mula at Patungong mga ponetikong sistema."
 no_temp_file: "Walang nakitang mga liriko sa track at sa pansamantalang file."
+console: "YAML Tagabuo"
+rec_yaml_gen: "Reclist sa Yaml Template"
+
+# Saving and Loading window
+save_win: "Nagse-save, pakihintay..."
+load_win: "Naglo-load, pakihintay..."

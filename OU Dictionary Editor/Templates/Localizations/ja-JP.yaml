@@ -72,6 +72,7 @@ g2p_check: "G2P を有効にする"
 tab1: "エントリーエディター"
 tab2: "設定"
 tab3: "その他"
+tab4: "プラグイン"
 
 # Context Menus
 cont_deselect: "選択解除"
@@ -189,3 +190,10 @@ plugin_focus: "プラグイン"
 phonetic_na: "選択した音声システムは利用できません。"
 select_phonetic_sys: "「From」と「To」の音声システムを両方選択してください。"
 no_temp_file: "トラックと一時ファイルに歌詞が見つかりません。"
+console: "YAMLジェネレーター"
+rec_yaml_gen: "リストをYAMLテンプレートに"
+
+# Saving and Loading window
+save_win: "保存中、お待ちください..."
+load_win: "読み込み中、お待ちください..."
+

@@ -69,6 +69,7 @@ g2p_check: "Pahintulot sa G2P"
 tab1: "Entry Editor"
 tab2: "Mga Setting"
 tab3: "Ubang Mga Butang"
+tab4: "Plug-ins"
 
 # Context Menus
 cont_deselect: "I-deselect"
@@ -186,3 +187,10 @@ plugin_focus: "Plugins"
 phonetic_na: "Ang napili nga mga sistema sa ponetika dili magamit."
 select_phonetic_sys: "Palihug pagpili sa duha ka mga sistema sa ponetika gikan ug padulong."
 no_temp_file: "Walay nakit-an nga lyrics sa track ug sa temporary file."
+console: "YAML Generator"
+rec_yaml_gen: "Reclist sa Yaml Template"
+
+# Saving and Loading window
+save_win: "Nagtipig, palihug huwata..."
+load_win: "Nag-load, palihug huwata..."
+

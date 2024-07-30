@@ -197,67 +197,63 @@ class Dictionary(TkinterDnD.Tk):
         window.tk.call('wm', 'iconphoto', window._w, img)
 
     def styling(self):
-        # Bold fonts
+        # Load font files
         pyglet.options['win32_gdi_font'] = True
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSans-Bold.ttf"))
+        font_files = {
+            'en_bold': 'NotoSans-Bold.ttf',
+            'jp_bold': 'NotoSansJP-Bold.ttf',
+            'hk_bold': 'NotoSansHK-Bold.ttf',
+            'sc_bold': 'NotoSansSC-Bold.ttf',
+            'tc_bold': 'NotoSansTC-Bold.ttf',
+            'en_reg': 'NotoSans-Regular.ttf',
+            'jp_reg': 'NotoSansJP-Regular.ttf',
+            'hk_reg': 'NotoSansHK-Regular.ttf',
+            'sc_reg': 'NotoSansSC-Regular.ttf',
+            'tc_reg': 'NotoSansTC-Regular.ttf',
+        }
+        # Register fonts
+        for key, filename in font_files.items():
+            pyglet.font.add_file(os.path.join(ASSETS, f"Fonts/{filename}"))
+        # Assign font names
         self.font_en = 'Noto Sans Bold'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansJP-Bold.ttf"))
         self.font_jp = 'Noto Sans JP Bold'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansHK-Bold.ttf"))
         self.font_hk = 'Noto Sans HK Bold'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansSC-Bold.ttf"))
         self.font_sc = 'Noto Sans SC Bold'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansTC-Bold.ttf"))
         self.font_tc = 'Noto Sans TC Bold'
-
-        # Regular fonts
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSans-Regular.ttf"))
         self.font_en_R = 'Noto Sans Regular'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansJP-Regular.ttf"))
         self.font_jp_R = 'Noto Sans JP Regular'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansHK-Regular.ttf"))
         self.font_hk_R = 'Noto Sans HK Regular'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansSC-Regular.ttf"))
         self.font_sc_R = 'Noto Sans SC Regular'
-        pyglet.font.add_file(os.path.join(ASSETS,"Fonts/NotoSansTC-Regular.ttf"))
         self.font_tc_R = 'Noto Sans TC Regular'
+
+        # Read settings.ini to determine current_local
+        config = configparser.ConfigParser()
+        config.read('settings.ini')
+
+        # Default to English if settings.ini is missing or does not have a valid section
+        if config.has_section('Settings'):
+            self.current_local = config.get('Settings', 'current_local', fallback='English')
+        else:
+            self.current_local = 'English'
 
         # Define fonts for different languages
         n = 10
         s = 9
-        config = configparser.ConfigParser()
-        config.read(self.config_file)
+        font_mapping = {
+            "English": (self.font_en, self.font_en_R),
+            "Japanese": (self.font_jp, self.font_jp_R),
+            "Chinese (Traditional)": (self.font_tc, self.font_tc_R),
+            "Chinese (Simplified)": (self.font_sc, self.font_sc_R),
+            "Cantonese": (self.font_hk, self.font_hk_R),
+        }
 
-        if self.current_local == "English":
-            self.font = tkFont.Font(family=self.font_en, size=n)
-            self.font_s = tkFont.Font(family=self.font_en, size=s)
-            self.tree_font = tkFont.Font(family=self.font_en_R, size=n)
-            self.tree_font_b = tkFont.Font(family=self.font_en, size=n)
-        elif self.current_local == "Japanese":
-            self.font = tkFont.Font(family=self.font_jp, size=n)
-            self.font_s = tkFont.Font(family=self.font_jp, size=s)
-            self.tree_font = tkFont.Font(family=self.font_jp_R, size=n)
-            self.tree_font_b = tkFont.Font(family=self.font_jp, size=n)
-        elif self.current_local == "Chinese (Traditional)":
-            self.font = tkFont.Font(family=self.font_tc, size=n)
-            self.font_s = tkFont.Font(family=self.font_tc, size=s)
-            self.tree_font = tkFont.Font(family=self.font_tc_R, size=n)
-            self.tree_font_b = tkFont.Font(family=self.font_tc, size=n)
-        elif self.current_local == "Chinese (Simplified)":
-            self.font = tkFont.Font(family=self.font_sc, size=n)
-            self.font_s = tkFont.Font(family=self.font_sc, size=s)
-            self.tree_font = tkFont.Font(family=self.font_sc_R, size=n)
-            self.tree_font_b = tkFont.Font(family=self.font_sc, size=n)
-        elif self.current_local == "Cantonese":
-            self.font = tkFont.Font(family=self.font_hk, size=n)
-            self.font_s = tkFont.Font(family=self.font_hk, size=s)
-            self.tree_font = tkFont.Font(family=self.font_hk_R, size=n)
-            self.tree_font_b = tkFont.Font(family=self.font_hk, size=n)
-        else:
-            self.font = tkFont.Font(family=self.font_en, size=n)
-            self.font_s = tkFont.Font(family=self.font_en, size=s)
-            self.tree_font = tkFont.Font(family=self.font_en_R, size=n)
-            self.tree_font_b = tkFont.Font(family=self.font_en, size=n)
+        # Default to English if current_local is not recognized
+        font_family, tree_font_family = font_mapping.get(self.current_local, (self.font_en, self.font_en_R))
+        # Set fonts
+        self.font = tkFont.Font(family=font_family, size=n)
+        self.font_s = tkFont.Font(family=font_family, size=s)
+        self.tree_font = tkFont.Font(family=tree_font_family, size=n)
+        self.tree_font_b = tkFont.Font(family=font_family, size=n)
         self.widget_style()
 
     def widget_style(self):
@@ -475,7 +471,8 @@ class Dictionary(TkinterDnD.Tk):
         
         self.load_window()
         self.loading_window.update_idletasks()
-        
+        self.after(100, self.load_process_cmudict_file, filepath)
+    def load_process_cmudict_file(self, filepath):
         if filepath:
             self.current_filename = filepath
             self.file_modified = False  # Reset modification status
@@ -566,6 +563,8 @@ class Dictionary(TkinterDnD.Tk):
 
         self.load_window()
         self.loading_window.update_idletasks()
+        self.after(100, self.load_process_json_file, filepath)
+    def load_process_json_file(self, filepath):
         self.current_filename = filepath
         self.file_modified = False
         self.update_title()
@@ -634,9 +633,11 @@ class Dictionary(TkinterDnD.Tk):
                 messagebox.showinfo("No File", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
                 return
         
+        # Show loading window
         self.load_window()
         self.loading_window.update_idletasks()
-        
+        self.after(100, self.load_process_yaml_file, filepath)  # Delay to ensure the loading window appears
+    def load_process_yaml_file(self, filepath):
         try:
             # Handle file opening to update title
             self.current_filename = filepath
@@ -674,6 +675,7 @@ class Dictionary(TkinterDnD.Tk):
                 except Exception as e:
                     self.loading_window.destroy()
                     raise ValueError(f"{self.localization.get('yaml_err_save_rv', 'Error occurred while saving to cache:')} {e}")
+
             # Load entries
             entries = data.get('entries', [])
             if not isinstance(entries, list):
@@ -689,6 +691,7 @@ class Dictionary(TkinterDnD.Tk):
             self.data_list = []  # Initialize data_list
             for item in entries:
                 if not isinstance(item, dict):
+                    self.loading_window.destroy()
                     raise ValueError({self.localization.get('yaml_dict_fromat_rv', 'Entry format incorrect. Each entry must be a dictionary.')})
                 grapheme = item.get('grapheme')
                 phonemes = item.get('phonemes', [])
@@ -698,6 +701,7 @@ class Dictionary(TkinterDnD.Tk):
                 self.dictionary[grapheme] = phonemes
                 # Append the loaded data to data_list
                 self.data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
+
             # Load symbols if available
             symbols = data.get('symbols', [])
             if isinstance(symbols, list):
@@ -2290,11 +2294,10 @@ class Dictionary(TkinterDnD.Tk):
     def save_window(self):
         # Create a toplevel window to inform the user that the file is being saved
         self.saving_window = Toplevel(self)
-        self.saving_window.transient(self)
         self.saving_window.overrideredirect(True)  # Remove window decorations
         self.saving_window.attributes("-topmost", True)
         # Set the desired width and height
-        window_width = 200
+        window_width = 250
         window_height = 100
         # Calculate the position to center the window
         screen_width = self.saving_window.winfo_screenwidth()
@@ -2307,14 +2310,14 @@ class Dictionary(TkinterDnD.Tk):
         frame = ttk.Frame(self.saving_window, borderwidth=2, relief="solid")
         frame.pack(fill="both", expand=True)
         # Add a label inside the frame
-        label = ttk.Label(frame, text="Saving, please wait...", font=self.font)
+        label = ttk.Label(frame, text=f"{self.localization.get('save_win', 'Saving, please wait...')}", font=self.font)
         label.pack(expand=True)
 
     def load_window(self):
         self.loading_window = Toplevel()
         self.loading_window.overrideredirect(True)
         self.loading_window.attributes("-topmost", True)
-        window_width = 200
+        window_width = 250
         window_height = 100
         screen_width = self.loading_window.winfo_screenwidth()
         screen_height = self.loading_window.winfo_screenheight()
@@ -2323,7 +2326,8 @@ class Dictionary(TkinterDnD.Tk):
         self.loading_window.geometry(f"{window_width}x{window_height}+{position_x}+{position_y}")
         frame = ttk.Frame(self.loading_window, borderwidth=2, relief="solid")
         frame.pack(fill="both", expand=True)
-        label = ttk.Label(frame, text="Loading, please wait...", font=self.font)
+        label = ttk.Label(frame, text=f"{self.localization.get('load_win', 'Loading, please wait...')}", font=self.font)
+        self.localizable_widgets['load_win'] = label
         label.pack(expand=True)
 
     def save_as_ou_yaml(self):
@@ -2340,6 +2344,20 @@ class Dictionary(TkinterDnD.Tk):
             # Define the base directory for templates and construct the file path
             data_folder = self.Templates
             template_path = os.path.join(data_folder, selected_template)
+        
+        # Prompt user for output file path using a file dialog if not chosen already
+        if selected_template == "Current Template":
+            output_file_path = template_path
+        else:
+            output_file_path = filedialog.asksaveasfilename(title="Save YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
+        # Ensure the file path ends with .yaml
+        if output_file_path and not output_file_path.endswith('.yaml'):
+            output_file_path += '.yaml'
+        self.save_window()
+        self.saving_window.update_idletasks()
+        self.after(100, self.process_save_as_ou_yaml, selected_template, template_path, output_file_path)
+
+    def process_save_as_ou_yaml(self, selected_template, template_path, output_file_path):
         yaml = YAML()
         yaml.width = 4096
         yaml.preserve_quotes = True
@@ -2352,8 +2370,6 @@ class Dictionary(TkinterDnD.Tk):
 
         # Clear existing entries
         self.clear_entries()
-        self.save_window()
-        self.saving_window.update_idletasks()
         # Prepare new entries
         new_entries = CommentedSeq()
         for item in self.viewer_tree.get_children():
@@ -2384,15 +2400,6 @@ class Dictionary(TkinterDnD.Tk):
                 'tag:yaml.org,2002:map', data, flow_style=True
             )
         yaml.representer.add_representer(CommentedMap, compact_representation)
-
-        # Prompt user for output file path using a file dialog if not chosen already
-        if selected_template == "Current Template":
-            output_file_path = template_path
-        else:
-            output_file_path = filedialog.asksaveasfilename(title="Save YAML File", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-        # Ensure the file path ends with .yaml
-        if output_file_path and not output_file_path.endswith('.yaml'):
-            output_file_path += '.yaml'
 
         # Save changes if the user has selected a file path
         if output_file_path:
@@ -2430,10 +2437,11 @@ class Dictionary(TkinterDnD.Tk):
             messagebox.showinfo("Cancelled", f"{self.localization.get('json_cancel', 'Save operation cancelled.')}")
             return
         
-        if output_file_path:
-            self.save_window()
-            self.saving_window.update_idletasks()
+        self.save_window()
+        self.saving_window.update_idletasks()
+        self.after(100, self.process_save_json_file, output_file_path)
 
+    def process_save_json_file(self, output_file_path):
         # Prepare data for JSON format
         data = []
         for grapheme, phonemes in self.dictionary.items():
@@ -2479,6 +2487,11 @@ class Dictionary(TkinterDnD.Tk):
         if not output_file_path:
             messagebox.showinfo("Cancelled", f"{self.localization.get('cmudict_cancel', 'Save operation cancelled.')}")
             return
+        self.save_window()
+        self.saving_window.update_idletasks()
+        self.after(100, self.process_save_cmudict_file, output_file_path)
+    
+    def process_save_cmudict_file(self, output_file_path):
         # Prepare entries as formatted strings
         self.clear_entries()
         entries_text = []
@@ -2491,8 +2504,6 @@ class Dictionary(TkinterDnD.Tk):
             entry_text = f"{grapheme}  {formatted_phonemes}\n"
             entries_text.append(entry_text)
         
-        self.save_window()
-
         # Ensure the file path ends with .txt
         if output_file_path and not output_file_path.endswith('.txt'):
             output_file_path += '.txt'
@@ -2755,28 +2766,28 @@ class Dictionary(TkinterDnD.Tk):
         
         # Create the first tab which will contain existing widgets
         self.options_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.options_tab, text='Entry Editor')
+        self.notebook.add(self.options_tab, text=f"{self.localization.get('tab1', 'Entry Editor')}")
         self.localizable_widgets['tab1'] = self.options_tab
         self.options_tab.grid_columnconfigure(0, weight=1)
         self.options_tab.grid_rowconfigure(0, weight=1)
 
         # Create a second tab for future additions
         self.additional_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.additional_tab, text='Settings')
+        self.notebook.add(self.additional_tab, text=f"{self.localization.get('tab2', 'Settings')}")
         self.localizable_widgets['tab2'] = self.additional_tab 
         self.additional_tab.grid_columnconfigure(0, weight=1)
         self.additional_tab.grid_rowconfigure(0, weight=1)
 
         # Third Tab
         self.others_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.others_tab, text='Others')
+        self.notebook.add(self.others_tab, text=f"{self.localization.get('tab3', 'Others')}")
         self.localizable_widgets['tab3'] = self.others_tab 
         self.others_tab.grid_columnconfigure(0, weight=1)
         self.others_tab.grid_rowconfigure(0, weight=1)
 
         # Fourth Tab
         self.plugins_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.plugins_tab, text='Plug-ins')
+        self.notebook.add(self.plugins_tab, text=f"{self.localization.get('tab4', 'Plugins')}")
         self.localizable_widgets['tab4'] = self.plugins_tab 
         self.plugins_tab.grid_columnconfigure(0, weight=1)
         self.plugins_tab.grid_rowconfigure(0, weight=1)
@@ -3080,11 +3091,11 @@ class Dictionary(TkinterDnD.Tk):
         self.terminal = ttk.LabelFrame(self.plugin_frame, text="YAML Generator")
         self.terminal.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
         self.terminal.columnconfigure(0, weight=1)
-        #self.localizable_widgets['console'] = self.terminal
+        self.localizable_widgets['console'] = self.terminal
 
         self.dict_gen = ttk.Button(self.terminal, style='TButton', text="Reclist to Yaml Template", command=self.import_gen_yaml_temp_data)
         self.dict_gen.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
-        #self.localizable_widgets['open_console'] = self.dict_gen
+        self.localizable_widgets['rec_yaml_gen'] = self.dict_gen
 
         self.vb_import_button = ttk.Button(self.terminal, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
         self.vb_import_button.grid(row=2, column=0, padx=10, pady=(5,10), sticky="ew")
