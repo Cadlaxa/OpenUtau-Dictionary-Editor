@@ -55,6 +55,9 @@ select_local: "Sélectionner la localisation:"
 local_op: "Options de localisation"
 update: "Mises à jour"
 update_b: "Vérifier les mises à jour"
+btn_git: "Voir la version sur Github"
+whats_new: "Quoi de neuf"
+whats_new_cb: "Ne plus afficher ceci"
 
 # Others (tab 3)
 import: "Importer un dictionnaire"
@@ -66,6 +69,7 @@ g2p_check: "Activer G2P"
 tab1: "Éditeur d'entrée"
 tab2: "Paramètres"
 tab3: "Autres"
+tab4: "Plug-ins"
 
 # Context Menus
 cont_deselect: "Désélectionner"
@@ -168,3 +172,26 @@ sym_inc_rv: "Format d'entrée de symbole incorrect. Chaque entrée doit être un
 sym_ent_inc_rv: "L'entrée de symbole est incomplète."
 sym_str_rv: "Le type doit être une chaîne représentant la catégorie."
 yaml_merge_empt_rv: "Le fichier YAML est vide ou a un format incorrect."
+dnd_file: "Type de fichier non pris en charge :"
+dnd_multi: "Veuillez déposer un seul fichier à la fois."
+dnd_nf: "Fichier non trouvé :"
+
+# Plugin
+plugin: "Plugin"
+get_lyrics: "Obtenir les paroles de la piste"
+import_vb: "Importer le dictionnaire VB"
+voicedir: "VoiceDir non trouvé dans le fichier temporaire."
+no_voicedir: "Aucun fichier .yaml trouvé dans le VoiceDir."
+multi_voicedir: "Plusieurs fichiers .yaml trouvés dans le VoiceDir. Ouverture du répertoire pour que vous puissiez choisir."
+plugin_focus: "Plugins"
+phonetic_na: "Les systèmes phonétiques sélectionnés ne sont pas disponibles."
+select_phonetic_sys: "Veuillez sélectionner à la fois les systèmes phonétiques de départ et d'arrivée."
+no_temp_file: "Aucun texte de chanson trouvé sur la piste ni dans le fichier temporaire."
+console: "Générateur YAML"
+rec_yaml_gen: "Liste vers Modèle YAML"
+default_csv: "Le fichier CSV n'a pas été trouvé et a été créé avec le contenu par défaut."
+
+# Saving and Loading window
+save_win: "Enregistrement, veuillez patienter..."
+load_win: "Chargement, veuillez patienter..."
+

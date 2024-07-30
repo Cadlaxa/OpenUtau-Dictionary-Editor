@@ -58,6 +58,9 @@ select_local: "ローカライズを選択:"
 local_op: "ローカライズオプション"
 update: "アップデート"
 update_b: "アップデートを確認"
+btn_git: GitHubでリリースを見る
+whats_new: 新着情報
+whats_new_cb: これを再表示しない
 
 # Others (tab 3)
 import: "辞書をインポート"
@@ -69,6 +72,7 @@ g2p_check: "G2P を有効にする"
 tab1: "エントリーエディター"
 tab2: "設定"
 tab3: "その他"
+tab4: "プラグイン"
 
 # Context Menus
 cont_deselect: "選択解除"
@@ -171,3 +175,26 @@ sym_inc_rv: "シンボルエントリの形式が正しくありません。各�
 sym_ent_inc_rv: "シンボルエントリが不完全です。"
 sym_str_rv: "タイプはカテゴリを表す文字列である必要があります。"
 yaml_merge_empt_rv: "YAMLファイルが空ですか、または間違った形式です。"
+dnd_file: "サポートされていないファイルタイプ："
+dnd_multi: "一度に1つのファイルのみをドロップしてください。"
+dnd_nf: "ファイルが見つかりません:"
+
+# Plugin
+plugin: "プラグイン"
+get_lyrics: "トラックから歌詞を取得"
+import_vb: "VB辞書をインポート"
+voicedir: "テンポラリファイルにVoiceDirが見つかりません。"
+no_voicedir: "VoiceDir内に.yamlファイルが見つかりません。"
+multi_voicedir: "VoiceDir内に複数の.yamlファイルが見つかりました。選択するためにディレクトリを開きます。"
+plugin_focus: "プラグイン"
+phonetic_na: "選択した音声システムは利用できません。"
+select_phonetic_sys: "「From」と「To」の音声システムを両方選択してください。"
+no_temp_file: "トラックと一時ファイルに歌詞が見つかりません。"
+console: "YAMLジェネレーター"
+rec_yaml_gen: "リストをYAMLテンプレートに"
+default_csv: "CSVファイルが見つからなかったため、デフォルトの内容で作成されました。"
+
+# Saving and Loading window
+save_win: "保存中、お待ちください..."
+load_win: "読み込み中、お待ちください..."
+

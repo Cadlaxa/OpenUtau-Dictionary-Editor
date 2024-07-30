@@ -1,9 +1,32 @@
 # Changelog
 ---
 **`(7/--/24)`**
+- Add file drag and drop file support to open them directly
+- Adds `open with` function to edit the dictionary files without opening the application first
+- Get lyrics from the track and add them to the treeview with the predicted phonemes from the selected G2p model
+- Import voicebank yaml dictionary (Can be used only when the GUI is used as an OpenUtau Plugin)
+- Fix paste function for quoted graphemes
+- Added Regenate YAML template from reclist function
+- Separate `Plugins` tab
+- Added Phonetic System replace (Users can add other phonetic systems by editing the `phoneme systems.csv` on the `Templates` folder)
+- Revamp Regex dialog
+- Changed default G2p state to true
+- Update Localizations and fixes to the code
+- Fix loading window and saving window delay
+- Retranslated Tagalog to Filipino
+
+**`(7/24/24)`**
+- Regex find and replace now directly iterates and edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview
+- [JA Monophone G2P] Add missing phonemes @lottev1991
+- Fixes to JA Monophone G2P splitting graphemes to phonemes
+- Fixes to fonts on treeview
+
+**`(7/21/24)`**
 - Fixed download speed
 - Minor UI changes
-- Follow System theme option via `System` RadioButton
+- Follow System theme option via `System` RadioButton via `darkdetect` module
+- `What's New` window for displaying the `Readme.md` file (`tkhtmlview` and `markdown2` modules are used)
+- Update Localizations
 
 **`(7/13/24)`**
 - Fixed Cmudict error message to show the errored line instead of the word only
@@ -11,7 +34,6 @@
 - Revamp `Light Mode` color accents to certain ui elements
 - Fix Treeview selection color on `Light Mode`
 - Performance Fixes
-
 
 **`(7/09/24)`**
 - Directly edit the entry with double click or `enter` button
