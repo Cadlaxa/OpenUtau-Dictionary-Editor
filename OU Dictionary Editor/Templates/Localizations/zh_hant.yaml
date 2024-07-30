@@ -161,3 +161,37 @@ dl_cannot: "無法下載更新:"
 update_process_err: "更新過程中發生錯誤:"
 loc_load_err: "無法載入在地化檔案:"
 
+# Raise ValueError
+cmudict_invL: "行中的格式無效:"
+yaml_cache_rv: "從快取讀取時發生錯誤:"
+yaml_inc_format_rv: "YAML 檔案為空或格式不正確."
+yaml_err_save_rv: "儲存到快取時發生錯誤:"
+yaml_dict_fromat_rv: "條目格式不正確.每個條目必須是辭典."
+yaml_type_rv: "每個條目必須有一個（字素）鍵和一個（音素）列表."
+sym_inc_rv: "符號條目格式不正確.每個條目必須是辭典."
+sym_ent_inc_rv: "符號輸入不完整."
+sym_str_rv: "類型必須是表示類別的字串."
+yaml_merge_empt_rv: "YAML 檔案為空或格式不正確."
+dnd_file: "不支援的文件類型:"
+dnd_multi: "請一次只刪除一個檔案."
+dnd_nf: "未找到文件:"
+
+# Plugin
+plugin: "外掛"
+get_lyrics: "從曲目中取得歌詞"
+import_vb: "導入 VB 辭典"
+voicedir: "在臨時檔案中找不到 VoiceDir."
+no_voicedir: "在 VoiceDir 中找不到 .yaml 檔案."
+multi_voicedir: "在 VoiceDir 中找到多個 .yaml 檔案.開啟目錄供您選擇."
+plugin_focus: "外掛"
+phonetic_na: "選定的音素系統不可用."
+select_phonetic_sys: "請選擇從和到音素系統."
+no_temp_file: "在軌道和暫存檔上找不到歌詞."
+console: "YAML 生成器"
+rec_yaml_gen: "錄音單到 Yaml 範本"
+default_csv: "未找到 CSV 文件,已使用預設內容建立了該文件."
+
+# Saving and Loading window
+save_win: "正在儲存,請稍候..."
+load_win: "正在加載,請稍候..."
+
