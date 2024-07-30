@@ -55,6 +55,9 @@ select_local: "選擇本地化:"
 local_op: "本地化選項"
 update: "更新"
 update_b: "檢查更新"
+btn_git: "請參閱 Github 上嘅發布"
+whats_new: "新消息"
+whats_new_cb: "唔好再顯示呢個"
 
 # Others (tab 3)
 import: "導入辭典"
@@ -66,6 +69,7 @@ g2p_check: "啟用 G2P"
 tab1: "條目編輯器"
 tab2: "設定"
 tab3: "其他"
+tab4: "外掛"
 
 # Context Menus
 cont_deselect: "取消選擇"
@@ -156,4 +160,39 @@ update_err_check: "無法檢查更新:"
 dl_cannot: "下載唔到更新:"
 update_process_err: "更新過程中發生錯誤:"
 loc_load_err: "載入唔到本地化檔案:"
+
+# Raise ValueError
+cmudict_invL: "行中嘅格式無效:"
+yaml_cache_rv: "從快取讀取時發生錯誤:"
+yaml_inc_format_rv: "YAML檔案為空或格式唔正確。"
+yaml_err_save_rv: "儲存到快取時發生錯誤:"
+yaml_dict_fromat_rv: "條目格式唔正確。每個條目一定係辭典。"
+yaml_type_rv: "每個條目必須有一個（字素）鍵同一個（音素）列表。"
+sym_inc_rv: "符號條目格式唔正確。每個條目一定係辭典。"
+sym_ent_inc_rv: "符號輸入唔完整。"
+sym_str_rv: "類型一定係表示類別嘅字串。"
+yaml_merge_empt_rv: "YAML檔案為空或格式唔正確。"
+dnd_file: "唔支援嘅文件類型:"
+dnd_multi: "請一次只刪除一個檔案。"
+dnd_nf: "未搵到文件:"
+
+# Plugin
+plugin: "外掛"
+get_lyrics: "從曲目中取得歌詞"
+import_vb: "導入VB辭典"
+voicedir: "喺臨時檔案入面搵唔到VoiceDir。"
+no_voiceedir: "喺VoiceDir入面搵唔到.yaml檔案。"
+multi_voiceedir: "喺VoiceDir入面搵到多個.yaml檔案。開啟目錄供你選擇。"
+plugin_focus: "外掛"
+phonetic_na: "選定嘅音素系統唔可用。"
+select_phonetic_sys: "請選擇從和到音素系統。"
+no_temp_file: "喺軌道同暫存檔上面搵唔到歌詞。"
+console: "YAML生成器"
+rec_yaml_gen: "錄音單到Yaml範本"
+default_csv: "未搵到CSV文件，已經用預設內容建立咗該文件。"
+
+# Saving and Loading window
+save_win: "正在儲存，請稍候⋯"
+load_win: "正在載入，請稍候⋯"
+
 
