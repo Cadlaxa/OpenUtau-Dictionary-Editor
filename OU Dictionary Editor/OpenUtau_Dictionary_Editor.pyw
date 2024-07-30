@@ -227,29 +227,28 @@ class Dictionary(TkinterDnD.Tk):
         s = 9
         config = configparser.ConfigParser()
         config.read(self.config_file)
-        language = config.get('Settings', 'current_local')
 
-        if language == "English":
+        if self.current_local == "English":
             self.font = tkFont.Font(family=self.font_en, size=n)
             self.font_s = tkFont.Font(family=self.font_en, size=s)
             self.tree_font = tkFont.Font(family=self.font_en_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_en, size=n)
-        elif language == "Japanese":
+        elif self.current_local == "Japanese":
             self.font = tkFont.Font(family=self.font_jp, size=n)
             self.font_s = tkFont.Font(family=self.font_jp, size=s)
             self.tree_font = tkFont.Font(family=self.font_jp_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_jp, size=n)
-        elif language == "Chinese (Traditional)":
+        elif self.current_local == "Chinese (Traditional)":
             self.font = tkFont.Font(family=self.font_tc, size=n)
             self.font_s = tkFont.Font(family=self.font_tc, size=s)
             self.tree_font = tkFont.Font(family=self.font_tc_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_tc, size=n)
-        elif language == "Chinese (Simplified)":
+        elif self.current_local == "Chinese (Simplified)":
             self.font = tkFont.Font(family=self.font_sc, size=n)
             self.font_s = tkFont.Font(family=self.font_sc, size=s)
             self.tree_font = tkFont.Font(family=self.font_sc_R, size=n)
             self.tree_font_b = tkFont.Font(family=self.font_sc, size=n)
-        elif language == "Cantonese":
+        elif self.current_local == "Cantonese":
             self.font = tkFont.Font(family=self.font_hk, size=n)
             self.font_s = tkFont.Font(family=self.font_hk, size=s)
             self.tree_font = tkFont.Font(family=self.font_hk_R, size=n)
@@ -1496,7 +1495,8 @@ class Dictionary(TkinterDnD.Tk):
 
             # Get the edited values from entry widgets
             new_grapheme = self.entry_popup_g.get()
-            new_phoneme = self.entry_popup_p.get().replace(",", "").replace("'", "")
+            new_phoneme = self.entry_popup_p.get().replace("'", "")
+            phoneme_list = [phoneme.replace(" ", ",") if " " in phoneme else phoneme for phoneme in new_phoneme.split()]
 
             # Update Treeview with edited values
             self.viewer_tree.set(selected_item, grapheme_column, new_grapheme)
@@ -1508,22 +1508,22 @@ class Dictionary(TkinterDnD.Tk):
             g2p_correction.destroy()
             self.current_entry_widgets = {}
 
-            # Get the index of the currently selected item
-            selected_index = self.viewer_tree.index(selected_item)
+            # Preserve the index and update the dictionary
+            if initial_grapheme in self.dictionary:
+                # Get the current index of the initial grapheme
+                items = list(self.dictionary.items())
+                index = [i for i, (k, v) in enumerate(items) if k == initial_grapheme][0]
+                # Create an ordered dictionary to preserve the order
+                ordered_dict = OrderedDict()
 
-            # Delete the item above the edited row
-            if new_grapheme != initial_grapheme:
-                if selected_index > 0:
-                    prev_item = self.viewer_tree.get_children()[selected_index - 1]
-                    self.viewer_tree.delete(prev_item)
-
-            self.add_entry_treeview(new_grapheme, new_phoneme.split())
-
-            if new_grapheme != initial_grapheme:
-                if selected_index > 0:
-                    prev_item1 = self.viewer_tree.get_children()[selected_index + 1]
-                    self.viewer_tree.selection_set(prev_item1)
-                    self.delete_selected_entries()
+                # Populate the ordered dictionary with entries, updating or adding the new entry at the correct index
+                for i, (key, value) in enumerate(items):
+                    if i == index:
+                        ordered_dict[new_grapheme] = phoneme_list
+                    elif key != initial_grapheme:
+                        ordered_dict[key] = value
+                self.dictionary = ordered_dict
+                self.refresh_treeview()
 
         g2p_correction.bind("<Return>", on_validate)
         self.entry_popup_g.bind("<Return>", on_validate)
@@ -1678,7 +1678,7 @@ class Dictionary(TkinterDnD.Tk):
 
             # Combobox for `From Selected Phonetic System`
             phone_frame_from = ttk.Frame(reg_frame)
-            phone_frame_from.grid(padx=(15,0), pady=(10,0), sticky="nsew", row=3, column=0)
+            phone_frame_from.grid(padx=(15,0), pady=(10,0), sticky='nsew', row=3, column=0)
             phone_frame_from.grid_columnconfigure(0, weight=30)
             phone_frame_from.grid_columnconfigure(1, weight=0)
 
@@ -1700,7 +1700,7 @@ class Dictionary(TkinterDnD.Tk):
             self.combo_to.set("Phonetic System")
 
             rep_frame = ttk.Frame(reg_frame)
-            rep_frame.grid(padx=(10,15), pady=5, sticky="nsew", row=4, column=1)
+            rep_frame.grid(padx=(5,15), pady=5, sticky="nsew", row=4, column=1)
             rep_frame.grid_columnconfigure(0, weight=1)
             rep_frame.grid_columnconfigure(1, weight=3)
 
@@ -1799,6 +1799,8 @@ class Dictionary(TkinterDnD.Tk):
                 self.refresh_treeview()
                 self.word_entry.delete(0, tk.END)
                 self.phoneme_entry.delete(0, tk.END)
+            else:
+                apply_replace()
             if self.search_var.get():
                 self.filter_treeview()
         self.icon(self.replace_window)
@@ -1811,12 +1813,12 @@ class Dictionary(TkinterDnD.Tk):
 
         # Ensure systems are selected
         if not system_from or not system_to:
-            messagebox.showinfo("Error", "Please select both 'From' and 'To' phonetic systems.")
+            messagebox.showinfo("Error", f"{self.localization.get('select_phonetic_sys', 'Please select both From and To phonetic systems.')}")
             return
 
         # Ensure the selected systems are in the phoneme map
         if system_from not in self.phoneme_map or system_to not in self.phoneme_map:
-            messagebox.showinfo("Error", "Selected systems are not available.")
+            messagebox.showinfo("Error", f"{self.localization.get('phonetic_na', 'Selected phonetic systems are not available.')}")
             return
 
         phoneme_map_from = self.phoneme_map[system_from]
@@ -2654,14 +2656,19 @@ class Dictionary(TkinterDnD.Tk):
     
     def get_lyrics_from_tmp(self):
         lyrics = []
-        with open(self.plugin_file, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-            for line in lines:
-                if line.startswith("Lyric="):
-                    lyric = line.strip().split("=")[1]
-                    if lyric and lyric not in {"R", "+", "-", "+~", "+*", "+-"}:
-                        lyrics.append(lyric)
+        if self.plugin_file:
+            with open(self.plugin_file, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                for line in lines:
+                    if line.startswith("Lyric="):
+                        lyric = line.strip().split("=")[1]
+                        if lyric and lyric not in {"R", "+", "-", "+~", "+*", "+-"}:
+                            lyrics.append(lyric)
 
+        if not self.plugin_file:
+            messagebox.showerror("Error", f"{self.localization.get('no_temp_file', 'No Lyrics found on track and on the temp file.')}")
+            return None
+        
         # Ensure G2P is enabled
         if not self.g2p_checkbox_var.get():
             self.g2p_checkbox_var.set(True)  # Enable G2P if it is off
@@ -2701,12 +2708,16 @@ class Dictionary(TkinterDnD.Tk):
     
     def get_yaml_from_temp(self):
         voice_dir = None
-        with open(self.plugin_file, 'r', encoding='utf-8') as file:
-            lines = file.readlines()
-            for line in lines:
-                if line.startswith("VoiceDir="):
-                    voice_dir = line.strip().split("=")[1]
-                    break
+        if self.plugin_file:
+            with open(self.plugin_file, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+                for line in lines:
+                    if line.startswith("VoiceDir="):
+                        voice_dir = line.strip().split("=")[1]
+                        break
+        if not self.plugin_file:
+            messagebox.showerror("Error", f"{self.localization.get('voicedir', 'VoiceDir not found in the temp file.')}")
+            return None
 
         # Find all .yaml files in the VoiceDir, including subfolders, excluding specific files
         excluded_files = {'character.yaml', 'dsconfig.yaml', 'enuconfig.yaml', 'config_rmdn.yaml', 'vocoder.yaml'}
@@ -3167,6 +3178,7 @@ class Dictionary(TkinterDnD.Tk):
             g2p_enabled = config.getboolean('Settings', 'G2P_Enabled')
             self.g2p_checkbox_var.set(g2p_enabled)
         except (configparser.NoSectionError, configparser.NoOptionError):
+            self.g2p_checkbox_var.set(True)
             print("G2P checkbox state not found in config. Using default.")
 
     def save_g2p(self, selected_value):

@@ -3,6 +3,7 @@ aa,aa,a,Q,A,ɑ,a
 aa r,ar,ar,Q@,Ar,ɒɹ,a r
 ae,ae,@,{,{,æ,a
 ae n,ea n,&n,{ n,e@n,eən,e N
+ae m,ea m,& m,{ m,e@m,eə m,e m
 ae ng,ea ng,Ang,{ N,E~N,ɛ̃ŋ,e ng
 ah,ah,u,V,V,ʌ,a
 ao,ao,9,O:,Q,ɒ,o
@@ -11,9 +12,9 @@ ao r,or,0r,O@,Or,ɔɹ,o r
 ax,ax,x,@,@,ə,a
 eh,eh,e,e,E,ɛ,e
 eh r,air,Ar,e@,er,eɹ,e r
-er,er,3,@r,@`,ə˞,a w
+er,er,3,@r,3,ə˞,a u
 ih,ih,i,I,I,ɪ,i
-ih ng,ing,1ng,I N,I~N,ɪ̃ŋ,i ng
+ih ng,ix ng,1ng,I N,I~N,ɪ̃ŋ,i ng
 ih r,ir,Er,I@,ir,iɹ,i r
 iy,iy,E,i:,i,i,i
 uh,uh,6,U,U,ʊ,u
@@ -28,7 +29,8 @@ oy,oy,Q,OI,OI,ɔɪ,o y
 b,b,b,bh,b,b,b
 ch,ch,ch,tS,tS,tʃ,ch
 d,d,d,dh,d,d,d
-dh,dh,dh,D,D,ð,d
+dh,dh,dh,D,D,ð,dh
+dr,dr,d r,dZ r,d r,d ɹ,d r
 dx,dx,dd,4,4,ɾ,r
 ax l,el,6l,@l,5=,ɫ̩,u l
 f,f,f,f,f,f,f
@@ -40,20 +42,21 @@ k,k,k,kh,k,k,k
 l,l,l,l0,l,l,l
 l,l,l,l,5,ɫ,l
 m,m,m,m,m,m,m
-n,n,n,n,n,n,n
+n,n,n,n,n,n,N
 ng,ng,ng,N,N,ŋ,ng
 p,p,p,ph,p,p,p
-q,q,?,?,?,ʔ,?
+q,q,?,?,?,ʔ,・
 r,r,r,r,r,ɹ,r
 s,s,s,s,s,s,s
 sh,sh,sh,S,S,ʃ,sh
 t,t,t,th,t,t,t
-th,th,th,T,T,θ,t
+th,th,th,T,T,θ,th
+tr,tr,t r,th r,t r,t ɹ,t r
 v,v,v,v,v,v,v
 w,w,w,w,w,w,w
 y,y,y,j,j,j,y
 z,z,z,z,z,z,z
-zh,zh,zh,Z,Z,ʒ,j
+zh,zh,zh,Z,Z,ʒ,zh
 b y,b y,b y,bh j,b j,b j,by
 b w,b w,b w,bh w,b w,b w,bw
 d y,d y,d y,dh j,d j,d j,dy
