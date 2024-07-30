@@ -13,6 +13,7 @@
 - Changed default G2p state to true
 - Update Localizations and fixes to the code
 - Fix loading window and saving window delay
+- Retranslated Tagalog to Filipino
 
 **`(7/24/24)`**
 - Regex find and replace now directly iterates and edits the self.dictionary (the data that holds the graphemes and phonemes) instead of the treeview

@@ -1,4 +1,4 @@
-﻿Arpabet (Vanilla),Arpabet (Extended),CZ-Sampa,Vocaloid-Sampa,X-sampa,IPA,Romaji
+default_csv_content = """Arpabet (Vanilla),Arpabet (Extended),CZ-Sampa,Vocaloid-Sampa,X-sampa,IPA,Romaji
 aa,aa,a,Q,A,ɑ,a
 aa r,ar,ar,Q@,Ar,ɒɹ,a r
 ae,ae,@,{,{,æ,a
@@ -83,3 +83,4 @@ v y,v y,v y,v j,v j,v j,vy
 z y,z y,z y,z j,z j,z j,zy
 t s,t s,t s,t s,t s,t s,ts
 hh iy,hv iy,hh E,C i:,C i,ç i,h i
+"""

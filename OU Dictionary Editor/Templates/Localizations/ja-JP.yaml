@@ -192,6 +192,7 @@ select_phonetic_sys: "「From」と「To」の音声システムを両方選択�
 no_temp_file: "トラックと一時ファイルに歌詞が見つかりません。"
 console: "YAMLジェネレーター"
 rec_yaml_gen: "リストをYAMLテンプレートに"
+default_csv: "CSVファイルが見つからなかったため、デフォルトの内容で作成されました。"
 
 # Saving and Loading window
 save_win: "保存中、お待ちください..."

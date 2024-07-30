@@ -189,6 +189,7 @@ select_phonetic_sys: "Por favor, seleccione tanto el sistema fonético de origen
 no_temp_file: "No se encontraron letras en la pista ni en el archivo temporal."
 console: "Generador YAML"
 rec_yaml_gen: "Reclist a Plantilla YAML"
+default_csv: "No se encontró el archivo CSV y se ha creado con contenido predeterminado."
 
 # Saving and Loading window
 save_win: "Guardando, por favor espere..."

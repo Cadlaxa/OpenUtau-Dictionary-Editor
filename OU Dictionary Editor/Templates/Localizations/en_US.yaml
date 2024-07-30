@@ -189,6 +189,7 @@ select_phonetic_sys: "Please select both From and To phonetic systems."
 no_temp_file: "No Lyrics found on track and on the temp file."
 console: "YAML Generator"
 rec_yaml_gen: "Reclist to Yaml Template"
+default_csv: "The CSV file was not found and has been created with default content."
 
 # Saving and Loading window
 save_win: "Saving, please wait..."

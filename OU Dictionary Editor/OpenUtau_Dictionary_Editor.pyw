@@ -23,6 +23,7 @@ from tkinterdnd2 import TkinterDnD, DND_FILES
 
 # Plugins
 from Assets.plugins.generate_yaml_template import generate_yaml_template_from_reclist
+from Assets.plugins.default_phoneme_system import default_csv_content
 
 
 
@@ -1865,6 +1866,14 @@ class Dictionary(TkinterDnD.Tk):
     
     def load_csv(self):
         csv_file_path = PHONEME_SYSTEMS
+        # Check if the CSV file exists
+        if not os.path.exists(csv_file_path):
+            # Create the file with default content
+            with open(csv_file_path, 'w', newline='', encoding='utf-8') as csvfile:
+                csvfile.write(default_csv_content)
+            messagebox.showinfo("File Created", f"{self.localization.get('default_csv', 'The CSV file was not found and has been created with default content.')}")
+
+        # Load the CSV file
         with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
             self.systems = next(reader)
@@ -2666,6 +2675,10 @@ class Dictionary(TkinterDnD.Tk):
             messagebox.showerror("Error", f"{self.localization.get('yaml_load_err', 'An error occurred:')} {str(e)}")
     
     def get_lyrics_from_tmp(self):
+        self.load_window()
+        self.loading_window.update_idletasks()
+        self.after(100, self.load_process_lyrics)
+    def load_process_lyrics(self):
         lyrics = []
         if self.plugin_file:
             with open(self.plugin_file, 'r', encoding='utf-8') as file:
@@ -2678,6 +2691,7 @@ class Dictionary(TkinterDnD.Tk):
 
         if not self.plugin_file:
             messagebox.showerror("Error", f"{self.localization.get('no_temp_file', 'No Lyrics found on track and on the temp file.')}")
+            self.loading_window.destroy()
             return None
         
         # Ensure G2P is enabled
@@ -2716,6 +2730,8 @@ class Dictionary(TkinterDnD.Tk):
             self.add_entry_treeview(new_word=word, new_phonemes=phonemes_list, insert_index=insert_index)
             if insert_index != 'end':
                 insert_index += 1
+                self.loading_window.destroy()
+        self.loading_window.destroy()
     
     def get_yaml_from_temp(self):
         voice_dir = None
@@ -3103,6 +3119,10 @@ class Dictionary(TkinterDnD.Tk):
     
     def import_gen_yaml_temp_data(self):
         localization, filepath, symbols = generate_yaml_template_from_reclist()
+        self.load_window()
+        self.loading_window.update_idletasks()
+        self.after(100, self.process_reclist_data, localization, filepath, symbols)
+    def process_reclist_data(self, localization, filepath, symbols):
         if symbols:
             self.open_symbol_editor()
             # Clear the Treeview before updating
@@ -3114,6 +3134,7 @@ class Dictionary(TkinterDnD.Tk):
             # Insert the symbols into the Treeview
             for symbol, symbol_type in symbols.items():
                 self.add_symbols_treeview(word=symbol, value=[symbol_type])
+                self.loading_window.destroy()
         if localization:
             self.localization.update(localization)
 

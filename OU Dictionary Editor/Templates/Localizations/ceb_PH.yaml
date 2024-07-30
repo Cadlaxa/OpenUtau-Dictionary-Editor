@@ -189,6 +189,7 @@ select_phonetic_sys: "Palihug pagpili sa duha ka mga sistema sa ponetika gikan u
 no_temp_file: "Walay nakit-an nga lyrics sa track ug sa temporary file."
 console: "YAML Generator"
 rec_yaml_gen: "Reclist sa Yaml Template"
+default_csv: "Wala makita ang CSV file ug gihimo kini gamit ang default nga sulod."
 
 # Saving and Loading window
 save_win: "Nagtipig, palihug huwata..."

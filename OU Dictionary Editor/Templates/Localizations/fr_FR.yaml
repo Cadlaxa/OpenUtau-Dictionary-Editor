@@ -189,6 +189,7 @@ select_phonetic_sys: "Veuillez sélectionner à la fois les systèmes phonétiqu
 no_temp_file: "Aucun texte de chanson trouvé sur la piste ni dans le fichier temporaire."
 console: "Générateur YAML"
 rec_yaml_gen: "Liste vers Modèle YAML"
+default_csv: "Le fichier CSV n'a pas été trouvé et a été créé avec le contenu par défaut."
 
 # Saving and Loading window
 save_win: "Enregistrement, veuillez patienter..."
