@@ -138,7 +138,7 @@ class Dictionary(TkinterDnD.Tk):
         self.dictionary = {}
         self.comments = {}
         self.localization = {}
-        self.symbols = defaultdict(tuple)
+        self.symbols = {}
         self.symbols_list = []
         self.undo_stack = []
         self.redo_stack = []
@@ -715,15 +715,19 @@ class Dictionary(TkinterDnD.Tk):
                         raise ValueError({self.localization.get('sym_inc_rv', 'Symbol entry format incorrect. Each entry must be a dictionary.')})
                     symbol = item.get('symbol')
                     type_ = item.get('type')
+                    rename = item.get('rename')
                     if symbol is None or type_ is None:
                         self.loading_window.destroy()
                         raise ValueError({self.localization.get('sym_ent_inc_rv', 'Symbol entry is incomplete.')})
                     if not isinstance(type_, str):
                         self.loading_window.destroy()
                         raise ValueError({self.localization.get('sym_str_rv', 'Type must be a string representing the category.')})
-                    self.symbols[symbol] = [type_]
-                    # Append the loaded data to symbols_list
-                    self.symbols_list.append({'symbol': symbol, 'type': [type_]})
+                    if rename:  # If 'rename' exists, add it to symbols dictionary
+                        self.symbols[symbol] = [type_, rename]
+                        self.symbols_list.append({'symbol': symbol, 'type': [type_], 'rename': rename})
+                    else:  # If 'rename' does not exist, load only the symbol and type
+                        self.symbols[symbol] = [type_]
+                        self.symbols_list.append({'symbol': symbol, 'type': [type_]})
             self.update_entries_window()
         except (YAMLError, ValueError) as e:
             self.loading_window.destroy()
@@ -840,11 +844,13 @@ class Dictionary(TkinterDnD.Tk):
             self.symbol_editor_window.bind("<Delete>", lambda event: self.delete_symbol_entry())
 
             # Create the Treeview
-            self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type'), show='headings', height=14)
+            self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type', 'Rename'), show='headings', height=14)
             self.symbol_treeview.heading('Symbol', text='Symbol')
             self.symbol_treeview.heading('Type', text='Type')
+            self.symbol_treeview.heading('Rename', text='Rename')
             self.symbol_treeview.column('Symbol', width=120, anchor='w')
-            self.symbol_treeview.column('Type', width=180, anchor='w')
+            self.symbol_treeview.column('Type', width=120, anchor='w')
+            self.symbol_treeview.column('Rename', width=120, anchor='w')
             self.symbol_treeview.grid(row=0, column=0, padx=(10,0), pady=5, sticky="nsew")
 
             # Create and pack the Scrollbar
@@ -858,32 +864,44 @@ class Dictionary(TkinterDnD.Tk):
 
             # Frame for action buttons
             action_button_frame = ttk.Frame(self.symbol_editor_window)
-            action_button_frame.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+            action_button_frame.grid(row=3, column=0, padx=10, pady=5, sticky="nsew")
             action_button_frame.grid_columnconfigure(0, weight=1)
             action_button_frame.grid_columnconfigure(1, weight=1)
 
+            # 3 entries
+            sym_entry_frame = ttk.Frame(self.symbol_editor_window)
+            sym_entry_frame.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
+            sym_entry_frame.grid_columnconfigure(0, weight=1)
+            sym_entry_frame.grid_columnconfigure(1, weight=1)
+            sym_entry_frame.grid_columnconfigure(1, weight=1)
+
             action_button_frame1 = ttk.Frame(self.symbol_editor_window)
-            action_button_frame1.grid(row=3, column=0, padx=10, pady=(0,15), sticky="nsew")
+            action_button_frame1.grid(row=4, column=0, padx=10, pady=(5,15), sticky="nsew")
             action_button_frame1.grid_columnconfigure(0, weight=1)
 
             delete_button = ttk.Button(action_button_frame, style='TButton', text="Delete", command=self.delete_symbol_entry)
-            delete_button.grid(row=1, column=0, padx=5, pady=5, sticky="nsew")
+            delete_button.grid(row=1, column=0, padx=5, pady=0, sticky="nsew")
             self.localizable_widgets['del'] = delete_button
-            self.word_edit = ttk.Entry(action_button_frame)
-            self.word_edit.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
+
+            self.word_edit = ttk.Entry(sym_entry_frame)
+            self.word_edit.grid(row=0, column=0, padx=5, pady=0, sticky="nsew")
             
-            self.phoneme_edit = ttk.Entry(action_button_frame)
-            self.phoneme_edit.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+            self.phoneme_edit = ttk.Entry(sym_entry_frame)
+            self.phoneme_edit.grid(row=0, column=1, padx=5, pady=0, sticky="nsew")
+
+            self.rename_edit = ttk.Entry(sym_entry_frame)
+            self.rename_edit.grid(row=0, column=2, padx=5, pady=0, sticky="nsew")
 
             add_button = ttk.Button(action_button_frame, style='TButton', text="Add", command=self.add_symbol_entry)
-            add_button.grid(row=1, column=1, padx=5, pady=5, sticky="nsew")
+            add_button.grid(row=1, column=1, padx=5, pady=0, sticky="nsew")
             self.localizable_widgets['add'] = add_button
 
             self.word_edit.bind("<Return>", self.add_symbol_entry_event)
             self.phoneme_edit.bind("<Return>", self.add_symbol_entry_event)
+            self.rename_edit.bind("<Return>", self.add_symbol_entry_event)
 
             save_templ = ttk.Button(action_button_frame1, style='Accent.TButton', text="Save to Templates", command=self.save_yaml_template)
-            save_templ.grid(row=3, column=0, padx=5, pady=5, sticky="ew")
+            save_templ.grid(row=3, column=0, padx=5, pady=0, sticky="ew")
             self.localizable_widgets['save_templ'] = save_templ
 
             self.symbol_editor_window.bind("<Escape>", lambda event: self.symbol_editor_window.destroy())
@@ -893,7 +911,7 @@ class Dictionary(TkinterDnD.Tk):
             self.apply_localization()
 
     def save_yaml_template(self):
-        if not self.symbols:
+        if not self.symbols and not self.replacements:
             messagebox.showinfo("Warning", f"{self.localization.get('yaml_temp_ns', 'No entries to save. Please add entries before saving.')}")
             return
 
@@ -913,26 +931,42 @@ class Dictionary(TkinterDnD.Tk):
 
         # Ensure the file path ends with .yaml
         if not template_path.endswith('.yaml'):
-            template_path += '.template.yaml'
+            template_path += '.yaml'
 
         # Read existing data from the template as text, ignoring the entries section
         existing_data_text = []
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as file:
                 for line in file:
-                    if 'symbols:' in line.strip():
+                    if 'symbols:' in line.strip() or 'replacements:' in line.strip():
                         break
                     existing_data_text.append(line)
 
-        # Prepare new entries for symbols
-        escaped_symbols = [escape_symbols(symbol) for symbol in self.symbols.keys()]
-        symbols_entries = [
-            f"  - {{symbol: {escaped_symbol}, type: {', '.join(types)}}}\n"
-            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
-        ]
+        # Prepare new entries for symbols without rename
+        symbols_entries = []
+        for symbol, data in self.symbols.items():
+            escaped_symbol = escape_symbols(symbol)
+            type_list = data[0] if isinstance(data[0], list) else [data[0]]
+            type_str = ', '.join(f"{t}" for t in type_list)
+            symbols_entries.append(f"- {{symbol: {escaped_symbol}, type: {type_str}}}\n")
+
         existing_data_text.append('symbols:\n')
         existing_data_text.extend(symbols_entries)
         existing_data_text.append('\n')
+
+        # Prepare new entries for replacements
+        rename_entries = []
+        for symbol, data in self.symbols.items():
+            if len(data) > 1 and data[1]:  # Check if rename data exists
+                from_symbol = symbol
+                to_data = data[1]
+                rename_entries.append(f"- {{from: {from_symbol}, to: {to_data}}}\n")
+
+        if rename_entries:
+            existing_data_text.append('replacements:\n')
+            existing_data_text.extend(rename_entries)
+            existing_data_text.append('\n')
+
         existing_data_text.append('entries:\n')
 
         # Validate the YAML data
@@ -949,6 +983,7 @@ class Dictionary(TkinterDnD.Tk):
             self.update_template_combobox(self.template_combobox)
         messagebox.showinfo("Success", f"{self.localization.get('templ_saved', 'Templates saved to ')} {template_path}")
 
+
     def deselect_symbols(self, event):
         # Check if there is currently a selection
         selected_items = self.symbol_treeview.selection()
@@ -957,6 +992,7 @@ class Dictionary(TkinterDnD.Tk):
 
             self.word_edit.delete(0, tk.END)
             self.phoneme_edit.delete(0, tk.END)
+            self.rename_edit.delete(0, tk.END)
         
     def add_symbol_entry_event(self, event):
         self.add_symbol_entry()
@@ -964,13 +1000,15 @@ class Dictionary(TkinterDnD.Tk):
     def add_symbol_entry(self):
         symbol = self.word_edit.get().strip()
         value = self.phoneme_edit.get().strip()
+        rname = self.rename_edit.get().strip()
         self.save_state_before_change()
         if symbol and value:
             if not self.symbol_editor_window or not self.symbol_editor_window.winfo_exists():
                 self.open_symbol_editor()
-            self.add_symbols_treeview(symbol, value.split())
+            self.add_symbols_treeview(symbol, value.split(), rname)  # Pass rename to the method
             self.phoneme_edit.delete(0, tk.END)
             self.word_edit.delete(0, tk.END)
+            self.rename_edit.delete(0, tk.END)
         else:
             messagebox.showinfo("Error", f"{self.localization.get('add_sym_ent', 'Please provide both phonemes and its respective value for the entry.')}")
 
@@ -986,24 +1024,25 @@ class Dictionary(TkinterDnD.Tk):
                     self.symbol_treeview.delete(item_id)  # Remove the item from the treeview
                     self.phoneme_edit.delete(0, tk.END)
                     self.word_edit.delete(0, tk.END)
+                    self.rename_edit.delete(0, tk.END)
                 else:
                     messagebox.showinfo("Notice", f"Symbol: {symbol} {self.localization.get('del_sym_nf', ' not found in symbols.')}")
             else:
                 messagebox.showinfo("Notice", f"{self.localization.get('del_sym_id', 'No data found for item ID ')} {item_id}.")
 
-    def add_symbols_treeview(self, word=None, value=None):
-        if word and value:
+    def add_symbols_treeview(self, word=None, value=None, rename=None):
+        if word and value is not None:
             # Convert phonemes list to a string for display
             phoneme_display = ', '.join(value)
             new_item_ids = []
 
             selected_item = self.symbol_treeview.selection()
             if word in self.symbols:
-                # Update the existing item's phonemes
-                self.symbols[word] = value
+                # Update the existing item's phonemes and rename
+                self.symbols[word] = [value, rename]
                 for item in self.symbol_treeview.get_children():
                     if self.symbol_treeview.item(item, 'values')[0] == word:
-                        self.symbol_treeview.item(item, values=(word, phoneme_display))
+                        self.symbol_treeview.item(item, values=(word, phoneme_display, rename))
                         break
             else:
                 if selected_item:
@@ -1012,16 +1051,25 @@ class Dictionary(TkinterDnD.Tk):
                     insert_index = 'end'
 
                 # Insert the new entry
-                item_id = self.symbol_treeview.insert('', insert_index, values=(word, phoneme_display), tags=('normal',))
+                item_id = self.symbol_treeview.insert('', insert_index, values=(word, phoneme_display, rename), tags=('normal',))
                 new_item_ids.append(item_id)
-                self.symbols[word] = value
+                self.symbols[word] = [value, rename]
 
             # Update symbols_list to reflect changes
-            self.symbols_list = [{'symbol': k, 'type': v} for k, v in self.symbols.items()]
+            self.symbols_list = []
+            for k, v in self.symbols.items():
+                # Ensure each entry has at least two elements
+                if len(v) >= 2:
+                    self.symbols_list.append({'symbol': k, 'type': v[0], 'rename': v[1]})
+                else:
+                    # Handle cases where the data might be incomplete
+                    self.symbols_list.append({'symbol': k, 'type': v[0], 'rename': ''})
 
             # Re-index items to maintain order consistency
-            for index, item in enumerate(self.symbol_treeview.get_children()):
-                self.symbol_treeview.item(item, values=(self.symbol_treeview.item(item, 'values')[0], self.symbol_treeview.item(item, 'values')[1]))
+            for item in self.symbol_treeview.get_children():
+                values = self.symbol_treeview.item(item, 'values')
+                if len(values) == 3:
+                    self.symbol_treeview.item(item, values=(values[0], values[1], values[2]))
 
             # Select the newly added or updated items
             self.symbol_treeview.selection_set(new_item_ids)
@@ -1034,32 +1082,42 @@ class Dictionary(TkinterDnD.Tk):
         # Define the column identifiers
         grapheme_column = "#1"
         phoneme_column = "#2"
+        rename_column = "#3"
 
         # Calculate the positions and sizes of the cells
         x_g, y_g, width_g, height_g = self.symbol_treeview.bbox(selected_item, grapheme_column)
         x_p, y_p, width_p, height_p = self.symbol_treeview.bbox(selected_item, phoneme_column)
+        x_r, y_r, width_r, height_r = self.symbol_treeview.bbox(selected_item, rename_column)
 
         # Retrieve initial values from Treeview, removing commas from phoneme
-        initial_grapheme = self.symbol_treeview.item(selected_item, "values")[0]
-        initial_phoneme = self.symbol_treeview.item(selected_item, "values")[1]
+        item_values = self.symbol_treeview.item(selected_item, "values")
+        initial_grapheme = item_values[0]
+        initial_phoneme = item_values[1]
+        initial_rename = item_values[2] if len(item_values) > 2 else ''
 
         # Destroy currently open widgets if they exist
         if self.current_entry_widgets:
             for widget in self.current_entry_widgets.values():
                 widget.destroy()
             self.current_entry_widgets = {}
-        
-        # Create entry widgets for editing grapheme and phoneme
+
+        # Create entry widgets for editing grapheme, phoneme, and rename
         self.entry_popup_sym = ttk.Entry(self.symbol_treeview)
         self.entry_popup_sym.place(x=x_g, y=y_g-5, width=width_g, height=height_g+10)
         self.entry_popup_sym.insert(0, initial_grapheme)
         self.entry_popup_sym.focus_set()
-        self.current_entry_widgets['self.entry_popup_sym'] = self.entry_popup_sym
+        self.current_entry_widgets['entry_popup_sym'] = self.entry_popup_sym
 
         self.entry_popup_val = ttk.Entry(self.symbol_treeview)
         self.entry_popup_val.place(x=x_p, y=y_p-5, width=width_p, height=height_p+10)
         self.entry_popup_val.insert(0, initial_phoneme)
-        self.current_entry_widgets['self.entry_popup_val'] = self.entry_popup_val
+        self.current_entry_widgets['entry_popup_val'] = self.entry_popup_val
+
+        # The rename entry will be created regardless of whether initial_rename is empty or not
+        self.entry_popup_rn = ttk.Entry(self.symbol_treeview)
+        self.entry_popup_rn.place(x=x_r, y=y_r-5, width=width_r, height=height_r+10)
+        self.entry_popup_rn.insert(0, initial_rename)
+        self.current_entry_widgets['entry_popup_rn'] = self.entry_popup_rn
 
         def on_validate(event):
             self.save_state_before_change()
@@ -1067,35 +1125,33 @@ class Dictionary(TkinterDnD.Tk):
             # Get the edited values from entry widgets
             new_grapheme = self.entry_popup_sym.get()
             new_phoneme = self.entry_popup_val.get()
+            new_rename = self.entry_popup_rn.get()
 
             # Update Treeview with edited values
             self.symbol_treeview.set(selected_item, grapheme_column, new_grapheme)
             self.symbol_treeview.set(selected_item, phoneme_column, new_phoneme)
+            self.symbol_treeview.set(selected_item, rename_column, new_rename)
 
             # Destroy entry widgets after editing
-            self.entry_popup_sym.destroy()
-            self.entry_popup_val.destroy()
+            for widget in self.current_entry_widgets.values():
+                widget.destroy()
             self.current_entry_widgets = {}
 
-            # Get the index of the currently selected item
-            selected_index = self.symbol_treeview.index(selected_item)
+            # Update the symbols dictionary and list
+            self.symbols[new_grapheme] = new_phoneme.split()
+            for entry in self.symbols_list:
+                if entry['symbol'] == initial_grapheme:
+                    entry['symbol'] = new_grapheme
+                    entry['type'] = new_phoneme.split()
+                    entry['rename'] = new_rename  # Always update the rename field
+                    break
 
-            # Delete the item above the edited row
-            if new_grapheme != initial_grapheme:
-                if selected_index > 0:
-                    prev_item = self.symbol_treeview.get_children()[selected_index - 1]
-                    self.symbol_treeview.delete(prev_item)
-
-            self.add_symbols_treeview(new_grapheme, new_phoneme.split())
-
-            if new_grapheme != initial_grapheme:
-                if selected_index > 0:
-                    prev_item1 = self.symbol_treeview.get_children()[selected_index + 1]
-                    self.symbol_treeview.selection_set(prev_item1)
-                    self.delete_symbol_entry()
+            # Re-index and select the newly edited item
+            self.refresh_treeview_symbols()
 
         self.entry_popup_sym.bind("<Return>", on_validate)
         self.entry_popup_val.bind("<Return>", on_validate)
+        self.entry_popup_rn.bind("<Return>", on_validate)
         self.symbol_treeview.bind("<Return>", on_validate)
     
     def delete_selected_symbols(self):
@@ -1116,6 +1172,7 @@ class Dictionary(TkinterDnD.Tk):
         self.symbol_treeview.delete(*selected_items)
         self.phoneme_edit.delete(0, tk.END)
         self.word_edit.delete(0, tk.END)
+        self.rename_edit.delete(0, tk.END)
         self.refresh_treeview_symbols()
     
     def filter_symbols_treeview(self):
@@ -1149,7 +1206,15 @@ class Dictionary(TkinterDnD.Tk):
         for entry in self.symbols_list:
             symbol = entry['symbol']
             type_list = entry['type']
-            item_id = self.symbol_treeview.insert('', 'end', values=(symbol, type_list), tags=('normal',))
+            rename = entry.get('rename', '')  # Get 'rename' if it exists, else use an empty string
+            
+            # Prepare the values tuple based on whether 'rename' is present
+            values = (symbol, type_list)
+            if rename:
+                values = (symbol, type_list, rename)
+            
+            item_id = self.symbol_treeview.insert('', 'end', values=values, tags=('normal',))
+
             # Check if this was the previously selected symbol
             if symbol == selected_symbol:
                 new_selection_id = item_id
@@ -1159,7 +1224,7 @@ class Dictionary(TkinterDnD.Tk):
             self.symbol_treeview.selection_set(new_selection_id)
             self.symbol_treeview.item(new_selection_id, tags=('selected',))
             self.symbol_treeview.see(new_selection_id)
-    
+
     def on_tree_symbol_selection(self, event):
         # Reset styles for all items
         for item in self.symbol_treeview.get_children():
@@ -1176,29 +1241,48 @@ class Dictionary(TkinterDnD.Tk):
         if selected_items:
             graphemes = []
             phoneme_lists = []
+            renames = []
+            
             for item_id in selected_items:
                 item_data = self.symbol_treeview.item(item_id, 'values')
                 if item_data:
-                    grapheme, phonemes = item_data[0], self.symbols.get(item_data[0], [])
+                    # Handle cases where item_data may not have all expected elements
+                    if len(item_data) >= 3:
+                        grapheme, phonemes, rename = item_data[:3]
+                    elif len(item_data) == 2:
+                        grapheme, phonemes = item_data
+                        rename = ''  # Default value if rename is missing
+                    else:
+                        grapheme = phonemes = rename = ''  # Default values if data is insufficient
+                    
                     graphemes.append(grapheme)
                     phoneme_lists.append(phonemes)
-
+                    renames.append(rename)
+            
             # Concatenate all graphemes for display
             graphemes_text = ', '.join(graphemes)
 
             # Formatting phonemes appropriately based on selection count
             if len(phoneme_lists) > 1:
-                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list) for phoneme_list in phoneme_lists)
+                phonemes_text = '] ['.join(' '.join(str(phoneme) for phoneme in phoneme_list.split(', ')) for phoneme_list in phoneme_lists)
                 phonemes_text = f"[{phonemes_text}]"
             else:
-                phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0])
+                phonemes_text = ' '.join(str(phoneme) for phoneme in phoneme_lists[0].split(', '))
 
+            # Handle rename - show the first rename value or concatenate if needed
+            if len(renames) > 1:
+                rename_text = ', '.join(renames)
+            else:
+                rename_text = renames[0] if renames else ''
+
+            # Update the UI elements with the selected data
             self.word_edit.delete(0, tk.END)
             self.word_edit.insert(0, graphemes_text)
-
             self.phoneme_edit.delete(0, tk.END)
             self.phoneme_edit.insert(0, phonemes_text)
-    
+            self.rename_edit.delete(0, tk.END)
+            self.rename_edit.insert(0, rename_text)
+
     def add_manual_entry_event(self, event):
         self.add_manual_entry()
 
@@ -2396,12 +2480,17 @@ class Dictionary(TkinterDnD.Tk):
         existing_data['entries'] = new_entries
 
         # Prepare new symbols entries
-        escaped_symbols = [(symbol) for symbol in self.symbols.keys()]
-        symbols_entries = CommentedSeq([
-            CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(types))])
-            for escaped_symbol, types in zip(escaped_symbols, self.symbols.values())
-        ])
-        existing_data['symbols'] = symbols_entries
+        escaped_symbols = list(self.symbols.keys())
+        symbols_entries = CommentedSeq()
+
+        for escaped_symbol, values in zip(escaped_symbols, self.symbols.values()):
+            # Check if rename exists and handle accordingly
+            if len(values) > 1 and values[1]:  # Assuming the second element is rename
+                entry = CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(values[0])), ('rename', values[1])])
+            else:
+                entry = CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(values[0]))])
+            
+            symbols_entries.append(entry)
 
         # Configure YAML instance to use flow style for specific parts
         def compact_representation(dumper, data):
@@ -2464,11 +2553,10 @@ class Dictionary(TkinterDnD.Tk):
         try:
             if output_file_path and not output_file_path.endswith('.json'):
                 output_file_path += '.json'
-
             json_data = {"data": data}
             # Write JSON data to the selected file
             with open(output_file_path, 'w', encoding='utf-8') as file:
-                json.dump(json_data, file, indent=2)  # Pretty print with indentation
+                json.dump(json_data, file, indent=2, ensure_ascii=False)  # Pretty print with indentation
                 self.saving_window.destroy()
 
             # Update cache file
@@ -2574,24 +2662,59 @@ class Dictionary(TkinterDnD.Tk):
         with open(yaml_file, 'r') as file:
             data = yaml.load(file)
             symbols = data.get('symbols', [])
-            self.process_symbols(symbols)
+            replacements = data.get('replacements', [])
+            self.process_symbols(symbols, replacements)
             if self.symbol_editor_window:
                 self.refresh_treeview_symbols()
 
-    def process_symbols(self, symbols):
+    def process_symbols(self, symbols, replacements):
+        # Validate symbols entries
         if not all(isinstance(item, dict) for item in symbols):
             messagebox.showerror("Error", f"{self.localization.get('process_sym_m', 'All entries must be dictionaries.')}")
             return
+        
+        # Validate replacements entries
+        if not all(isinstance(item, dict) and 'from' in item and 'to' in item for item in replacements):
+            messagebox.showerror("Error", f"{self.localization.get('process_sym_err', 'Each symbol entry must have a (symbol) and a (type) (string).')}")
+            return
+
         self.symbols.clear()
         self.symbols_list = []
+
+        # Process symbols entries
         for item in symbols:
             symbol = item.get('symbol')
             type_ = item.get('type')
+            rename_ = item.get('rename')
             if symbol is None or type_ is None or not isinstance(type_, str):
                 messagebox.showerror("Error", f"{self.localization.get('process_sym_err', 'Each symbol entry must have a (symbol) and a (type) (string).')}")
                 return
-            self.symbols[symbol] = [type_]
-            self.symbols_list.append({'symbol': symbol, 'type': type_})
+            if rename_:
+                self.symbols[symbol] = [type_, rename_]
+            else:
+                self.symbols[symbol] = [type_]
+            self.symbols_list.append({'symbol': symbol, 'type': type_, 'rename': rename_})
+
+        # Process replacements entries
+        for replacement in replacements:
+            from_symbol = replacement.get('from')
+            to_symbol = replacement.get('to')
+            if from_symbol is None or to_symbol is None:
+                messagebox.showerror("Error", f"{self.localization.get('process_sym_err', 'Each replacement entry must have a (from) and a (to).')}")
+                return
+            
+            if from_symbol in self.symbols:
+                # Update the existing symbol with new rename
+                existing_type = self.symbols[from_symbol][0]
+                existing_rename = self.symbols[from_symbol][1] if len(self.symbols[from_symbol]) > 1 else ''
+                new_rename = f"{existing_rename}, {to_symbol}" if existing_rename else to_symbol
+                self.symbols[from_symbol] = [existing_type, new_rename]
+            else:
+                # Add new symbol with the replacement as rename
+                self.symbols[from_symbol] = ['', to_symbol]
+            
+            # Update symbols_list
+            self.symbols_list = [{'symbol': k, 'type': v[0], 'rename': v[1] if len(v) > 1 else ''} for k, v in self.symbols.items()]
     
     def sort_entries(self, event):
         sort_by = self.sort_combobox.get()
@@ -3072,8 +3195,8 @@ class Dictionary(TkinterDnD.Tk):
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=(5, 20), pady=5, sticky="ew")
-        self.g2p_selection['values'] = ('Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Italian G2p', 'Japanese Monophone G2p'
-                                        , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p')
+        self.g2p_selection['values'] = tuple(sorted(['Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Marzipan (German) G2p', 'Italian G2p', 'Japanese Monophone G2p'
+                                        , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p']))
         
         self.load_last_g2p()
 
@@ -3178,6 +3301,7 @@ class Dictionary(TkinterDnD.Tk):
                 'Arpabet-Plus G2p': ('Assets.G2p.arpabet_plus', 'ArpabetPlusG2p'),
                 'French G2p': ('Assets.G2p.frenchG2p', 'FrenchG2p'),
                 'German G2p': ('Assets.G2p.germanG2p', 'GermanG2p'),
+                'Marzipan (German) G2p': ('Assets.G2p.marzipanG2p', 'MarzipanG2p'),
                 'Italian G2p': ('', 'ItalianG2p'),
                 'Japanese Monophone G2p': ('Assets.G2p.jp_mono', 'JapaneseMonophoneG2p'),
                 'Millefeuille (French) G2p': ('Assets.G2p.millefeuilleG2p', 'MillefeuilleG2p'),
