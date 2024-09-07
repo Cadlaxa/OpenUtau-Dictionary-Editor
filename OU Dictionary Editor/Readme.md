@@ -4,6 +4,7 @@
 - Ensure ascii is false when dumping the data on json
 - G2p combobox are now alphabetically arranged
 - Add support for Diffsinger Phoneme Replacement entries
+- Fixes to YAML dump
 
 **`(8/03/24)`**
 - Add file drag and drop file support to open them directly

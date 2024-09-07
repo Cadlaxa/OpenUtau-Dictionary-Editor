@@ -728,6 +728,29 @@ class Dictionary(TkinterDnD.Tk):
                     else:  # If 'rename' does not exist, load only the symbol and type
                         self.symbols[symbol] = [type_]
                         self.symbols_list.append({'symbol': symbol, 'type': [type_]})
+            
+            # Load and process replacements
+            replacements = data.get('replacements', [])
+            for replacement in replacements:
+                from_symbol = replacement.get('from')
+                to_symbol = replacement.get('to')
+                if from_symbol is None or to_symbol is None:
+                    messagebox.showerror("Error", f"{self.localization.get('process_repl_sym_err', 'Each replacement entry must have a (from) and a (to) symbol (string)')}")
+                    return
+
+                if from_symbol in self.symbols:
+                    # Update the existing symbol with new rename
+                    existing_type = self.symbols[from_symbol][0]
+                    existing_rename = self.symbols[from_symbol][1] if len(self.symbols[from_symbol]) > 1 else ''
+                    new_rename = f"{existing_rename}, {to_symbol}" if existing_rename else to_symbol
+                    self.symbols[from_symbol] = [existing_type, new_rename]
+                else:
+                    # Add new symbol with the replacement as rename
+                    self.symbols[from_symbol] = ['', to_symbol]
+
+            # Update symbols_list after processing replacements
+            self.symbols_list = [{'symbol': k, 'type': v[0], 'rename': v[1] if len(v) > 1 else ''} for k, v in self.symbols.items()]
+
             self.update_entries_window()
         except (YAMLError, ValueError) as e:
             self.loading_window.destroy()
@@ -958,8 +981,8 @@ class Dictionary(TkinterDnD.Tk):
         rename_entries = []
         for symbol, data in self.symbols.items():
             if len(data) > 1 and data[1]:  # Check if rename data exists
-                from_symbol = symbol
-                to_data = data[1]
+                from_symbol = escape_symbols(symbol)
+                to_data = escape_symbols(data[1])
                 rename_entries.append(f"- {{from: {from_symbol}, to: {to_data}}}\n")
 
         if rename_entries:
@@ -1137,13 +1160,22 @@ class Dictionary(TkinterDnD.Tk):
                 widget.destroy()
             self.current_entry_widgets = {}
 
-            # Update the symbols dictionary and list
-            self.symbols[new_grapheme] = new_phoneme.split()
+           # Split phonemes into a list
+            phoneme_list = new_phoneme.split()
+
+            # Update the symbols dictionary, ensuring the rename is saved
+            self.symbols[new_grapheme] = [phoneme_list]  # Ensure the phonemes are stored as a list
+
+            # Check if a rename value exists, and update accordingly
+            if new_rename:
+                self.symbols[new_grapheme].append(new_rename)  # Add rename if it exists
+
+            # Update symbols_list
             for entry in self.symbols_list:
                 if entry['symbol'] == initial_grapheme:
                     entry['symbol'] = new_grapheme
-                    entry['type'] = new_phoneme.split()
-                    entry['rename'] = new_rename  # Always update the rename field
+                    entry['type'] = phoneme_list
+                    entry['rename'] = new_rename.split()  # Always update the rename field
                     break
 
             # Re-index and select the newly edited item
@@ -2455,6 +2487,7 @@ class Dictionary(TkinterDnD.Tk):
         yaml.width = 4096
         yaml.preserve_quotes = True
         existing_data = CommentedMap()
+        yaml.allow_duplicate_keys = True  # Allow duplicated keys, but we'll handle duplicates manually
 
         # Read existing data from the template, preserving comments
         if os.path.exists(template_path):
@@ -2463,6 +2496,33 @@ class Dictionary(TkinterDnD.Tk):
 
         # Clear existing entries
         self.clear_entries()
+        
+        # Prepare new symbols entries
+        symbols_entries = CommentedSeq()
+        added_symbols = set()  # Track added symbols to avoid duplicates
+
+        for symbol, values in self.symbols.items():
+            escaped_symbol = escape_symbols(symbol)
+            type_list = values[0] if isinstance(values[0], list) else [values[0]]
+            type_str = ', '.join(f"{t}" for t in type_list)
+
+            if escaped_symbol not in added_symbols:  # Avoid adding duplicates
+                entry = CommentedMap([('symbol', escaped_symbol), ('type', type_str)])
+                symbols_entries.append(entry)
+                added_symbols.add(escaped_symbol)
+        
+        rename_entries = CommentedSeq()
+        added_replacements = set()  # Track added replacements to avoid duplicates
+        for symbol, data in self.symbols.items():
+            if len(data) > 1 and data[1]:  # Check if rename data exists
+                from_symbol = escape_symbols(symbol)
+                to_data = escape_symbols(data[1])
+                replacement_key = (from_symbol, to_data)  # Create a key to check for duplicates
+
+                if replacement_key not in added_replacements:  # Avoid adding duplicates
+                    entry = CommentedMap([('from', from_symbol), ('to', to_data)])
+                    rename_entries.append(entry)
+
         # Prepare new entries
         new_entries = CommentedSeq()
         for item in self.viewer_tree.get_children():
@@ -2477,20 +2537,18 @@ class Dictionary(TkinterDnD.Tk):
                 entry = CommentedMap([('grapheme', grapheme), ('phonemes', phonemes)])
                 new_entries.append(entry)
 
+        # If existing data has entries, clear them
+        if 'symbols' in existing_data:
+            del existing_data['symbols']
+        if 'replacements' in existing_data:
+            del existing_data['replacements']
+        if 'entries' in existing_data:
+            del existing_data['entries']
+
+        # Ensure correct order: symbols, replacements, and entries
+        existing_data['symbols'] = symbols_entries
+        existing_data['replacements'] = rename_entries
         existing_data['entries'] = new_entries
-
-        # Prepare new symbols entries
-        escaped_symbols = list(self.symbols.keys())
-        symbols_entries = CommentedSeq()
-
-        for escaped_symbol, values in zip(escaped_symbols, self.symbols.values()):
-            # Check if rename exists and handle accordingly
-            if len(values) > 1 and values[1]:  # Assuming the second element is rename
-                entry = CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(values[0])), ('rename', values[1])])
-            else:
-                entry = CommentedMap([('symbol', escaped_symbol), ('type', ', '.join(values[0]))])
-            
-            symbols_entries.append(entry)
 
         # Configure YAML instance to use flow style for specific parts
         def compact_representation(dumper, data):
@@ -2675,7 +2733,7 @@ class Dictionary(TkinterDnD.Tk):
         
         # Validate replacements entries
         if not all(isinstance(item, dict) and 'from' in item and 'to' in item for item in replacements):
-            messagebox.showerror("Error", f"{self.localization.get('process_sym_err', 'Each symbol entry must have a (symbol) and a (type) (string).')}")
+            messagebox.showerror("Error", f"{self.localization.get('process_repl_sym_err', 'Each replacement entry must have a (from) and a (to) symbol (string).')}")
             return
 
         self.symbols.clear()
