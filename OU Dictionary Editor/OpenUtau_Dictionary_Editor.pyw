@@ -152,6 +152,7 @@ class Dictionary(TkinterDnD.Tk):
         self.text_widget = None
         self.replace_window = None
         self.drag_window = None
+        self.drag_window_sym = None
         self.symbol_editor_window = None
         self.g2p_model = None
         self.remove_numbered_accents_var = tk.BooleanVar()
@@ -859,13 +860,6 @@ class Dictionary(TkinterDnD.Tk):
             treeview_frame.columnconfigure(0, weight=1)
             treeview_frame.rowconfigure(0, weight=1)
 
-            # Deselect
-            self.symbol_editor_window.bind("<Button-2>", self.deselect_symbols)
-            self.symbol_editor_window.bind("<Button-3>", self.deselect_symbols)
-            # Select
-            self.symbol_editor_window.bind("<<TreeviewSelect>>", self.on_tree_symbol_selection)
-            self.symbol_editor_window.bind("<Delete>", lambda event: self.delete_symbol_entry())
-
             # Create the Treeview
             self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type', 'Rename'), show='headings', height=14)
             self.symbol_treeview.heading('Symbol', text='Symbol')
@@ -875,6 +869,17 @@ class Dictionary(TkinterDnD.Tk):
             self.symbol_treeview.column('Type', width=120, anchor='w')
             self.symbol_treeview.column('Rename', width=120, anchor='w')
             self.symbol_treeview.grid(row=0, column=0, padx=(10,0), pady=5, sticky="nsew")
+
+            # mouse drag
+            self.symbol_treeview.bind("<ButtonPress-1>", self.start_drag_sym)
+            self.symbol_treeview.bind("<B1-Motion>", self.on_drag_sym)
+            self.symbol_treeview.bind("<ButtonRelease-1>", self.stop_drag_sym)
+            # Deselect
+            self.symbol_editor_window.bind("<Button-2>", self.deselect_symbols)
+            self.symbol_editor_window.bind("<Button-3>", self.deselect_symbols)
+            # Select
+            self.symbol_editor_window.bind("<<TreeviewSelect>>", self.on_tree_symbol_selection)
+            self.symbol_treeview.bind("<Delete>", lambda event: self.delete_symbol_entry())
 
             # Create and pack the Scrollbar
             self.treeview_scrollbar = ttk.Scrollbar(treeview_frame, orient=tk.VERTICAL, command=self.symbol_treeview.yview)
@@ -932,6 +937,103 @@ class Dictionary(TkinterDnD.Tk):
         self.refresh_treeview_symbols()
         if self.symbol_editor_window.winfo_exists():
             self.apply_localization()
+    
+    def start_drag_sym(self, event):
+        self.drag_start_x_sym = event.x
+        self.drag_start_y_sym = event.y
+        self.dragged_symbols = self.symbol_treeview.identify_row(event.y)
+        self.drag_initiated_sym = False
+
+    def on_drag_sym(self, event):
+        # Update the position of the drag window during the drag
+        dx = abs(event.x - self.drag_start_x_sym)
+        dy = abs(event.y - self.drag_start_y_sym)
+        # Determine if the movement is enough to consider it a drag (you can adjust the threshold)
+        if (dx > 5 or dy > 5) and not self.drag_initiated_sym:
+            self.drag_initiated_sym = True
+            self.create_drag_window_sym(event)
+        if self.drag_initiated_sym:
+            # Update the position of the drag window during the drag
+            self.drag_window_sym.geometry(f"+{event.x_root}+{event.y_root-30}")
+            self.autoscroll_sym(event)
+
+    def create_drag_window_sym(self, event):
+        selected_item = self.symbol_treeview.selection()
+        if selected_item:
+            # Retrieve the first selected item
+            item = self.symbol_treeview.item(selected_item[0])
+            values = item['values']
+            if values:
+                # Use the appropriate value from the selected item's values
+                selected_text = values[0]
+
+                if not hasattr(self, 'drag_window') or not self.drag_window_sym:
+                    self.drag_window_sym = tk.Toplevel(self)
+                    self.drag_window_sym.overrideredirect(True)
+                    self.drag_window_sym.attributes("-alpha", 0.8)
+
+                    # Create the label with the selected item's text
+                    label = ttk.Label(self.drag_window_sym, text=f"{selected_text}", style='Accent.TButton')
+                    label.pack(expand=True)
+
+                    self.drag_window_sym.config(borderwidth=1, relief="solid")
+                    self.drag_window_sym.wm_attributes("-topmost", True)
+                    self.drag_window_sym.wm_attributes("-toolwindow", True)
+
+                self.save_state_before_change()
+
+    def autoscroll_sym(self, event):
+        treeview_height = self.symbol_treeview.winfo_height()
+        y_relative = event.y_root - self.symbol_treeview.winfo_rooty()
+        scroll_zone_size = 20
+
+        if y_relative < scroll_zone_size:
+            # Calculate scroll speed based on distance to edge
+            speed = 5 - (y_relative / scroll_zone_size)
+            self.symbol_treeview.yview_scroll(int(-1 * speed), "units")
+        elif y_relative > (treeview_height - scroll_zone_size):
+            speed = 5 - ((treeview_height - y_relative) / scroll_zone_size)
+            self.symbol_treeview.yview_scroll(int(1 * speed), "units")
+
+    def stop_drag_sym(self, event):
+        if self.drag_initiated_sym and self.dragged_symbols:
+            # Identify the target item
+            target_item = self.symbol_treeview.identify_row(event.y)
+            if target_item and self.dragged_symbols != target_item:
+                # Get the indices of the dragged and target items
+                dragged_index = self.symbol_treeview.index(self.dragged_symbols)
+                target_index = self.symbol_treeview.index(target_item)
+                # Move the dragged item in the Treeview
+                self.symbol_treeview.move(self.dragged_symbols, '', target_index)
+                # Update the symbols dictionary to reflect the new order
+                dragged_data = self.symbol_treeview.item(self.dragged_symbols, 'values')
+                dragged_grapheme = dragged_data[0]
+                # Remove the dragged entry from its original position in the symbols_list
+                dragged_entry = self.symbols.pop(dragged_grapheme, None)
+                if dragged_entry is not None:
+                    # Convert the symbols dictionary into a list of keys to reorder
+                    symbol_keys = list(self.symbols.keys())
+                    symbol_keys.insert(target_index, dragged_grapheme)  # Insert at the new index
+                    
+                    reordered_symbols = {}
+                    for key in symbol_keys:
+                        if key == dragged_grapheme:
+                            reordered_symbols[key] = dragged_entry
+                        else:
+                            reordered_symbols[key] = self.symbols[key]
+                    self.symbols = reordered_symbols  # Update the symbols dictionary
+
+            # Select the dragged item and ensure it's visible
+            self.symbol_treeview.selection_set(self.dragged_symbols)
+            self.symbol_treeview.see(self.dragged_symbols)
+
+        # Close and clean up the drag window
+        if hasattr(self, 'drag_window_sym') and self.drag_window_sym:
+            self.drag_window_sym.destroy()
+            self.drag_window_sym = None
+
+        # Reset the drag state
+        self.drag_initiated_sym = False
 
     def save_yaml_template(self):
         if not self.symbols and not self.replacements:
@@ -955,7 +1057,10 @@ class Dictionary(TkinterDnD.Tk):
         # Ensure the file path ends with .yaml
         if not template_path.endswith('.yaml'):
             template_path += '.yaml'
-
+        self.save_window()
+        self.saving_window.update_idletasks()
+        self.after(100, self.save_template_process, template_path)
+    def save_template_process(self, template_path):
         # Read existing data from the template as text, ignoring the entries section
         existing_data_text = []
         if os.path.exists(template_path):
@@ -997,6 +1102,7 @@ class Dictionary(TkinterDnD.Tk):
         try:
             yaml.load('\n'.join(existing_data_text))
         except YAMLError as exc:
+            self.saving_window.destroy()
             messagebox.showerror("Error", f"{self.localization.get('yaml_template_inv', 'Invalid YAML data: ')} {exc}")
             return
 
@@ -1004,8 +1110,8 @@ class Dictionary(TkinterDnD.Tk):
         with open(template_path, 'w', encoding='utf-8') as file:
             file.writelines(existing_data_text)
             self.update_template_combobox(self.template_combobox)
+        self.saving_window.destroy()
         messagebox.showinfo("Success", f"{self.localization.get('templ_saved', 'Templates saved to ')} {template_path}")
-
 
     def deselect_symbols(self, event):
         # Check if there is currently a selection
@@ -1058,14 +1164,16 @@ class Dictionary(TkinterDnD.Tk):
             # Convert phonemes list to a string for display
             phoneme_display = ', '.join(value)
             new_item_ids = []
-
             selected_item = self.symbol_treeview.selection()
+            item_to_select = None  # Keep track of the item to select
+
             if word in self.symbols:
                 # Update the existing item's phonemes and rename
                 self.symbols[word] = [value, rename]
                 for item in self.symbol_treeview.get_children():
                     if self.symbol_treeview.item(item, 'values')[0] == word:
                         self.symbol_treeview.item(item, values=(word, phoneme_display, rename))
+                        item_to_select = item  # Set the existing item to be selected
                         break
             else:
                 if selected_item:
@@ -1077,6 +1185,7 @@ class Dictionary(TkinterDnD.Tk):
                 item_id = self.symbol_treeview.insert('', insert_index, values=(word, phoneme_display, rename), tags=('normal',))
                 new_item_ids.append(item_id)
                 self.symbols[word] = [value, rename]
+                item_to_select = item_id  # Set the newly added item to be selected
 
             # Update symbols_list to reflect changes
             self.symbols_list = []
@@ -1094,8 +1203,12 @@ class Dictionary(TkinterDnD.Tk):
                 if len(values) == 3:
                     self.symbol_treeview.item(item, values=(values[0], values[1], values[2]))
 
-            # Select the newly added or updated items
-            self.symbol_treeview.selection_set(new_item_ids)
+            # Select the newly added or updated item
+            if item_to_select:
+                self.symbol_treeview.selection_set(item_to_select)
+                self.symbol_treeview.see(item_to_select)  # Ensure the item is visible
+
+            # Refresh the Treeview to reflect the changes visually
             self.refresh_treeview_symbols()
 
     def edit_cell_symbols(self, event):
@@ -1732,7 +1845,7 @@ class Dictionary(TkinterDnD.Tk):
             # Identify the target item
             target_item = self.viewer_tree.identify_row(event.y)
             if target_item and self.dragged_item != target_item:
-                # Perform your drag logic here
+                # drag logic here
                 dragged_index = self.viewer_tree.index(self.dragged_item)
                 target_index = self.viewer_tree.index(target_item)
                 self.viewer_tree.move(self.dragged_item, '', target_index)
@@ -2365,9 +2478,9 @@ class Dictionary(TkinterDnD.Tk):
                             matched = True
                             break
                     else:
-                        # Perform closest match search (similar to your previous logic)
+                        # Perform closest match search
                         if search_text in value_lower:
-                            # Calculate distance (you can define your own metric here)
+                            # Calculate distance
                             distance = abs(len(value_lower) - len(search_text))
                             if distance < closest_distance:
                                 closest_item = item
@@ -2547,7 +2660,9 @@ class Dictionary(TkinterDnD.Tk):
 
         # Ensure correct order: symbols, replacements, and entries
         existing_data['symbols'] = symbols_entries
-        existing_data['replacements'] = rename_entries
+        # Add 'replacements' only if there are rename_entries
+        if rename_entries:  # Check if rename_entries is not empty
+            existing_data['replacements'] = rename_entries
         existing_data['entries'] = new_entries
 
         # Configure YAML instance to use flow style for specific parts

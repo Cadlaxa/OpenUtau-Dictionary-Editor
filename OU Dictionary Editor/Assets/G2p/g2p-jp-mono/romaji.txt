@@ -1,4 +1,3 @@
-
 a  a
 i  i
 u  u
@@ -305,7 +304,7 @@ jao  j a o
 chao  ch a o
 nyao  ny a o
 hyao  hy a o
-byao by a o
+byao  by a o
 pyao  py a o
 myao  my a o
 ryao  ry a o
@@ -493,7 +492,7 @@ my  my
 ny  ny
 p  p
 py  py
-pw pw
+pw  pw
 r  r
 ry  ry
 s  s
