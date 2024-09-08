@@ -22,6 +22,7 @@ import numpy as np
 from tkinterdnd2 import TkinterDnD, DND_FILES
 
 # Plugins
+from Assets.plugins.generate_yaml_template import read_symbol_types_from_yaml
 from Assets.plugins.generate_yaml_template import generate_yaml_template_from_reclist
 from Assets.plugins.default_phoneme_system import default_csv_content
 
@@ -526,7 +527,7 @@ class Dictionary(TkinterDnD.Tk):
                     comments.append(line.strip()[3:])
                     continue
 
-                parts = line.strip().split('  ')  # Two spaces separate the key and values
+                parts = re.split(r'\s{2,}|\t', line.strip())  # Match two or more spaces or a tab
                 if len(parts) == 2:
                     grapheme, phonemes = parts[0], parts[1].split()
                     dictionary[grapheme] = phonemes
@@ -864,7 +865,7 @@ class Dictionary(TkinterDnD.Tk):
             self.symbol_treeview = ttk.Treeview(treeview_frame, columns=('Symbol', 'Type', 'Rename'), show='headings', height=14)
             self.symbol_treeview.heading('Symbol', text='Symbol')
             self.symbol_treeview.heading('Type', text='Type')
-            self.symbol_treeview.heading('Rename', text='Rename')
+            self.symbol_treeview.heading('Rename', text='Replacement')
             self.symbol_treeview.column('Symbol', width=120, anchor='w')
             self.symbol_treeview.column('Type', width=120, anchor='w')
             self.symbol_treeview.column('Rename', width=120, anchor='w')
@@ -1540,6 +1541,9 @@ class Dictionary(TkinterDnD.Tk):
             self.search_var.trace("w", lambda name, index, mode, sv=self.search_var: self.filter_treeview())
             self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
             self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+            get_syms = ttk.Button(search_frame, text="Get Symbols", command=self.add_unique_phonemes)
+            get_syms.pack(side=tk.LEFT, padx=5, pady=10)
+            self.localizable_widgets['get_symbols_button'] = get_syms
             rep2 = ttk.Button(search_frame, text="Replace", style='Accent.TButton', command=self.regex_replace_dialog)
             rep2.pack(side=tk.LEFT, padx=(5,10), pady=10)
             self.localizable_widgets['rep_button'] = rep2
@@ -1636,6 +1640,35 @@ class Dictionary(TkinterDnD.Tk):
         if self.entries_window.winfo_exists():
             self.apply_localization()
         self.refresh_treeview()
+    
+    def add_unique_phonemes(self):
+        # Read symbol types from YAML files
+        symbol_types = read_symbol_types_from_yaml(TEMPLATES)
+        # Set to keep track of already existing phonemes
+        existing_phonemes = {symbol['symbol'] for symbol in self.symbols_list}
+        new_phonemes = []
+       # Iterate through the dictionary to find unique phonemes
+        for grapheme, phonemes in self.dictionary.items():
+            for phoneme in phonemes:
+                if phoneme not in existing_phonemes:
+                    # Determine the phoneme type, defaulting to 'unknown' if not found
+                    phoneme_type = symbol_types.get(phoneme, 'unknown')
+                    new_phonemes.append({'symbol': phoneme, 'type': phoneme_type, 'rename': ''})
+                    existing_phonemes.add(phoneme)
+
+        # Sort the new phonemes alphabetically by 'symbol'
+        new_phonemes_sorted = sorted(new_phonemes, key=lambda x: x['symbol'])
+
+        # Add the sorted phonemes to symbols and symbols_list
+        for phoneme_data in new_phonemes_sorted:
+            phoneme = phoneme_data['symbol']
+            phoneme_type = phoneme_data['type']
+            self.symbols[phoneme] = [phoneme_type, '']
+            self.symbols_list.append(phoneme_data)
+
+        # After adding, sort self.symbols_list alphabetically by 'symbol' to keep consistency
+        self.symbols_list = sorted(self.symbols_list, key=lambda x: x['symbol'])
+        self.open_symbol_editor()
     
     def show_context_menu(self, event):
         self.context_menu = tk.Menu(self.viewer_tree, tearoff=0)
@@ -3423,9 +3456,6 @@ class Dictionary(TkinterDnD.Tk):
             self.open_symbol_editor()
             # Clear the Treeview before updating
             self.symbol_treeview.delete(*self.symbol_treeview.get_children())
-            self.symbol_treeview['columns'] = ('symbol', 'type')
-            self.symbol_treeview.heading('symbol', text='Symbol')
-            self.symbol_treeview.heading('type', text='Type')
 
             # Insert the symbols into the Treeview
             for symbol, symbol_type in symbols.items():
