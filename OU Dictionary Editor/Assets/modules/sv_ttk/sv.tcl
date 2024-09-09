@@ -14,14 +14,14 @@ if {[tk windowingsystem] == "win32"} {
   set static ""  # macOS and other systems
 }
 
-font create SunValleyCaptionFont -family "Arial Rounded MT Bold" -size -12
-font create SunValleyBodyFont -family "Arial Rounded MT Bold" -size -14
-font create SunValleyBodyStrongFont -family "Arial Rounded MT Bold" -weight bold -size -14
-font create SunValleyBodyLargeFont -family "Arial Rounded MT Bold" -size -18
-font create SunValleySubtitleFont -family "Arial Rounded MT Bold" -weight bold -size -20
-font create SunValleyTitleFont -family "Arial Rounded MT Bold" -weight bold -size -28
-font create SunValleyTitleLargeFont -family "Arial Rounded MT Bold" -weight bold -size -40
-font create SunValleyDisplayFont -family "Arial Rounded MT Bold" -weight bold -size -68
+font create SunValleyCaptionFont -family "Arial Bold" -size -12
+font create SunValleyBodyFont -family "Arial Bold" -size -14
+font create SunValleyBodyStrongFont -family "Arial Bold" -weight bold -size -14
+font create SunValleyBodyLargeFont -family "Arial Bold" -size -18
+font create SunValleySubtitleFont -family "Arial Bold" -weight bold -size -20
+font create SunValleyTitleFont -family "Arial Bold" -weight bold -size -28
+font create SunValleyTitleLargeFont -family "Arial Bold" -weight bold -size -40
+font create SunValleyDisplayFont -family "Arial Bold" -weight bold -size -68
 
 
 proc config_entry_font {w} {

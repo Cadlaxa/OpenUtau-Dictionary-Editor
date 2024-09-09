@@ -7,6 +7,8 @@
 - Fixes to YAML dump
 - Add saving window for template saving
 - Add entry drag for Symbols Editor
+- Font fixes
+- `Import CMUdict` now supports tabs instead of 2 spaces word-phoneme separation
 
 **`(8/03/24)`**
 - Add file drag and drop file support to open them directly
@@ -42,6 +44,7 @@
 - Revamp `Light Mode` color accents to certain ui elements
 - Fix Treeview selection color on `Light Mode`
 - Performance Fixes
+- Add `Get Symbols` function (gets the phonemes on the Entry Editor and adds and guesses the phoneme type to the Symbols Editor)
 
 **`(7/09/24)`**
 - Directly edit the entry with double click or `enter` button

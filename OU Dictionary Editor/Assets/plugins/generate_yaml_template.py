@@ -22,7 +22,9 @@ def read_symbol_types_from_yaml(folder_path):
             if 'symbols' in data and isinstance(data['symbols'], list):  # Ensure 'symbols' is in data and is a list
                 for item in data['symbols']:
                     if isinstance(item, dict) and 'symbol' in item and 'type' in item:
-                        symbol_types[item['symbol']] = item['type']
+                        # Convert symbol to string to ensure consistency
+                        symbol = str(item['symbol'])
+                        symbol_types[symbol] = item['type']
                     else:
                         print(f"Unexpected item format in {filename}: {item}")
             else:
