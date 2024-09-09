@@ -1645,19 +1645,21 @@ class Dictionary(TkinterDnD.Tk):
         # Read symbol types from YAML files
         symbol_types = read_symbol_types_from_yaml(TEMPLATES)
         # Set to keep track of already existing phonemes
-        existing_phonemes = {symbol['symbol'] for symbol in self.symbols_list}
+        existing_phonemes = {str(symbol['symbol']) for symbol in self.symbols_list}
         new_phonemes = []
-       # Iterate through the dictionary to find unique phonemes
+
+        # Iterate through the dictionary to find unique phonemes
         for grapheme, phonemes in self.dictionary.items():
             for phoneme in phonemes:
-                if phoneme not in existing_phonemes:
+                phoneme_str = str(phoneme)  # Convert phoneme to string
+                if phoneme_str not in existing_phonemes:
                     # Determine the phoneme type, defaulting to 'unknown' if not found
-                    phoneme_type = symbol_types.get(phoneme, 'unknown')
-                    new_phonemes.append({'symbol': phoneme, 'type': phoneme_type, 'rename': ''})
-                    existing_phonemes.add(phoneme)
+                    phoneme_type = symbol_types.get(phoneme_str, 'unknown')
+                    new_phonemes.append({'symbol': phoneme_str, 'type': phoneme_type, 'rename': ''})
+                    existing_phonemes.add(phoneme_str)
 
         # Sort the new phonemes alphabetically by 'symbol'
-        new_phonemes_sorted = sorted(new_phonemes, key=lambda x: x['symbol'])
+        new_phonemes_sorted = sorted(new_phonemes, key=lambda x: str(x['symbol']))
 
         # Add the sorted phonemes to symbols and symbols_list
         for phoneme_data in new_phonemes_sorted:
@@ -1667,7 +1669,7 @@ class Dictionary(TkinterDnD.Tk):
             self.symbols_list.append(phoneme_data)
 
         # After adding, sort self.symbols_list alphabetically by 'symbol' to keep consistency
-        self.symbols_list = sorted(self.symbols_list, key=lambda x: x['symbol'])
+        self.symbols_list = sorted(self.symbols_list, key=lambda x: str(x['symbol']))
         self.open_symbol_editor()
     
     def show_context_menu(self, event):
