@@ -147,6 +147,8 @@ class Dictionary(TkinterDnD.Tk):
         self.plugin_file = None
         self.phoneme_map = {}
         self.systems = []
+        self.file_opened = None
+        self.tooltips = []
 
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
@@ -273,6 +275,72 @@ class Dictionary(TkinterDnD.Tk):
             current_size = font['size']
             new_size = max(10, current_size + delta)
             font.configure(size=new_size)
+    
+    # Tooltips
+    def create_tooltip(self, widget, text_key, default_text):
+        # Bind the widget-specific variables directly
+        def show_tooltip(event=None, widget=widget, text_key=text_key, default_text=default_text):
+            text = self.localization.get(text_key, default_text)
+            x = widget.winfo_rootx() + 30
+            y = widget.winfo_rooty() + widget.winfo_height() - 10
+            tooltip_window = tw = tk.Toplevel(widget)
+            tw.wm_overrideredirect(True)
+            tw.wm_geometry(f"+{x}+{y}")
+            # Fetch the correct background color based on the theme
+            bg_color = self.update_tooltip_bg()
+            label = tk.Label(tw, text=text, background=bg_color, relief="solid", borderwidth=1, wraplength=200)
+            label.pack(ipadx=1)
+            widget.tooltip_window = tw
+            self.reset_idle_timer(widget)
+
+        def hide_tooltip(event=None, widget=widget):
+            tw = getattr(widget, 'tooltip_window', None)
+            if tw:
+                widget.tooltip_window = None
+                tw.destroy()
+
+        def move_tooltip(event=None, widget=widget):
+            if getattr(widget, 'tooltip_window', None):
+                x = event.x_root + 10
+                y = event.y_root + 20
+                widget.tooltip_window.wm_geometry(f"+{x}+{y}")
+
+        # Bind tooltip events for each widget separately
+        widget.bind("<Enter>", show_tooltip)
+        widget.bind("<Leave>", hide_tooltip)
+        widget.bind("<Motion>", move_tooltip)
+
+        # Make sure each widget keeps its tooltip timeout behavior
+        widget.idle_timer = None
+        widget.idle_timeout = 5000 # 5 second
+
+    def reset_idle_timer(self, widget):
+        if widget.idle_timer:
+            widget.after_cancel(widget.idle_timer)
+        widget.idle_timer = widget.after(widget.idle_timeout, lambda: self.hide_tooltip(widget))
+
+    def hide_tooltip(self, widget):
+        tw = getattr(widget, 'tooltip_window', None)
+        if tw:
+            widget.tooltip_window = None
+            tw.destroy()
+
+    def update_tooltip_bg(self):
+        # Check the current theme
+        theme_name = self.theme_var.get()
+        if theme_name == 'System':
+            system_theme = darkdetect.theme()  # Auto-detects system dark/light mode
+            theme_key = system_theme
+        else:
+            theme_key = theme_name
+
+        # Set background color based on the theme
+        if theme_key == 'Dark':
+            return '#333333'  # Dark background
+        else:
+            return 'white'  # Light background (default)
+
+
     
     # Directory for the YAML Templates via settings.ini
     def read_template_directory(self, config_file="settings.ini"):
@@ -476,6 +544,8 @@ class Dictionary(TkinterDnD.Tk):
         self.loading_window.update_idletasks()
         self.after(100, self.load_process_cmudict_file, filepath)
     def load_process_cmudict_file(self, filepath):
+        self.file_opened = True
+        self.update_template_combobox(self.template_combobox)
         if filepath:
             self.current_filename = filepath
             self.file_modified = False  # Reset modification status
@@ -529,7 +599,8 @@ class Dictionary(TkinterDnD.Tk):
 
                 parts = re.split(r'\s{2,}|\t', line.strip())  # Match two or more spaces or a tab
                 if len(parts) == 2:
-                    grapheme, phonemes = parts[0], parts[1].split()
+                    grapheme = str(parts[0])
+                    phonemes = list(map(str, parts[1].split()))
                     dictionary[grapheme] = phonemes
                 else:
                     self.loading_window.destroy()
@@ -568,6 +639,8 @@ class Dictionary(TkinterDnD.Tk):
         self.loading_window.update_idletasks()
         self.after(100, self.load_process_json_file, filepath)
     def load_process_json_file(self, filepath):
+        self.file_opened = True
+        self.update_template_combobox(self.template_combobox)
         self.current_filename = filepath
         self.file_modified = False
         self.update_title()
@@ -615,7 +688,7 @@ class Dictionary(TkinterDnD.Tk):
                 if not (isinstance(grapheme, str) and isinstance(phonemes, str)):
                     messagebox.showerror("Invalid Entry", f"{self.localization.get('json_inv_entry', 'Each entry must have a (w) key with a string value and a (p) key with a string value.')}")
                     continue
-                phoneme_list = [phoneme.strip() for phoneme in phonemes.split()]
+                phoneme_list = [str(phoneme).strip() for phoneme in phonemes.split()]
                 self.dictionary[grapheme] = phoneme_list
 
             self.update_entries_window()
@@ -641,6 +714,8 @@ class Dictionary(TkinterDnD.Tk):
         self.loading_window.update_idletasks()
         self.after(100, self.load_process_yaml_file, filepath)  # Delay to ensure the loading window appears
     def load_process_yaml_file(self, filepath):
+        self.file_opened = True
+        self.update_template_combobox(self.template_combobox)
         try:
             # Handle file opening to update title
             self.current_filename = filepath
@@ -763,7 +838,7 @@ class Dictionary(TkinterDnD.Tk):
         finally:
             self.loading_window.destroy()
 
-    def merge_yaml_files(self):
+    def append_yaml_file(self):
         filepaths = filedialog.askopenfilenames(title="Open YAML Files", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
         if not filepaths:
             messagebox.showinfo("No File", f"{self.localization.get('merge_yaml_nofile', 'No files were selected.')}")
@@ -854,6 +929,7 @@ class Dictionary(TkinterDnD.Tk):
             self.search_var.trace("w", lambda name, index, mode, sv=self.search_var: self.filter_symbols_treeview())
             search_entry = ttk.Entry(search_bar_frame, textvariable=self.search_var)
             search_entry.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+            self.create_tooltip(search_entry, 'tp_search_entry', 'Search the dictionary symbols')
 
             # Create a Frame to hold the Treeview and the Scrollbar
             treeview_frame = tk.Frame(self.symbol_editor_window)
@@ -911,19 +987,24 @@ class Dictionary(TkinterDnD.Tk):
             delete_button = ttk.Button(action_button_frame, style='TButton', text="Delete", command=self.delete_symbol_entry)
             delete_button.grid(row=1, column=0, padx=5, pady=0, sticky="nsew")
             self.localizable_widgets['del'] = delete_button
+            self.create_tooltip(delete_button, 'tp_delete_ent_sym', '(Delete key) Deletes the selected entries')
 
             self.word_edit = ttk.Entry(sym_entry_frame)
             self.word_edit.grid(row=0, column=0, padx=5, pady=0, sticky="nsew")
+            self.create_tooltip(self.word_edit, 'tp_add_ent_symbol', '(Enter) Symbol entry')
             
             self.phoneme_edit = ttk.Entry(sym_entry_frame)
             self.phoneme_edit.grid(row=0, column=1, padx=5, pady=0, sticky="nsew")
+            self.create_tooltip(self.phoneme_edit, 'tp_add_ent_value', 'Value of the Symbol eg: vowel, affricate etc')
 
             self.rename_edit = ttk.Entry(sym_entry_frame)
             self.rename_edit.grid(row=0, column=2, padx=5, pady=0, sticky="nsew")
+            self.create_tooltip(self.rename_edit, 'tp_add_ent_rname', '(Optional) For Symbol Replacement')
 
             add_button = ttk.Button(action_button_frame, style='TButton', text="Add", command=self.add_symbol_entry)
             add_button.grid(row=1, column=1, padx=5, pady=0, sticky="nsew")
             self.localizable_widgets['add'] = add_button
+            self.create_tooltip(add_button, 'tp_add_sym_ent', '(Enter key) Adds the Entry')
 
             self.word_edit.bind("<Return>", self.add_symbol_entry_event)
             self.phoneme_edit.bind("<Return>", self.add_symbol_entry_event)
@@ -932,6 +1013,7 @@ class Dictionary(TkinterDnD.Tk):
             save_templ = ttk.Button(action_button_frame1, style='Accent.TButton', text="Save to Templates", command=self.save_yaml_template)
             save_templ.grid(row=3, column=0, padx=5, pady=0, sticky="ew")
             self.localizable_widgets['save_templ'] = save_templ
+            self.create_tooltip(save_templ, 'tp_save_templ', 'Save the Symbols into a YAML Template')
 
             self.symbol_editor_window.bind("<Escape>", lambda event: self.symbol_editor_window.destroy())
 
@@ -1062,54 +1144,62 @@ class Dictionary(TkinterDnD.Tk):
         self.saving_window.update_idletasks()
         self.after(100, self.save_template_process, template_path)
     def save_template_process(self, template_path):
-        # Read existing data from the template as text, ignoring the entries section
-        existing_data_text = []
+        yaml = YAML()
+        yaml.width = 4096
+        yaml.preserve_quotes = True
+        yaml.allow_duplicate_keys = True  # Allow duplicated keys
+        yaml.version = (1, 2)  # YAML version
+        
+        existing_data = CommentedMap()
+        # Read existing data from the template
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as file:
-                for line in file:
-                    if 'symbols:' in line.strip() or 'replacements:' in line.strip():
-                        break
-                    existing_data_text.append(line)
+                existing_data = yaml.load(file) or CommentedMap()
 
-        # Prepare new entries for symbols without rename
-        symbols_entries = []
-        for symbol, data in self.symbols.items():
-            escaped_symbol = escape_symbols(symbol)
-            type_list = data[0] if isinstance(data[0], list) else [data[0]]
+        # Prepare new symbols entries
+        symbols_entries = CommentedSeq()
+        added_symbols = set()  # Track added symbols to avoid duplicates
+
+        for symbol, values in self.symbols.items():
+            escaped_symbol = symbol
+            type_list = values[0] if isinstance(values[0], list) else [values[0]]
             type_str = ', '.join(f"{t}" for t in type_list)
-            symbols_entries.append(f"- {{symbol: {escaped_symbol}, type: {type_str}}}\n")
-
-        existing_data_text.append('symbols:\n')
-        existing_data_text.extend(symbols_entries)
-        existing_data_text.append('\n')
-
-        # Prepare new entries for replacements
-        rename_entries = []
+            if escaped_symbol not in added_symbols:  # Avoid adding duplicates
+                entry = CommentedMap([('symbol', escaped_symbol), ('type', type_str)])
+                symbols_entries.append(entry)
+                added_symbols.add(escaped_symbol)
+        
+        # Prepare rename entries
+        rename_entries = CommentedSeq()
+        added_replacements = set()  # Track added replacements to avoid duplicates
         for symbol, data in self.symbols.items():
             if len(data) > 1 and data[1]:  # Check if rename data exists
-                from_symbol = escape_symbols(symbol)
-                to_data = escape_symbols(data[1])
-                rename_entries.append(f"- {{from: {from_symbol}, to: {to_data}}}\n")
+                from_symbol = symbol
+                to_data = (data[1])
+                replacement_key = (from_symbol, to_data)  # Create a key to check for duplicates
+                if replacement_key not in added_replacements:  # Avoid adding duplicates
+                    entry = CommentedMap([('from', from_symbol), ('to', to_data)])
+                    rename_entries.append(entry)
+                    added_replacements.add(replacement_key)
 
-        if rename_entries:
-            existing_data_text.append('replacements:\n')
-            existing_data_text.extend(rename_entries)
-            existing_data_text.append('\n')
+        # Clear existing sections in the existing_data
+        existing_data.pop('symbols', None)
+        existing_data.pop('replacements', None)
+        existing_data.pop('entries', None)
 
-        existing_data_text.append('entries:\n')
+        # Ensure correct order: symbols, replacements, and entries
+        existing_data['symbols'] = symbols_entries
+        if rename_entries:  # Add 'replacements' only if there are rename_entries
+            existing_data['replacements'] = rename_entries
+        existing_data['entries'] = CommentedSeq()
 
-        # Validate the YAML data
-        yaml = YAML()
-        try:
-            yaml.load('\n'.join(existing_data_text))
-        except YAMLError as exc:
-            self.saving_window.destroy()
-            messagebox.showerror("Error", f"{self.localization.get('yaml_template_inv', 'Invalid YAML data: ')} {exc}")
-            return
+        # Configure YAML instance to use block style for specific parts
+        yaml.default_flow_style = None  # Use block style
+        yaml.indent(mapping=2, sequence=4, offset=2)
 
         # Save changes if the user has selected a file path
         with open(template_path, 'w', encoding='utf-8') as file:
-            file.writelines(existing_data_text)
+            yaml.dump(existing_data, file)
             self.update_template_combobox(self.template_combobox)
         self.saving_window.destroy()
         messagebox.showinfo("Success", f"{self.localization.get('templ_saved', 'Templates saved to ')} {template_path}")
@@ -1141,24 +1231,49 @@ class Dictionary(TkinterDnD.Tk):
             self.rename_edit.delete(0, tk.END)
         else:
             messagebox.showinfo("Error", f"{self.localization.get('add_sym_ent', 'Please provide both phonemes and its respective value for the entry.')}")
-
+    
     def delete_symbol_entry(self):
         selected_items = self.symbol_treeview.selection()
+        if not selected_items:
+            messagebox.showinfo("Notice", self.localization.get('del_no_sel', 'No items selected.'))
+            return
+
+        self.save_state_before_change()
+        items_to_delete = []
+        symbols_to_delete = []  # Keep track of symbols to delete from symbols_list
+
         for item_id in selected_items:
-            self.save_state_before_change()
             item_data = self.symbol_treeview.item(item_id, 'values')
             if item_data:
                 symbol = item_data[0]
                 if symbol in self.symbols:
-                    del self.symbols[symbol]  # Delete the entry from the symbols dictionary
-                    self.symbol_treeview.delete(item_id)  # Remove the item from the treeview
-                    self.phoneme_edit.delete(0, tk.END)
-                    self.word_edit.delete(0, tk.END)
-                    self.rename_edit.delete(0, tk.END)
+                    items_to_delete.append(item_id)
+                    symbols_to_delete.append(symbol)  # Add to list of symbols to delete
                 else:
                     messagebox.showinfo("Notice", f"Symbol: {symbol} {self.localization.get('del_sym_nf', ' not found in symbols.')}")
             else:
                 messagebox.showinfo("Notice", f"{self.localization.get('del_sym_id', 'No data found for item ID ')} {item_id}.")
+
+        # If all selected items are to be deleted, clear the dictionary and Treeview
+        if len(items_to_delete) == len(self.symbols):
+            self.symbols.clear()
+            self.symbols_list.clear()
+            self.symbol_treeview.delete(*self.symbol_treeview.get_children())
+        else:
+            # Delete items one by one from symbols and symbols_list
+            for symbol in symbols_to_delete:
+                if symbol in self.symbols:
+                    del self.symbols[symbol]
+
+            # Also remove the symbols from self.symbols_list
+            self.symbols_list = [symbol for symbol in self.symbols_list if symbol['symbol'] not in symbols_to_delete]
+            # Delete the selected items from the Treeview
+            self.symbol_treeview.delete(*items_to_delete)
+
+        # Clear the entries once after all deletions
+        self.phoneme_edit.delete(0, tk.END)
+        self.word_edit.delete(0, tk.END)
+        self.rename_edit.delete(0, tk.END)
 
     def add_symbols_treeview(self, word=None, value=None, rename=None):
         if word and value is not None:
@@ -1541,12 +1656,15 @@ class Dictionary(TkinterDnD.Tk):
             self.search_var.trace("w", lambda name, index, mode, sv=self.search_var: self.filter_treeview())
             self.search_entry = ttk.Entry(search_frame, textvariable=self.search_var)
             self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=5)
+            self.create_tooltip(self.search_entry, 'tp_search_dict', '(Ctrl/⌘ + F) Seach your entries (index, word, or phonemes)')
             get_syms = ttk.Button(search_frame, text="Get Symbols", command=self.add_unique_phonemes)
             get_syms.pack(side=tk.LEFT, padx=5, pady=10)
             self.localizable_widgets['get_symbols_button'] = get_syms
+            self.create_tooltip(get_syms, 'tp_get_syms', 'Grabs all unique phonemes and adds them to the Symbol Editor with the guessed value')
             rep2 = ttk.Button(search_frame, text="Replace", style='Accent.TButton', command=self.regex_replace_dialog)
             rep2.pack(side=tk.LEFT, padx=(5,10), pady=10)
             self.localizable_widgets['rep_button'] = rep2
+            self.create_tooltip(rep2, 'tp_regex_find', '(Ctrl/⌘ + R) Regex find and Replace')
 
             # Create a Frame to hold the Treeview and the Scrollbar
             frame = tk.Frame(self.entries_window)
@@ -1616,14 +1734,21 @@ class Dictionary(TkinterDnD.Tk):
             clear = ttk.Button(button_frame, text="Clear all entries", style='Accent.TButton', command=self.delete_all_entries)
             clear.pack(side=tk.RIGHT, padx=(5,25), pady=10)
             self.localizable_widgets['clear_all'] = clear
+            self.create_tooltip(clear, 'tp_clear_all_ent1', '(Ctrl/⌘ + A + Del) Clears all entries')
             ref = ttk.Button(button_frame, text="Refresh", style='TButton', command=self.update_entries_window)
             ref.pack(side=tk.RIGHT, padx=5, pady=10)
             self.localizable_widgets['refresh'] = ref
+            self.create_tooltip(ref, 'tp_refresh', 'Refreshes the whole Treeview')
             close = ttk.Button(button_frame, text="Close", style='TButton', command=self.close)
             close.pack(side=tk.RIGHT, padx=5, pady=10)
             self.localizable_widgets['close'] = close
-            ttk.Button(button_frame, text="-", style='Accent.TButton', command=lambda: self.change_font_size(-1)).pack(side="left", padx=(15,5), pady=10)
-            ttk.Button(button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1)).pack(side="left", padx=5, pady=10)
+            self.create_tooltip(close, 'tp_close', '(Esc) Closes this window')
+            minus_f = ttk.Button(button_frame, text="-", style='Accent.TButton', command=lambda: self.change_font_size(-1))
+            minus_f.pack(side="left", padx=(15,5), pady=10)
+            self.create_tooltip(minus_f, 'tp_zoom_out', 'Makes the entry font smaller')
+            plus_f = ttk.Button(button_frame, text="+", style='Accent.TButton', command=lambda: self.change_font_size(1))
+            plus_f.pack(side="left", padx=5, pady=10)
+            self.create_tooltip(plus_f, 'tp_zoom_in', 'Makes the entry font bigger')
 
             # Insert entries in batches
             if self.load_cmudict or self.load_json_file or self.load_yaml_file:
@@ -1646,7 +1771,7 @@ class Dictionary(TkinterDnD.Tk):
         symbol_types = read_symbol_types_from_yaml(TEMPLATES)
         # Set to keep track of already existing phonemes
         existing_phonemes = {str(symbol['symbol']) for symbol in self.symbols_list}
-        new_phonemes = []
+        new_phonemes = [] 
 
         # Iterate through the dictionary to find unique phonemes
         for grapheme, phonemes in self.dictionary.items():
@@ -1746,6 +1871,7 @@ class Dictionary(TkinterDnD.Tk):
         g2p_correction = ttk.Button(self.viewer_tree, text="G2P", style="Accent.TButton", command=self.is_g2p)
         g2p_correction.place(x=x_gr, y=y_gr-5, width=width_gr, height=height_gr+10)
         self.current_entry_widgets['g2p_correction'] = g2p_correction
+        self.create_tooltip(g2p_correction, 'tp_g2p_correction', 'Uses the selected G2p model to phonemized the word')
 
         # Create entry widgets for editing grapheme and phoneme
         self.entry_popup_g = ttk.Entry(self.viewer_tree)
@@ -1753,11 +1879,13 @@ class Dictionary(TkinterDnD.Tk):
         self.entry_popup_g.insert(0, initial_grapheme)
         self.entry_popup_g.focus_set()
         self.current_entry_widgets['self.entry_popup_g'] = self.entry_popup_g
+        self.create_tooltip(self.entry_popup_g, 'tp_grapheme', 'Grapheme (word) entry')
 
         self.entry_popup_p = ttk.Entry(self.viewer_tree)
         self.entry_popup_p.place(x=x_p, y=y_p-5, width=width_p, height=height_p+10)
         self.entry_popup_p.insert(0, initial_phoneme)
         self.current_entry_widgets['self.entry_popup_p'] = self.entry_popup_p
+        self.create_tooltip(self.entry_popup_p, 'tp_phoneme', 'Phoneme entry')
 
         def on_validate(event):
             self.save_state_before_change()
@@ -1929,9 +2057,11 @@ class Dictionary(TkinterDnD.Tk):
             reg_pat = ttk.Label(reg_frame1, text="Regex Pattern:", font=self.font)
             reg_pat.grid(row=0, column=0, padx=10, pady=20)
             self.localizable_widgets['reg_pattern'] = reg_pat
+
             regex_var = tk.StringVar()
             regex_entry = ttk.Entry(reg_frame1, textvariable=regex_var, width=30)
             regex_entry.grid(row=0, column=1, padx=15, pady=5, sticky="ew")
+            self.create_tooltip(regex_entry , 'tp_reg_pat', 'Find entry, use \ to escape the regex symbol')
 
             reg_rep = ttk.Label(reg_frame1, text="Replacement:", font=self.font)
             reg_rep.grid(row=1, column=0, padx=10, pady=5)
@@ -1939,6 +2069,7 @@ class Dictionary(TkinterDnD.Tk):
             replace_var = tk.StringVar()
             replace_entry = ttk.Entry(reg_frame1, textvariable=replace_var, width=30)
             replace_entry.grid(row=1, column=1, padx=15, pady=5, sticky="ew")
+            self.create_tooltip(replace_entry , 'tp_reg_rep', 'Replace entry')
 
             # Radio buttons to select target (graphemes or phonemes)
             target_var = tk.StringVar(value="Phonemes")
@@ -1954,9 +2085,11 @@ class Dictionary(TkinterDnD.Tk):
             self.combo_from = ttk.Combobox(phone_frame_from, values=self.systems, state="readonly")
             self.combo_from.grid(row=0, column=0, sticky='nsew')
             self.combo_from.set("Phonetic System")
+            self.create_tooltip(self.combo_from, 'tp_from', 'Current Phonetic System')
 
             to_tove_lo = ttk.Button(phone_frame_from, style='Accent.TButton', text="▶", command=self.system_phonemes)
             to_tove_lo.grid(row=0, column=1, padx=10)
+            self.create_tooltip(to_tove_lo, 'tp_system_rep', 'Button for Phonetic System replacement')
 
             # Combobox for `To Selected Phonetic System`
             phone_frame_to = ttk.Frame(reg_frame)
@@ -1967,6 +2100,7 @@ class Dictionary(TkinterDnD.Tk):
             self.combo_to = ttk.Combobox(phone_frame_to, values=self.systems, state="readonly")
             self.combo_to.grid(row=0, column=0, sticky='nsew')
             self.combo_to.set("Phonetic System")
+            self.create_tooltip(self.combo_to, 'tp_to', 'Replacement Phonetic System')
 
             rep_frame = ttk.Frame(reg_frame)
             rep_frame.grid(padx=(5,15), pady=5, sticky="nsew", row=4, column=1)
@@ -1977,10 +2111,12 @@ class Dictionary(TkinterDnD.Tk):
             apply_button = ttk.Button(rep_frame, text="Replace", style="Accent.TButton", command=lambda: replace_selected())
             apply_button.grid(row=0, column=0, padx=(0,3), pady=10, sticky="ew")
             self.localizable_widgets['apply'] = apply_button
+            self.create_tooltip(apply_button, 'tp_reg_replace', 'Replaces the selected entries, if no selected, it will replace all')
 
             apply_button1 = ttk.Button(rep_frame, text="Replace All", style="Accent.TButton", command=lambda: apply_replace())
             apply_button1.grid(row=0, column=1, padx=(3,0), sticky="ew")
             self.localizable_widgets['apply1'] = apply_button1
+            self.create_tooltip(apply_button1, 'tp_reg_replace_all', 'Replaces all of the entries')
 
             find_frame = ttk.Frame(reg_frame)
             find_frame.grid(padx=(10,0), pady=5, sticky="nsew", row=4, column=0)
@@ -1996,6 +2132,7 @@ class Dictionary(TkinterDnD.Tk):
             find_button = ttk.Button(find_frame, text="Find", style='TButton', command=lambda: self.find_matches(regex_var.get(), target_var.get()))
             find_button.grid(row=0, column=2, padx=(0,5), pady=10, sticky="ew")
             self.localizable_widgets['find'] = find_button
+            self.create_tooltip(find_button, 'tp_find_button', 'Finds and selects the searched characters')
 
             self.replace_window.bind("<Escape>", lambda event: self.replace_window.destroy())
 
@@ -2023,7 +2160,7 @@ class Dictionary(TkinterDnD.Tk):
                         self.dictionary[new_grapheme] = self.dictionary.pop(grapheme)
                         items_modified += 1
                 elif target == "Phonemes":
-                    phonemes_string = ', '.join(phonemes)
+                    phonemes_string = ', '.join(map(str, phonemes))
                     modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
                     if modified_phoneme_string != phonemes_string:
                         new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
@@ -2058,12 +2195,12 @@ class Dictionary(TkinterDnD.Tk):
                                 self.dictionary[new_grapheme] = self.dictionary.pop(item_values[1])
                             items_modified += 1
                     elif target == "Phonemes":
-                        phonemes_string = item_values[2].strip()
+                        phonemes_string = str(item_values[2]).strip()  # Ensure item_values[2] is treated as a string
                         modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
                         if modified_phoneme_string != phonemes_string:
                             self.viewer_tree.item(item, values=(item_values[1], modified_phoneme_string))
                             new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
-                            self.dictionary[item_values[1]] = new_phoneme_list
+                            self.dictionary[str(item_values[1])] = new_phoneme_list  # Ensure item_values[1] is treated as a string
                             items_modified += 1
                 self.refresh_treeview()
                 self.word_entry.delete(0, tk.END)
@@ -2103,10 +2240,10 @@ class Dictionary(TkinterDnD.Tk):
                 match_found = False
                 # Check for the longest possible match from current position
                 for j in range(len(phoneme_sequence), i, -1):
-                    substring = ' '.join(phoneme_sequence[i:j])
+                    substring = ' '.join(str(phoneme) for phoneme in phoneme_sequence[i:j])
                     if substring in phoneme_map_from:
                         source_phoneme = phoneme_map_from[substring]
-                        replacement = inverse_phoneme_map_to.get(source_phoneme, substring)
+                        replacement = inverse_phoneme_map_to.get(str(source_phoneme), substring)
                         # Split multi-phoneme replacements by commas
                         if ' ' in replacement:
                             replaced_sequence.extend(replacement.split(' '))
@@ -2116,7 +2253,7 @@ class Dictionary(TkinterDnD.Tk):
                         match_found = True
                         break
                 if not match_found:
-                    replaced_sequence.append(phoneme_sequence[i])
+                    replaced_sequence.append(str(phoneme_sequence[i]))
                     i += 1
             return replaced_sequence
 
@@ -2150,17 +2287,23 @@ class Dictionary(TkinterDnD.Tk):
 
     def find_matches(self, pattern, target):
         items_to_highlight = []
-        compiled_pattern = re.compile(pattern)
+
+        # Convert pattern with square brackets into a regex pattern for exact character matches
+        # Replace [a] with a literal 'a'
+        processed_pattern = re.sub(r'\[(.)\]', r'\1', pattern)
+        compiled_pattern = re.compile(processed_pattern)
 
         for index, (grapheme, phonemes) in enumerate(self.dictionary.items()):
-            if target == "Graphemes" and compiled_pattern.search(grapheme):
-                item_id = self.viewer_tree.get_children()[index]
-                items_to_highlight.append(item_id)
+            if target == "Graphemes":
+                if compiled_pattern.search(grapheme):
+                    item_id = self.viewer_tree.get_children()[index]
+                    items_to_highlight.append(item_id)
             elif target == "Phonemes":
-                phoneme_string = ", ".join(phonemes)
+                phoneme_string = ", ".join(map(str, phonemes))
                 if compiled_pattern.search(phoneme_string):
                     item_id = self.viewer_tree.get_children()[index]
                     items_to_highlight.append(item_id)
+
         # Clear the current selection to ensure only new results are highlighted
         self.viewer_tree.selection_remove(self.viewer_tree.selection())
         # Set the selection to the items found
@@ -2171,7 +2314,18 @@ class Dictionary(TkinterDnD.Tk):
             messagebox.showinfo("No Matches", self.localization.get('find_matches', 'No matches found.'))
 
     def find_next(self, direction=None, pattern=None, target=None):
-        compiled_pattern = re.compile(pattern)
+        # Convert pattern with square brackets into a regex pattern for exact character matches
+
+        def process_pattern(p):
+            # Escape any special regex characters and replace `[char]` with `char`
+            escaped_pattern = re.escape(p)
+            # Replace \[char\] with char (literal match)
+            exact_match_pattern = re.sub(r'\\\[(.)\\\]', r'\1', escaped_pattern)
+            return exact_match_pattern
+        
+        processed_pattern = re.sub(r'\[(.)\]', r'\1', pattern)
+        compiled_pattern = re.compile(processed_pattern)
+
         items = list(self.dictionary.items())
         current_selection = self.viewer_tree.selection()
         start_index = 0
@@ -2201,7 +2355,7 @@ class Dictionary(TkinterDnD.Tk):
             grapheme, phonemes = items[index]
             if target == "Graphemes" and compiled_pattern.search(grapheme):
                 return True
-            if target == "Phonemes" and compiled_pattern.search(", ".join(phonemes)):
+            if target == "Phonemes" and compiled_pattern.search(", ".join(map(str, phonemes))):
                 return True
             return False
 
@@ -2234,12 +2388,14 @@ class Dictionary(TkinterDnD.Tk):
             else:
                 response = messagebox.askyesno("Notice", f"{self.localization.get('notice', 'There are entries in the viewer. Closing this window will clear them all. Are you sure you want to proceed?')}")
                 if response:
+                    self.file_opened = False
                     self.title(self.base_title)
                     self.viewer_tree.delete(*self.viewer_tree.get_children())
                     self.entries_window.destroy()
                     self.word_entry.delete(0, tk.END)
                     self.phoneme_entry.delete(0, tk.END)
                     self.dictionary.clear()
+                    self.update_template_combobox(self.template_combobox)
                 else:
                     return
         else:
@@ -2295,7 +2451,8 @@ class Dictionary(TkinterDnD.Tk):
                 values = item['values']
                 if len(values) >= 3:
                     grapheme = values[1]
-                    phonemes = values[2].split(', ')
+                    phonemes_string = str(values[2]).strip()  # Ensure values[2] is treated as a string
+                    phonemes = phonemes_string.split(', ')
                     # Create a CommentedMap for the entry
                     entry_map = CommentedMap([('grapheme', grapheme), ('phonemes', phonemes)])
                     entries_to_copy.append(entry_map)
@@ -2331,36 +2488,52 @@ class Dictionary(TkinterDnD.Tk):
     def paste_entry(self):
         self.save_state_before_change()
         clipboard_content = pyperclip.paste()
-        
-        # Attempt to parse the custom entry format
-        entries = re.findall(r"- \{grapheme: (.*?), phonemes: (.*?)\}", clipboard_content)
-        if not entries:
-            # Attempt to parse the CMUDict format
-            entries = re.findall(r"(\S+)\s+((?:\S+\s*)+)", clipboard_content)
-        
-        if entries:
-            selected = self.viewer_tree.selection()
-            insert_index = self.viewer_tree.index(selected[-1]) + 1 if selected else 'end'
+        yaml = YAML()
+        # Attempt to parse YAML-like format
+        try:
+            # Load YAML content from clipboard
+            entries = yaml.load(clipboard_content)
+
+            if not isinstance(entries, list):
+                raise ValueError("Clipboard content is not a valid YAML list.")
+
+            entries_to_paste = []
+            for entry in entries:
+                if isinstance(entry, dict) and 'grapheme' in entry and 'phonemes' in entry:
+                    grapheme = entry['grapheme'].strip("\"")
+                    phonemes = entry['phonemes']
+                    phonemes_list = [phoneme.strip("',[] \"") for phoneme in phonemes]
+                    entries_to_paste.append({'grapheme': grapheme, 'phonemes': phonemes_list})
+                else:
+                    raise ValueError("Invalid entry format in clipboard content.")
             
-            for grapheme, phonemes in entries:
-                phonemes_list = [phoneme.strip("',[] \"") for phoneme in phonemes.split()]
-                grapheme = grapheme.strip("\"")
-                original_grapheme = grapheme
-                count = 1
-                match = re.match(r'^(.*)\((\d+)\)$', original_grapheme)
-                if match:
-                    original_grapheme, count = match.groups()
-                    count = int(count) + 1
-
-                while grapheme in self.dictionary:
-                    grapheme = f"{original_grapheme}({count})"
-                    count += 1
-
-                self.add_entry_treeview(new_word=grapheme, new_phonemes=phonemes_list, insert_index=insert_index)
-                if insert_index != 'end':
-                    insert_index += 1
-        else:
-            messagebox.showinfo("Paste", f"{self.localization.get('paste_mess', 'Clipboard is empty or data is invalid.')}")
+            if entries_to_paste:
+                selected = self.viewer_tree.selection()
+                insert_index = self.viewer_tree.index(selected[-1]) + 1 if selected else 'end'
+                
+                for entry in entries_to_paste:
+                    grapheme = entry['grapheme']
+                    phonemes_list = entry['phonemes']
+                    
+                    # Handle duplicate graphemes
+                    original_grapheme = grapheme
+                    count = 1
+                    match = re.match(r'^(.*)\((\d+)\)$', original_grapheme)
+                    if match:
+                        original_grapheme, count = match.groups()
+                        count = int(count) + 1
+                    
+                    while grapheme in self.dictionary:
+                        grapheme = f"{original_grapheme}({count})"
+                        count += 1
+                    
+                    self.add_entry_treeview(new_word=grapheme, new_phonemes=phonemes_list, insert_index=insert_index)
+                    if insert_index != 'end':
+                        insert_index += 1
+            else:
+                messagebox.showinfo("Paste", self.localization.get('paste_mess', 'Clipboard is empty or data is invalid.'))
+        except Exception as e:
+            messagebox.showinfo("Paste", f"{self.localization.get('paste_mess', 'Clipboard is empty or data is invalid.')} Error: {str(e)}")
     
     def refresh_treeview(self):
         # Setup tag configurations for normal and bold fonts
@@ -2427,7 +2600,7 @@ class Dictionary(TkinterDnD.Tk):
                     grapheme = item_data[1]
                     phonemes = self.dictionary.get(grapheme, [])
                     graphemes.append(grapheme)
-                    phoneme_lists.append(phonemes)
+                    phoneme_lists.append(map(str, phonemes))
             # Display only the first 3 items, with an ellipsis if there are more
             if len(graphemes) > 3:
                 graphemes_text = ', '.join(graphemes[:3]) + ', ...'
@@ -2609,8 +2782,12 @@ class Dictionary(TkinterDnD.Tk):
         if not self.dictionary:
             messagebox.showinfo("Warning", f"{self.localization.get('save_yaml_m', 'No entries to save. Please add entries before saving.')}")
             return
+        if selected_template == "No Template":
+            template_path = "Assets/plugins/no.template.yaml"
+            if not template_path:
+                return
         if selected_template == "Current Template":
-            template_path = filedialog.askopenfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
+            template_path = filedialog.asksaveasfilename(title="Using the current YAML file as a template", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
             if not template_path:
                 return
         else:
@@ -2629,14 +2806,14 @@ class Dictionary(TkinterDnD.Tk):
         self.save_window()
         self.saving_window.update_idletasks()
         self.after(100, self.process_save_as_ou_yaml, selected_template, template_path, output_file_path)
-
     def process_save_as_ou_yaml(self, selected_template, template_path, output_file_path):
         yaml = YAML()
         yaml.width = 4096
         yaml.preserve_quotes = True
-        existing_data = CommentedMap()
         yaml.allow_duplicate_keys = True  # Allow duplicated keys, but we'll handle duplicates manually
-
+        yaml.version = (1, 2)  #YAML version
+        
+        existing_data = CommentedMap()
         # Read existing data from the template, preserving comments
         if os.path.exists(template_path):
             with open(template_path, 'r', encoding='utf-8') as file:
@@ -2650,10 +2827,9 @@ class Dictionary(TkinterDnD.Tk):
         added_symbols = set()  # Track added symbols to avoid duplicates
 
         for symbol, values in self.symbols.items():
-            escaped_symbol = escape_symbols(symbol)
+            escaped_symbol = symbol
             type_list = values[0] if isinstance(values[0], list) else [values[0]]
             type_str = ', '.join(f"{t}" for t in type_list)
-
             if escaped_symbol not in added_symbols:  # Avoid adding duplicates
                 entry = CommentedMap([('symbol', escaped_symbol), ('type', type_str)])
                 symbols_entries.append(entry)
@@ -2663,10 +2839,9 @@ class Dictionary(TkinterDnD.Tk):
         added_replacements = set()  # Track added replacements to avoid duplicates
         for symbol, data in self.symbols.items():
             if len(data) > 1 and data[1]:  # Check if rename data exists
-                from_symbol = escape_symbols(symbol)
-                to_data = escape_symbols(data[1])
+                from_symbol = (symbol)
+                to_data = (data[1])
                 replacement_key = (from_symbol, to_data)  # Create a key to check for duplicates
-
                 if replacement_key not in added_replacements:  # Avoid adding duplicates
                     entry = CommentedMap([('from', from_symbol), ('to', to_data)])
                     rename_entries.append(entry)
@@ -2679,9 +2854,10 @@ class Dictionary(TkinterDnD.Tk):
                 grapheme = item_values[1]
                 phonemes = self.dictionary.get(grapheme, [])
                 if self.lowercase_phonemes_var.get():
-                    phonemes = [phoneme.lower() for phoneme in phonemes]
+                    phonemes = [str(phoneme).lower() for phoneme in phonemes]
                 if self.remove_numbered_accents_var.get():
                     phonemes = self.remove_numbered_accents(phonemes)
+                # Convert phonemes to strings and format as list
                 entry = CommentedMap([('grapheme', grapheme), ('phonemes', phonemes)])
                 new_entries.append(entry)
 
@@ -2700,13 +2876,16 @@ class Dictionary(TkinterDnD.Tk):
             existing_data['replacements'] = rename_entries
         existing_data['entries'] = new_entries
 
-        # Configure YAML instance to use flow style for specific parts
+        # Configure YAML instance to use block style for specific parts
+        yaml.default_flow_style = None
+        yaml.indent(mapping=2, sequence=4, offset=2)
+        '''
         def compact_representation(dumper, data):
             return dumper.represent_mapping(
                 'tag:yaml.org,2002:map', data, flow_style=True
             )
         yaml.representer.add_representer(CommentedMap, compact_representation)
-
+        '''
         # Save changes if the user has selected a file path
         if output_file_path:
             try:
@@ -2755,7 +2934,7 @@ class Dictionary(TkinterDnD.Tk):
                 phonemes = [phoneme.lower() for phoneme in phonemes]
             if self.remove_numbered_accents_var.get():
                 phonemes = self.remove_numbered_accents(phonemes)
-            phoneme_str = ' '.join(phonemes)
+            phoneme_str = ' '.join(map(str, phonemes))
             data.append({"w": grapheme, "p": phoneme_str})
 
         try:
@@ -2804,8 +2983,8 @@ class Dictionary(TkinterDnD.Tk):
             if self.lowercase_phonemes_var.get():
                 phonemes = [phoneme.lower() for phoneme in phonemes]
             if self.remove_numbered_accents_var.get():
-                phonemes = self.remove_numbered_accents(phonemes)
-            formatted_phonemes = ' '.join(phonemes)
+                phonemes = self.remove_numbered_accents(map(str, phonemes))
+            formatted_phonemes = ' '.join(map(str, phonemes))
             entry_text = f"{grapheme}  {formatted_phonemes}\n"
             entries_text.append(entry_text)
         
@@ -2846,17 +3025,33 @@ class Dictionary(TkinterDnD.Tk):
     def update_template_combobox(self, combobox):
         try:
             yaml_files = [f for f in os.listdir(TEMPLATES) if f.endswith('.yaml')]
-            options = ["Current Template"] + yaml_files
+            options = ["No Template"] + ["Current Template"] + yaml_files
             combobox['values'] = options
             self.template_var.set(options[0])
+
+            if self.file_opened:
+                self.template_var.set(options[1])
+            elif self.file_opened == False and "Previous Template" not in options:
+                options.insert(2, "Previous Template")
+                self.template_var.set(options[2])
+            else:
+                self.template_var.set(options[0])
+                
             self.template_combobox.bind("<<ComboboxSelected>>", self.on_template_selected)
         except Exception as e:
             messagebox.showerror("Error", f"{self.localization.get('temp_combo_err', 'Failed to read the directory: ')} {str(e)}")
 
     def on_template_selected(self, event):
         selected_template = self.template_var.get()
-        if selected_template == "Current Template":
+        if selected_template == "No Template":
+            # Show a warning message to the user
+            messagebox.showwarning("Notice", f"{self.localization.get('no_template', 'You have selected (No Template). All current symbols will be cleared.')}")
             self.clear_symbols_data()
+            self.refresh_treeview_symbols()
+        elif selected_template == "Current Template":
+            self.refresh_treeview_symbols()
+        elif selected_template == "Previous Template":
+            self.refresh_treeview_symbols()
         else:
             self.load_symbols_from_yaml(os.path.join(TEMPLATES, selected_template))
     
@@ -3035,7 +3230,7 @@ class Dictionary(TkinterDnD.Tk):
             word_phoneme_pairs = []
             for lyric in lyrics:
                 phonemes = self.g2p_model.predict(lyric)
-                joined_phonemes = ''.join(phonemes)
+                joined_phonemes = ''.join(map(str, phonemes))
                 word_phoneme_pairs.append((lyric, joined_phonemes))
         else:
             word_phoneme_pairs = [(lyric, lyric) for lyric in lyrics]
@@ -3172,23 +3367,28 @@ class Dictionary(TkinterDnD.Tk):
         self.template_combobox = ttk.Combobox(options_frame, textvariable=self.template_var, state="readonly")
         self.template_combobox.grid(row=1, column=1, padx=10, pady=5, sticky="ew")
         self.update_template_combobox(self.template_combobox)
+        self.create_tooltip(self.template_combobox, 'tp_temp_com', 'Select your pre-defined symbol template here')
 
         # Add localizable Checkbuttons
         remove_accents_cb = ttk.Checkbutton(options_frame, text="Remove Number Accents", style="TCheckbutton", variable=self.remove_numbered_accents_var)
         remove_accents_cb.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['remove_accents'] = remove_accents_cb
+        self.create_tooltip(remove_accents_cb, 'tp_remove_accents_cb', '(Requires Refresh) Removes the vowel stress indicators found on CMUdict dictionaries (eg: [s t aa1 r] to [s t aa r])')
 
         lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", style="TCheckbutton", variable=self.lowercase_phonemes_var)
         lowercase_phonemes_cb.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['lowercase_phonemes'] = lowercase_phonemes_cb
+        self.create_tooltip(lowercase_phonemes_cb, 'tp_lowercase_phonemes_cb', '(Requires Refresh) Makes all of the phonemes lowercased')
 
         edit_symbols = ttk.Button(options_frame, text="Edit Symbols", style='Accent.TButton', command=self.open_symbol_editor)
         edit_symbols.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['edit_sym'] = edit_symbols
+        self.create_tooltip(edit_symbols, 'tp_edit_symbols', 'Edit, add, delete, replace the dictionary symbols')
 
         plugin_focus = ttk.Button(options_frame, text="Plugins", style='Accent.TButton', command=self.focus_on_plugins)
         plugin_focus.grid(row=4, column=1, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['plugin_focus'] = plugin_focus
+        self.create_tooltip(plugin_focus, 'tp_plugin_focus', 'Plugin feature for OpenUtau, this application must be configured on OUs plugin folder')
        
         # Sorting combobox
         self.sort_options_var = tk.StringVar()
@@ -3196,6 +3396,7 @@ class Dictionary(TkinterDnD.Tk):
         self.sort_combobox.set('Default Sorting')
         self.sort_combobox.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
         self.sort_combobox.bind("<<ComboboxSelected>>", self.sort_entries)
+        self.create_tooltip(self.sort_combobox, 'tp_sort_combobox', 'Sorts the entries')
 
         # Manual Entry Frame
         manual_frame = ttk.LabelFrame(self.options_tab, text="Manual Entry")  # Default text
@@ -3208,18 +3409,23 @@ class Dictionary(TkinterDnD.Tk):
         self.word_entry = ttk.Entry(manual_frame)
         self.word_entry.bind("<KeyRelease>", self.on_entry_change)
         self.word_entry.grid(row=1, column=0, padx=(15, 5), pady=10, sticky="nsew")
+        self.create_tooltip(self.word_entry, 'tp_grapheme', 'Grapheme (word) entry')
+
         self.phoneme_entry = ttk.Entry(manual_frame)
         self.phoneme_entry.grid(row=1, column=1, padx=(5, 15), pady=10, sticky="nsew")
         self.word_entry.bind("<Return>", self.add_manual_entry_event)
         self.phoneme_entry.bind("<Return>", self.add_manual_entry_event)
+        self.create_tooltip(self.phoneme_entry, 'tp_phoneme', 'Phoneme entry')
 
         add_entry_button = ttk.Button(manual_frame, text="Add Entry", style='Accent.TButton', command=self.add_manual_entry)
         add_entry_button.grid(row=2, column=1, columnspan=1, padx=5, pady=(5,15))
         self.localizable_widgets['add_entry'] = add_entry_button
+        self.create_tooltip(add_entry_button, 'tp_add_entry', '(Enter key) Adds the entry to the Editor')
 
         delete_entry_button = ttk.Button(manual_frame, text="Delete Entry", style='Accent.TButton', command=self.delete_manual_entry)
         delete_entry_button.grid(row=2, column=0, columnspan=1, padx=5, pady=(5,15))
         self.localizable_widgets['delete_entry'] = delete_entry_button
+        self.create_tooltip(delete_entry_button, 'tp_delete_entry', '(Delete key) Deletes the selected Entries')
 
         # Create frames for each set of buttons
         convert_frame = ttk.Frame(self)
@@ -3241,25 +3447,36 @@ class Dictionary(TkinterDnD.Tk):
         self.cmu = ttk.Button(convert_frame, text="Import CMUDict", style='TButton', command=self.load_cmudict)
         self.cmu.grid(column=1, row=0, padx=5, sticky="ew")
         self.localizable_widgets['convert_cmudict'] = self.cmu
+        self.create_tooltip(self.cmu, 'tp_cmu', 'Imports CMUDict text files to the editor')
+
         cmux = ttk.Button(convert_frame, text="Export CMUDict", style='TButton', command=self.export_cmudict)
         cmux.grid(column=0, row=0, padx=5, sticky="ew")
         self.localizable_widgets['export_cmudict'] = cmux
-        ap_yaml = ttk.Button(load_frame, text= "Append YAML File", style='TButton', command=self.merge_yaml_files)
-        ap_yaml.grid(column=0, row=0, padx=5, pady=5, sticky="ew")
-        self.localizable_widgets['append_yaml'] = ap_yaml
+        self.create_tooltip(cmux, 'tp_cmux', 'Saves and exports the CMUDict dictionary')
+
+        self.ap_button = ttk.Button(load_frame, text= "Append Dictionary", style='TButton', command=self.append_file)
+        self.ap_button.grid(column=0, row=0, padx=5, pady=5, sticky="ew")
+        self.create_tooltip(self.ap_button, 'tp_append_d', 'Append or merge dictionary files to the editor')
+        self.localizable_widgets['append_file'] = self.ap_button
+        self.create_tooltip(cmux, 'tp_ap_button', 'Appends (add on) and merges the selected dictionary to the editor')
+
         open_yaml = ttk.Button(load_frame, text= "Open YAML File", style='TButton', command=self.load_yaml_file)
         open_yaml.grid(column=1, row=0, padx=5, sticky="ew")
         self.localizable_widgets['open_yaml'] = open_yaml
+        self.create_tooltip(open_yaml, 'tp_open_yaml', 'Imports OpenUtau YAML dictionaries to the editor')
         
         # For saving, you might want distinct actions for each button, so specify them if they differ
         ds_save = ttk.Button(save_frame, text="Save OU Dictionary", style='Accent.TButton', command=self.save_as_ou_yaml)
         ds_save.pack(expand=True, fill="x", padx=(5), pady=(0,5))
         self.localizable_widgets['save_ou'] = ds_save
+        self.create_tooltip(open_yaml, 'tp_yaml_save', 'Saves the OpenUtau YAML dictionaries')
+
         label = ttk.Label(cad_frame, text=f"© Cadlaxa | OU Dictionary Editor {self.current_version}", font=label_font, foreground=label_color)
         label.grid(row=0, column=1, sticky="ew", pady=(0,10))
         cad_frame.columnconfigure(0, weight=1)
         cad_frame.columnconfigure(1, weight=0)
         cad_frame.columnconfigure(2, weight=1)
+        self.create_tooltip(label, 'tp_label', 'hellour, cadlaxa here! q(≧▽≦q)')
         
         # Configure grid weight for overall flexibility
         self.rowconfigure(0, weight=1)
@@ -3278,11 +3495,13 @@ class Dictionary(TkinterDnD.Tk):
         update_button = ttk.Button(update_frame, text="Check for Updates", style='Accent.TButton', command=self.check_for_updates)
         update_button.grid(row=0, column=0, padx=(20,5), pady=20, sticky="ew",)
         self.localizable_widgets['update_b'] = update_button
+        self.create_tooltip(update_button, 'tp_update_button', 'Checks for the latest update of this application')
 
         # Button to what's new
         nw_button = ttk.Button(update_frame, text="What's New", command=self.whats_new)
         nw_button.grid(row=0, column=1, padx=(5, 20), pady=20, sticky="ew",)
         self.localizable_widgets['whats_new'] = nw_button
+        self.create_tooltip(nw_button, 'tp_nw_button', 'Shows the chronological changelogs of this application')
 
         # LabelFrame for themes
         theme_frame = ttk.LabelFrame(self.additional_tab, text="Themes")
@@ -3297,7 +3516,6 @@ class Dictionary(TkinterDnD.Tk):
         self.theming.columnconfigure(1, weight=1)
         self.theming.columnconfigure(1, weight=1)
         
-
         # Label and combobox for Accent selection
         theme_select = ttk.Label(self.theming, text="Select Theme:", font=self.font)
         theme_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
@@ -3310,6 +3528,7 @@ class Dictionary(TkinterDnD.Tk):
         theme_combobox = ttk.Combobox(self.theming, textvariable=self.accent_var, values=theme_options, state="readonly")
         theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
+        self.create_tooltip(theme_combobox, 'tp_theme_combobox', 'Change accent color')
 
         radio_frame = ttk.Frame(theme_frame)
         radio_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=(0,20), sticky="ew")
@@ -3320,14 +3539,17 @@ class Dictionary(TkinterDnD.Tk):
         # Radio button for light theme
         light_theme_button = ttk.Radiobutton(radio_frame, text="Light", value="Light", variable=self.theme_var, command=self.toggle_theme)
         light_theme_button.grid(row=1, column=0)
+        self.create_tooltip(light_theme_button, 'tp_light_theme_button', 'Light Theme')
 
         # Radio button for dark theme
         dark_theme_button = ttk.Radiobutton(radio_frame, text="Dark", value="Dark", variable=self.theme_var, command=self.toggle_theme)
         dark_theme_button.grid(row=1, column=1)
+        self.create_tooltip(dark_theme_button, 'tp_dark_theme_button', 'Dark Theme')
 
         # Radio button for system theme
-        dark_theme_button = ttk.Radiobutton(radio_frame, text="System", value="System", variable=self.theme_var, command=self.toggle_theme)
-        dark_theme_button.grid(row=1, column=2)
+        system_theme_button = ttk.Radiobutton(radio_frame, text="System", value="System", variable=self.theme_var, command=self.toggle_theme)
+        system_theme_button.grid(row=1, column=2)
+        self.create_tooltip(system_theme_button, 'tp_system_theme_button', '(Follows the system theme) Changes the Theme based on the device settings')
 
         # LabelFrame for localization selection on the options tab
         localization_frame = ttk.LabelFrame(self.additional_tab, text="Localization Options")
@@ -3346,6 +3568,7 @@ class Dictionary(TkinterDnD.Tk):
         self.localizable_widgets['select_local'] = local_select
         localization_combobox = ttk.Combobox(self.save_loc, textvariable=self.localization_var, state="readonly")
         localization_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.create_tooltip(localization_combobox, 'tp_localization_combobox', 'Select your language (languages are all saved in ./Templates/Localizations)')
 
         localization_combobox.bind("<<ComboboxSelected>>", self.localization_selected)
         self.update_localization_combobox(localization_combobox)
@@ -3399,13 +3622,14 @@ class Dictionary(TkinterDnD.Tk):
         g2p_checkbox = ttk.Checkbutton(g2p_frame, text="Enable G2P", style='Switch.TCheckbutton', variable=self.g2p_checkbox_var)
         g2p_checkbox.grid(row=0, column=0, padx=(20, 5), pady=15, sticky="w")
         self.localizable_widgets['g2p_check'] = g2p_checkbox
+        self.create_tooltip(g2p_checkbox, 'tp_g2p_checkbox', 'Enable or Disable the G2p suggestions')
         self.load_g2p_checkbox_state()
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=(5, 20), pady=5, sticky="ew")
         self.g2p_selection['values'] = tuple(sorted(['Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Marzipan (German) G2p', 'Italian G2p', 'Japanese Monophone G2p'
                                         , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p']))
-        
+        self.create_tooltip(self.g2p_selection, 'tp_g2p_selection', 'Select your G2p model here')
         self.load_last_g2p()
 
         self.g2p_selection.bind("<<ComboboxSelected>>", self.update_g2p_model)
@@ -3429,10 +3653,12 @@ class Dictionary(TkinterDnD.Tk):
         self.get_lyrics = ttk.Button(self.plug_frame, style='TButton', text="Get Lyrics from Track", command=self.get_lyrics_from_tmp)
         self.get_lyrics.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['get_lyrics'] = self.get_lyrics
+        self.create_tooltip(self.get_lyrics, 'tp_get_lyrics', 'Imports all of the tracks lyrics with phonemes phonemized by the g2p model')
 
         self.vb_import_button = ttk.Button(self.plug_frame, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
         self.vb_import_button.grid(row=2, column=0, padx=10, pady=(5,10), sticky="ew")
         self.localizable_widgets['import_vb'] = self.vb_import_button
+        self.create_tooltip(self.vb_import_button, 'tp_vb_import_button', '(OpenUtau plugin) Imports the singers dictionary')
 
         # Frame for Terminal
         self.terminal = ttk.LabelFrame(self.plugin_frame, text="YAML Generator")
@@ -3443,10 +3669,57 @@ class Dictionary(TkinterDnD.Tk):
         self.dict_gen = ttk.Button(self.terminal, style='TButton', text="Reclist to Yaml Template", command=self.import_gen_yaml_temp_data)
         self.dict_gen.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['rec_yaml_gen'] = self.dict_gen
+        self.create_tooltip(self.terminal, 'tp_rec_yaml_gen', 'Generates the Symbols and its value using a reclist')
 
         #self.vb_import_button = ttk.Button(self.terminal, style='Accent.TButton' , text="Import VB Dictionary", command=self.get_yaml_from_temp)
         #self.vb_import_button.grid(row=2, column=0, padx=10, pady=(5,10), sticky="ew")
         #self.localizable_widgets['import_vb'] = self.vb_import_button
+    
+    def append_file(self):
+        self.append_window = tk.Toplevel(self)
+        self.append_window.resizable(False, False)
+        self.append_window.overrideredirect(True)
+
+        # Place the window near the button
+        self.append_window.update_idletasks()  # Ensure dimensions are calculated
+
+        window_width = self.append_window.winfo_width()
+        window_height = self.append_window.winfo_height()
+        x = self.ap_button.winfo_rootx() + (self.ap_button.winfo_width() // 2) - (window_width // 2)
+        y = self.ap_button.winfo_rooty() - 155
+        self.append_window.geometry(f"+{x}+{y}")
+
+        border = ttk.Frame(self.append_window, borderwidth=2, relief="solid")
+        border.pack(fill="both", expand=True)
+
+        button_frame = ttk.Frame(border)
+        button_frame.pack(padx=5, pady=5, fill="both", expand=True)
+        button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+        button_frame.rowconfigure(0, weight=1)
+        button_frame.rowconfigure(1, weight=1)
+
+        append_yaml = ttk.Button(button_frame, text="Append YAML File", command=self.append_yaml_file)
+        append_yaml.grid(padx=5, pady=5, column=0, row=0, sticky="nsew")
+        self.localizable_widgets['append_yaml'] = append_yaml
+        self.create_tooltip(append_yaml, 'tp_append_yaml', 'Appends OpenUtau YAML dictionaries')
+
+        append_cmu = ttk.Button(button_frame, text="Append CMUdict File", command=self.append_yaml_file)
+        append_cmu.grid(padx=5, pady=5, column=0, row=1, sticky="nsew")
+        self.localizable_widgets['append_cmu'] = append_cmu
+        self.create_tooltip(append_cmu, 'tp_append_vmu', 'Appends CMUdict text file')
+
+        append_json = ttk.Button(button_frame, text="Append Synthv JSON File", command=self.append_yaml_file)
+        append_json.grid(padx=5, pady=5, column=0, row=2, sticky="nsew")
+        self.localizable_widgets['append_json'] = append_json
+        self.create_tooltip(append_json, 'tp_append_json', 'Appends Synthv JSON Dictionaries')
+
+        # Close the menu window when it loses focus
+        self.append_window.focus_set()
+        self.append_window.bind("<FocusOut>", lambda e: self.append_window.destroy())
+        
+        if self.append_window.winfo_exists():
+            self.apply_localization()
     
     def import_gen_yaml_temp_data(self):
         localization, filepath, symbols = generate_yaml_template_from_reclist()
@@ -3844,7 +4117,7 @@ class Dictionary(TkinterDnD.Tk):
         if not hasattr(self, 'en_US.yaml'):
             # Load default localization if not already loaded
             yaml = YAML()
-            with open('./Templates/Localizations/en_US.yaml', 'r') as file:
+            with open('./Templates/Localizations/en_US.yaml', 'r', encoding='utf-8') as file:
                 self.default_localization = yaml.load(file)
 
         if self.localizable_widgets:
