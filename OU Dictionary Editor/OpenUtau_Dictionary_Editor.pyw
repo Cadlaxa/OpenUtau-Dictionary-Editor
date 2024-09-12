@@ -20,6 +20,8 @@ from collections import defaultdict, OrderedDict
 import onnxruntime as ort
 import numpy as np
 from tkinterdnd2 import TkinterDnD, DND_FILES
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
 
 # Plugins
 from Assets.plugins.generate_yaml_template import read_symbol_types_from_yaml
@@ -65,6 +67,14 @@ def escape_grapheme(grapheme):
         if re.search(r"\b(true|false|yes|no|on|off)\b", grapheme, re.IGNORECASE):
             return f"'{grapheme}'"
         return grapheme
+
+class CacheHandler(FileSystemEventHandler):
+    def __init__(self, update_callback):
+        self.update_callback = update_callback
+
+    def on_any_event(self, event):
+        # Call the update callback whenever an event occurs
+        self.update_callback()
 
 class DownloadProgressDialog:
     def __init__(self, parent, max_value):
@@ -277,27 +287,64 @@ class Dictionary(TkinterDnD.Tk):
             font.configure(size=new_size)
     
     # Tooltips
+    def load_tooltip_checkbox_state(self):
+        # Load tooltip checkbox state from config
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        try:
+            tooltip_enabled = config.getboolean('Settings', 'Tooltip_Enabled')
+            self.tooltip_checkbox_var.set(tooltip_enabled)
+        except (configparser.NoSectionError, configparser.NoOptionError):
+            self.tooltip_checkbox_var.set(True)
+            print("tooltip checkbox state not found in config. Using default.")
+        self.save_tooltip_config()
+
+    def save_tooltip_config(self):
+        # Save the selected G2P model to settings.ini
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        if 'Settings' not in config.sections():
+            config['Settings'] = {}
+        config['Settings']['tooltip_Enabled'] = str(self.tooltip_checkbox_var.get())
+        with open(self.config_file, 'w') as configfile:
+            config.write(configfile)
+        print(f"tooltips are saved to config file.")
+    
+    def toggle_tooltip(self):
+        self.save_tooltip_config()
+
     def create_tooltip(self, widget, text_key, default_text):
-        # Bind the widget-specific variables directly
+    # Bind the widget-specific variables directly
         def show_tooltip(event=None, widget=widget, text_key=text_key, default_text=default_text):
-            text = self.localization.get(text_key, default_text)
-            x = widget.winfo_rootx() + 30
-            y = widget.winfo_rooty() + widget.winfo_height() - 10
-            tooltip_window = tw = tk.Toplevel(widget)
-            tw.wm_overrideredirect(True)
-            tw.wm_geometry(f"+{x}+{y}")
-            # Fetch the correct background color based on the theme
-            bg_color = self.update_tooltip_bg()
-            label = tk.Label(tw, text=text, background=bg_color, relief="solid", borderwidth=1, wraplength=200)
-            label.pack(ipadx=1)
-            widget.tooltip_window = tw
-            self.reset_idle_timer(widget)
+            if not self.tooltip_checkbox_var.get():  # Tooltips disabled
+                return
+            # Show tooltip if none exists already
+            if not getattr(widget, 'tooltip_window', None):
+                text = self.localization.get(text_key, default_text)
+                x = widget.winfo_rootx() + 30
+                y = widget.winfo_rooty() + widget.winfo_height() - 10
+                tooltip_window = tw = tk.Toplevel(widget)
+                tw.wm_overrideredirect(True)
+                tw.wm_geometry(f"+{x}+{y}")
+                # Fetch the correct background color based on the theme
+                bg_color = self.update_tooltip_bg()
+                label = tk.Label(tw, text=text, background=bg_color, relief="solid", borderwidth=1, wraplength=200)
+                label.pack(ipadx=1)
+                widget.tooltip_window = tw
+
+                # Reset idle timer and set a safety timer to ensure tooltip is destroyed
+                self.reset_idle_timer(widget)
+                self.set_safety_timer(widget)  # Set safety timer
 
         def hide_tooltip(event=None, widget=widget):
             tw = getattr(widget, 'tooltip_window', None)
             if tw:
                 widget.tooltip_window = None
                 tw.destroy()
+
+        def hide_tooltip_on_focus(event=None, widget=widget):
+            # This method hides the tooltip if the widget is focused, especially useful for Combobox
+            hide_tooltip(widget=widget)
 
         def move_tooltip(event=None, widget=widget):
             if getattr(widget, 'tooltip_window', None):
@@ -310,14 +357,34 @@ class Dictionary(TkinterDnD.Tk):
         widget.bind("<Leave>", hide_tooltip)
         widget.bind("<Motion>", move_tooltip)
 
+        # Additional bindings to hide tooltips when widgets gain focus or are clicked
+        widget.bind("<FocusIn>", hide_tooltip_on_focus)
+        widget.bind("<Button-1>", hide_tooltip_on_focus)  # Hide tooltip on left-click
+        widget.bind("<FocusOut>", hide_tooltip)  # Ensure it hides on losing focus
+
         # Make sure each widget keeps its tooltip timeout behavior
         widget.idle_timer = None
-        widget.idle_timeout = 5000 # 5 second
+        widget.idle_timeout = 5000  # 5 seconds
+        widget.safety_timer = None
 
     def reset_idle_timer(self, widget):
+        # Cancel existing timers
         if widget.idle_timer:
             widget.after_cancel(widget.idle_timer)
+        if widget.safety_timer:
+            widget.after_cancel(widget.safety_timer)
+
+        # Set idle timer
         widget.idle_timer = widget.after(widget.idle_timeout, lambda: self.hide_tooltip(widget))
+
+    def set_safety_timer(self, widget):
+        # Set a safety timer to forcibly destroy the tooltip after the idle timeout, even if it is stuck
+        if widget.safety_timer:
+            widget.after_cancel(widget.safety_timer)
+
+        # Set a safety timer to forcefully hide the tooltip after idle_timeout + buffer time
+        safety_timeout = widget.idle_timeout + 1000  # 1 second buffer after idle timeout
+        widget.safety_timer = widget.after(safety_timeout, lambda: self.hide_tooltip(widget))
 
     def hide_tooltip(self, widget):
         tw = getattr(widget, 'tooltip_window', None)
@@ -336,12 +403,10 @@ class Dictionary(TkinterDnD.Tk):
 
         # Set background color based on the theme
         if theme_key == 'Dark':
-            return '#333333'  # Dark background
+            return '#2a2a2a'  # Dark background
         else:
-            return 'white'  # Light background (default)
+            return '#fafafa'  # Light background (default)
 
-
-    
     # Directory for the YAML Templates via settings.ini
     def read_template_directory(self, config_file="settings.ini"):
         config = configparser.ConfigParser()
@@ -545,6 +610,8 @@ class Dictionary(TkinterDnD.Tk):
         self.after(100, self.load_process_cmudict_file, filepath)
     def load_process_cmudict_file(self, filepath):
         self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
         self.update_template_combobox(self.template_combobox)
         if filepath:
             self.current_filename = filepath
@@ -624,6 +691,111 @@ class Dictionary(TkinterDnD.Tk):
                 messagebox.showerror("Error", f"{self.localization.get('cmudict_cache_err', 'Error occurred while saving to cache: ')} {e}")
 
         self.loading_window.destroy()
+    
+    def append_cmudict_file(self, filepath=None):
+        if filepath is None:
+            filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+        if not filepath:
+            messagebox.showinfo("No File", f"{self.localization.get('cmudict_nofile', 'No file was selected.')}")
+            return
+        
+        self.load_window()
+        self.loading_window.update_idletasks()
+        self.after(100, self.append_load_process_cmudict_file, filepath)
+    def append_load_process_cmudict_file(self, filepath):
+        self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
+        self.update_template_combobox(self.template_combobox)
+        if filepath:
+            self.current_filename = filepath
+            self.file_modified = False  # Reset modification status
+            self.update_title()
+            self.current_order = list(self.dictionary.keys())
+        # Ensure Cache directory exists
+        cache_dir = CACHE
+        os.makedirs(cache_dir, exist_ok=True)
+        # Create a unique cache file path
+        cache_filename = (filepath).replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
+        cache_filepath = os.path.join(cache_dir, cache_filename)
+        # Initialize dictionary and comments
+        if not hasattr(self, 'dictionary'):
+            self.dictionary = {}
+        if not hasattr(self, 'comments') or not isinstance(self.comments, list):
+            self.comments = []
+        # Load from cache if available and up-to-date
+        if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+            try:
+                with gzip.open(cache_filepath, 'rb') as cache_file:
+                    cached_dict, cached_comments = pickle.load(cache_file)
+                    
+                    # Ensure cached data is of expected type
+                    if isinstance(cached_dict, dict) and isinstance(cached_comments, list):
+                        self.dictionary.update(cached_dict)  # Merge dictionary
+                        self.comments.extend(cached_comments)  # Merge comments
+                    else:
+                        raise ValueError("Cache file contains invalid data structure")
+                    self.update_entries_window()
+                    self.loading_window.destroy()
+                    return
+            except Exception as e:
+                messagebox.showerror("Error", f"{self.localization.get('cmudict_err_read', 'Error occurred while reading from cache: ')} {e}")
+                self.loading_window.destroy()
+                return
+        # Load from original file if cache is not available or outdated
+        try:
+            with open(filepath, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+        except UnicodeDecodeError:
+            try:
+                with open(filepath, 'r', encoding='ANSI') as file:
+                    lines = file.readlines()
+            except Exception as e:
+                self.loading_window.destroy()
+                messagebox.showerror("Error", f"{self.localization.get('cmudict_err_enc', 'Error occurred while reading file with alternate encoding: ')} {e}")
+                return
+        except Exception as e:
+            self.loading_window.destroy()
+            messagebox.showerror("Error", f"{self.localization.get('cmudict_err_1', 'Error occurred while reading file: ')} {e}")
+            return
+
+        new_dictionary = {}
+        comments = []  # Store comments here if needed
+        error_occurred = False
+
+        for line_number, line in enumerate(lines, start=1):
+            try:
+                if line.strip().startswith(';;;'):
+                    comments.append(line.strip()[3:])
+                    continue
+                parts = re.split(r'\s{2,}|\t', line.strip())  # Match two or more spaces or a tab
+                if len(parts) == 2:
+                    grapheme = str(parts[0])
+                    phonemes = list(map(str, parts[1].split()))
+                    if grapheme not in new_dictionary:  # Only add new entries
+                        new_dictionary[grapheme] = phonemes
+                else:
+                    self.loading_window.destroy()
+                    raise ValueError(f"{self.localization.get('cmudict_invL', 'Invalid format in line:')} {line.strip()}")
+            except Exception as e:
+                self.loading_window.destroy()
+                messagebox.showerror("Error", f"{self.localization.get('load_cmudict_procc', 'Error occurred while processing line')} {line_number}: '{line.strip()}'\n{str(e)}")
+                error_occurred = True
+                break
+
+        if not error_occurred:
+            # Merge new dictionary and comments with existing ones
+            self.dictionary.update(new_dictionary)
+            self.comments.extend(comments)  # Add new comments
+            self.update_entries_window()
+            
+            # Save to cache (regardless of whether it was updated from the file or not)
+            try:
+                with gzip.open(cache_filepath, 'wb') as cache_file:
+                    pickle.dump((self.dictionary, self.comments), cache_file)
+            except Exception as e:
+                messagebox.showerror("Error", f"{self.localization.get('cmudict_cache_err', 'Error occurred while saving to cache: ')} {e}")
+        self.loading_window.destroy()
 
     def remove_numbered_accents(self, phonemes):
         return [phoneme[:-1] if phoneme[-1].isdigit() else phoneme for phoneme in phonemes]
@@ -640,6 +812,8 @@ class Dictionary(TkinterDnD.Tk):
         self.after(100, self.load_process_json_file, filepath)
     def load_process_json_file(self, filepath):
         self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
         self.update_template_combobox(self.template_combobox)
         self.current_filename = filepath
         self.file_modified = False
@@ -698,6 +872,79 @@ class Dictionary(TkinterDnD.Tk):
             messagebox.showerror("Error", f"{self.localization.get('json_read_ex', 'An error occurred while reading the JSON file: ')} {str(e)}")
         finally:
             self.loading_window.destroy()
+    
+    def append_json_file(self, filepath=None):
+        if filepath is None:
+            filepath = filedialog.askopenfilename(title="Open JSON File", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
+        if not filepath:
+            messagebox.showinfo("No File", f"{self.localization.get('json_nofile', 'No file was selected.')}")
+            return
+
+        self.load_window()
+        self.loading_window.update_idletasks()
+        self.after(100, self.append_process_json_file, filepath)
+    def append_process_json_file(self, filepath):
+        self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
+        self.update_template_combobox(self.template_combobox)
+        self.current_filename = filepath
+        self.file_modified = False
+        self.update_title()
+        self.current_order = list(self.dictionary.keys())
+
+        # Load JSON data
+        try:
+            cache_dir = CACHE
+            os.makedirs(cache_dir, exist_ok=True)
+            # Create a unique cache file path
+            cache_filename = (filepath).replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
+            # Check if the cache file exists and is up-to-date
+            if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+                try:
+                    with gzip.open(cache_filepath, 'rb') as cache_file:
+                        entries = pickle.load(cache_file)
+                except Exception as e:
+                    self.loading_window.destroy()
+                    messagebox.showerror("Error", f"{self.localization.get('json_cache_err', 'Error occurred while reading from cache: ')} {e}")
+                    return
+            else:
+                with open(filepath, 'r', encoding='utf-8') as file:
+                    data = json.load(file)
+                    entries = data.get('data', [])
+                    if not entries:
+                        self.loading_window.destroy()
+                        messagebox.showinfo("Empty Data", f"{self.localization.get('json_empty', 'The JSON file contains no data.')}") 
+                        return
+                # Save to cache
+                try:
+                    with gzip.open(cache_filepath, 'wb') as cache_file:
+                        pickle.dump(entries, cache_file)
+                except Exception as e:
+                    self.loading_window.destroy()
+                    messagebox.showerror("Error", f"{self.localization.get('json_save_cache', 'Error occurred while saving to cache: ')} {e}")
+            # Process entries
+            new_entries = {}  # Temporary storage for new entries
+            for item in entries:
+                grapheme = item.get('w')
+                phonemes = item.get('p')
+                if not (isinstance(grapheme, str) and isinstance(phonemes, str)):
+                    messagebox.showerror("Invalid Entry", f"{self.localization.get('json_inv_entry', 'Each entry must have a (w) key with a string value and a (p) key with a string value.')}") 
+                    continue
+                phoneme_list = [str(phoneme).strip() for phoneme in phonemes.split()]
+                if grapheme not in self.dictionary:  # Only add new entries
+                    new_entries[grapheme] = phoneme_list
+            # Update dictionary with new entries
+            self.dictionary.update(new_entries)
+            self.update_entries_window()
+
+        except json.JSONDecodeError as je:
+            messagebox.showerror("JSON Syntax Error", f"{self.localization.get('json_parse_file', 'An error occurred while parsing the JSON file: ')} {str(je)}")
+        except Exception as e:
+            messagebox.showerror("Error", f"{self.localization.get('json_read_ex', 'An error occurred while reading the JSON file: ')} {str(e)}")
+        finally:
+            self.loading_window.destroy()
 
     def load_yaml_file(self, filepath=None):
         if filepath is None:
@@ -715,6 +962,8 @@ class Dictionary(TkinterDnD.Tk):
         self.after(100, self.load_process_yaml_file, filepath)  # Delay to ensure the loading window appears
     def load_process_yaml_file(self, filepath):
         self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
         self.update_template_combobox(self.template_combobox)
         try:
             # Handle file opening to update title
@@ -838,69 +1087,164 @@ class Dictionary(TkinterDnD.Tk):
         finally:
             self.loading_window.destroy()
 
-    def append_yaml_file(self):
-        filepaths = filedialog.askopenfilenames(title="Open YAML Files", filetypes=[("YAML files", "*.yaml"), ("All files", "*.*")])
-        if not filepaths:
-            messagebox.showinfo("No File", f"{self.localization.get('merge_yaml_nofile', 'No files were selected.')}")
-            return
-        yaml = YAML(typ='safe')
-        for filepath in filepaths:
-            try:
+    def append_yaml_file(self, filepath=None):
+        if filepath is None:
+            filepath = filedialog.askopenfilename(
+                title="Open YAML File",
+                filetypes=[("YAML files", "*.yaml"), ("Y'ALL files", "*yaml.y'all"), ("All files", "*.*")]
+            )
+            if not filepath:
+                messagebox.showinfo("No File", f"{self.localization.get('yaml_nofile', 'No file was selected.')}")
+                return
+        
+        # Show loading window
+        self.load_window()
+        self.loading_window.update_idletasks()
+        self.after(100, self.append_process_yaml_file, filepath)  # Delay to ensure the loading window appears
+    def append_process_yaml_file(self, filepath):
+        self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
+        self.update_template_combobox(self.template_combobox)
+        try:
+            # Handle file opening to update title
+            self.current_filename = filepath
+            self.file_modified = False
+            self.update_title()
+            self.current_order = list(self.dictionary.keys())
+            cache_dir = CACHE
+            os.makedirs(cache_dir, exist_ok=True)
+            # Create a unique cache file path
+            cache_filename = filepath.replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
+            # Check if the cache file exists and is up-to-date
+            if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+                try:
+                    with gzip.open(cache_filepath, 'rb') as cache_file:
+                        data = pickle.load(cache_file)
+                except Exception as e:
+                    self.loading_window.destroy()
+                    raise ValueError(f"{self.localization.get('yaml_cache_rv', 'Error occurred while reading from cache:')} {e}")
+            else:
+                yaml = YAML(typ='safe')
+                yaml.prefix_colon = True
+                yaml.preserve_quotes = True
                 with open(filepath, 'r', encoding='utf-8') as file:
-                    self.load_window()
                     data = yaml.load(file)
                     if data is None:
                         self.loading_window.destroy()
-                        raise ValueError({self.localization.get('yaml_merge_empt_rv', 'The YAML file is empty or has an incorrect format.')})
+                        raise ValueError(f"{self.localization.get('yaml_inc_format_rv', 'The YAML file is empty or has an incorrect format.')}")
+                # Save to cache
+                try:
+                    with gzip.open(cache_filepath, 'wb') as cache_file:
+                        pickle.dump(data, cache_file)
+                except Exception as e:
+                    self.loading_window.destroy()
+                    raise ValueError(f"{self.localization.get('yaml_err_save_rv', 'Error occurred while saving to cache:')} {e}")
+            # Initialize or reset attributes
+            if not hasattr(self, 'data_list'):
+                self.data_list = []
+            if not hasattr(self, 'symbols_list'):
+                self.symbols_list = []
+            if not hasattr(self, 'symbols'):
+                self.symbols = {}
+            if not hasattr(self, 'dictionary'):
+                self.dictionary = {}
 
-                    entries = []
-                    if 'entries' in data and isinstance(data['entries'], list):
-                        entries = data['entries']
+            # Load entries
+            entries = data.get('entries', [])
+            if not isinstance(entries, list):
+                if isinstance(data, list):
+                    entries = [item for item in data if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item]
+                elif isinstance(data, dict) and 'grapheme' in data and 'phonemes' in data:
+                    entries = [data]
+            new_dictionary = {}
+            new_data_list = []
+            for item in entries:
+                if not isinstance(item, dict):
+                    self.loading_window.destroy()
+                    raise ValueError(f"{self.localization.get('yaml_dict_fromat_rv', 'Entry format incorrect. Each entry must be a dictionary.')}")
+                grapheme = item.get('grapheme')
+                phonemes = item.get('phonemes', [])
+                if grapheme is None or not isinstance(phonemes, list):
+                    self.loading_window.destroy()
+                    raise ValueError(f"{self.localization.get('yaml_type_rv', 'Each entry must have a (grapheme) key and a list of (phonemes).')}")
+                if grapheme not in self.dictionary:
+                    new_dictionary[grapheme] = phonemes
+                    new_data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
+
+            # Merge with existing dictionary
+            self.dictionary.update(new_dictionary)
+            self.data_list = list({v['grapheme']: v for v in self.data_list + new_data_list}.values())  # Remove duplicates
+
+            # Load symbols if available
+            symbols = data.get('symbols', [])
+            new_symbols = {}
+            new_symbols_list = []
+            if isinstance(symbols, list):
+                for item in symbols:
+                    if not isinstance(item, dict):
+                        self.loading_window.destroy()
+                        raise ValueError(f"{self.localization.get('sym_inc_rv', 'Symbol entry format incorrect. Each entry must be a dictionary.')}")
+                    symbol = item.get('symbol')
+                    type_ = item.get('type')
+                    rename = item.get('rename')
+                    if symbol is None or type_ is None:
+                        self.loading_window.destroy()
+                        raise ValueError(f"{self.localization.get('sym_ent_inc_rv', 'Symbol entry is incomplete.')}")
+                    if not isinstance(type_, str):
+                        self.loading_window.destroy()
+                        raise ValueError(f"{self.localization.get('sym_str_rv', 'Type must be a string representing the category.')}")
+                    if symbol in self.symbols:
+                        # Update existing symbol with new rename
+                        existing_type = self.symbols[symbol][0]
+                        existing_rename = self.symbols[symbol][1] if len(self.symbols[symbol]) > 1 else ''
+                        new_rename = f"{existing_rename}, {rename}" if rename else existing_rename
+                        self.symbols[symbol] = [existing_type, new_rename]
                     else:
-                        # Attempt to collect entries assuming various possible data structures
-                        if isinstance(data, list):
-                            for item in data:
-                                if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item:
-                                    entries.append(item)
-                        elif isinstance(data, dict) and 'grapheme' in data and 'phonemes' in data:
-                            entries.append(data)
-
-                    for item in entries:
-                        if not isinstance(item, dict):
-                            self.loading_window.destroy()
-                            messagebox.showerror(
-                                "Error",
-                                "Entry format incorrect in file: {}. Each entry must be a dictionary.".format(filepath)
-                            )
-                            continue
-
-                        grapheme = item.get('grapheme')
-                        phonemes = item.get('phonemes', [])
-                        if grapheme is None or not isinstance(phonemes, list):
-                            self.loading_window.destroy()
-                            messagebox.showerror(
-                                "Error",
-                                "Each entry must have a 'grapheme' key and a list of 'phonemes' in file: {}".format(filepath)
-                            )
-                            continue
-
-                        # Merge data into the dictionary
-                        if grapheme in self.dictionary:
-                            # Optionally handle duplicate graphemes (e.g., merge phonemes)
-                            self.dictionary[grapheme].extend(x for x in phonemes if x not in self.dictionary[grapheme])
+                        # Add new symbol
+                        if rename:
+                            self.symbols[symbol] = [type_, rename]
+                            new_symbols_list.append({'symbol': symbol, 'type': [type_], 'rename': rename})
                         else:
-                            self.dictionary[grapheme] = phonemes
+                            self.symbols[symbol] = [type_]
+                            new_symbols_list.append({'symbol': symbol, 'type': [type_]})
 
-            except YAMLError as ye:
-                self.loading_window.destroy()
-                messagebox.showerror("YAML Syntax Error", f"{self.localization.get('merge_yaml_err_parse', 'An error occurred while parsing the YAML file ')} {filepath}: {str(ye)}")
-                continue
-            except Exception as e:
-                self.loading_window.destroy()
-                messagebox.showerror("Error", f"{self.localization.get('merge_yaml_read_err', 'An error occurred while reading the YAML file ')} {filepath}: {str(e)}")
-                continue
-        self.update_entries_window()
-        self.loading_window.destroy()
+            # Merge with existing symbols
+            self.symbols.update(new_symbols)
+            self.symbols_list = list({v['symbol']: v for v in self.symbols_list + new_symbols_list}.values())  # Remove duplicates
+
+            # Load and process replacements
+            replacements = data.get('replacements', [])
+            for replacement in replacements:
+                from_symbol = replacement.get('from')
+                to_symbol = replacement.get('to')
+                if from_symbol is None or to_symbol is None:
+                    messagebox.showerror("Error", f"{self.localization.get('process_repl_sym_err', 'Each replacement entry must have a (from) and a (to) symbol (string)')}")
+                    return
+
+                if from_symbol in self.symbols:
+                    # Update the existing symbol with new rename
+                    existing_type = self.symbols[from_symbol][0]
+                    existing_rename = self.symbols[from_symbol][1] if len(self.symbols[from_symbol]) > 1 else ''
+                    new_rename = f"{existing_rename}, {to_symbol}" if existing_rename else to_symbol
+                    self.symbols[from_symbol] = [existing_type, new_rename]
+                else:
+                    # Add new symbol with the replacement as rename
+                    self.symbols[from_symbol] = ['', to_symbol]
+
+            # Update symbols_list after processing replacements
+            self.symbols_list = [{'symbol': k, 'type': v[0], 'rename': v[1] if len(v) > 1 else ''} for k, v in self.symbols.items()]
+
+            self.update_entries_window()
+        except (YAMLError, ValueError) as e:
+            self.loading_window.destroy()
+            messagebox.showerror("Error", f"{self.localization.get('yaml_load_err', 'An error occurred: ')} {str(e)}")
+        except Exception as e:
+            self.loading_window.destroy()
+            messagebox.showerror("Error", f"{self.localization.get('yaml_unex_err', 'An unexpected error occurred: ')} {str(e)}")
+        finally:
+            self.loading_window.destroy()
     
     def open_symbol_editor(self):
         if self.symbol_editor_window is None or not self.symbol_editor_window.winfo_exists():
@@ -2807,6 +3151,7 @@ class Dictionary(TkinterDnD.Tk):
         self.saving_window.update_idletasks()
         self.after(100, self.process_save_as_ou_yaml, selected_template, template_path, output_file_path)
     def process_save_as_ou_yaml(self, selected_template, template_path, output_file_path):
+        self.update_cache_button_text()
         yaml = YAML()
         yaml.width = 4096
         yaml.preserve_quotes = True
@@ -2927,6 +3272,7 @@ class Dictionary(TkinterDnD.Tk):
         self.after(100, self.process_save_json_file, output_file_path)
 
     def process_save_json_file(self, output_file_path):
+        self.update_cache_button_text()
         # Prepare data for JSON format
         data = []
         for grapheme, phonemes in self.dictionary.items():
@@ -2976,6 +3322,7 @@ class Dictionary(TkinterDnD.Tk):
         self.after(100, self.process_save_cmudict_file, output_file_path)
     
     def process_save_cmudict_file(self, output_file_path):
+        self.update_cache_button_text()
         # Prepare entries as formatted strings
         self.clear_entries()
         entries_text = []
@@ -3158,8 +3505,14 @@ class Dictionary(TkinterDnD.Tk):
                 # Ask for confirmation before quitting if dictionary is not empty
                 response = messagebox.askyesno("Notice", f"{self.localization.get('gui_close', 'There are entries in the viewer. Closing this window will exit the application. Are you sure you want to proceed?')}")
                 if response:
+                    self.observer.stop()
+                    self.observer.join()
+                    self.destroy()
                     self.quit()
         else:
+            self.observer.stop()
+            self.observer.join()
+            self.destroy()
             self.quit()
 
     def on_drop(self, event):
@@ -3376,9 +3729,17 @@ class Dictionary(TkinterDnD.Tk):
         self.create_tooltip(remove_accents_cb, 'tp_remove_accents_cb', '(Requires Refresh) Removes the vowel stress indicators found on CMUdict dictionaries (eg: [s t aa1 r] to [s t aa r])')
 
         lowercase_phonemes_cb = ttk.Checkbutton(options_frame, text="Make Phonemes Lowercase", style="TCheckbutton", variable=self.lowercase_phonemes_var)
-        lowercase_phonemes_cb.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
+        lowercase_phonemes_cb.grid(row=3, column=0, padx=10, pady=0, sticky="ew")
         self.localizable_widgets['lowercase_phonemes'] = lowercase_phonemes_cb
         self.create_tooltip(lowercase_phonemes_cb, 'tp_lowercase_phonemes_cb', '(Requires Refresh) Makes all of the phonemes lowercased')
+
+        # Create a checkbox to toggle tooltips
+        self.tooltip_checkbox_var = tk.BooleanVar()
+        self.tooltip_checkbox = ttk.Checkbutton(options_frame, text="Enable Tooltips", style='Switch.TCheckbutton', variable=self.tooltip_checkbox_var, command=self.toggle_tooltip)
+        self.tooltip_checkbox.grid(row=4, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['tooltip_checkbox'] = self.tooltip_checkbox
+        self.create_tooltip(self.tooltip_checkbox, 'tp_tooltip_checkbox', 'Enables or Disables tooltip suggestions')
+        self.load_tooltip_checkbox_state()
 
         edit_symbols = ttk.Button(options_frame, text="Edit Symbols", style='Accent.TButton', command=self.open_symbol_editor)
         edit_symbols.grid(row=3, column=1, padx=10, pady=5, sticky="ew")
@@ -3469,7 +3830,7 @@ class Dictionary(TkinterDnD.Tk):
         ds_save = ttk.Button(save_frame, text="Save OU Dictionary", style='Accent.TButton', command=self.save_as_ou_yaml)
         ds_save.pack(expand=True, fill="x", padx=(5), pady=(0,5))
         self.localizable_widgets['save_ou'] = ds_save
-        self.create_tooltip(open_yaml, 'tp_yaml_save', 'Saves the OpenUtau YAML dictionaries')
+        self.create_tooltip(ds_save, 'tp_yaml_save', 'Saves the OpenUtau YAML dictionaries')
 
         label = ttk.Label(cad_frame, text=f"© Cadlaxa | OU Dictionary Editor {self.current_version}", font=label_font, foreground=label_color)
         label.grid(row=0, column=1, sticky="ew", pady=(0,10))
@@ -3485,7 +3846,8 @@ class Dictionary(TkinterDnD.Tk):
     
     def settings_widgets(self):
         # LabelFrame for updates
-        update_frame = ttk.LabelFrame(self.additional_tab, text="Updates")
+        settings_frame = self.additional_tab
+        update_frame = ttk.LabelFrame(settings_frame, text="Updates")
         update_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['update'] = update_frame
         update_frame.columnconfigure(0, weight=3)
@@ -3504,7 +3866,7 @@ class Dictionary(TkinterDnD.Tk):
         self.create_tooltip(nw_button, 'tp_nw_button', 'Shows the chronological changelogs of this application')
 
         # LabelFrame for themes
-        theme_frame = ttk.LabelFrame(self.additional_tab, text="Themes")
+        theme_frame = ttk.LabelFrame(settings_frame, text="Themes")
         theme_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['theme'] = theme_frame
         theme_frame.columnconfigure(0, weight=1)
@@ -3551,28 +3913,93 @@ class Dictionary(TkinterDnD.Tk):
         system_theme_button.grid(row=1, column=2)
         self.create_tooltip(system_theme_button, 'tp_system_theme_button', '(Follows the system theme) Changes the Theme based on the device settings')
 
+        t_frame = ttk.Frame(settings_frame)
+        t_frame.grid(row=2, column=0, sticky="nsew")
+        t_frame.columnconfigure(0, weight=5)
+        t_frame.columnconfigure(1, weight=1)
+
         # LabelFrame for localization selection on the options tab
-        localization_frame = ttk.LabelFrame(self.additional_tab, text="Localization Options")
-        localization_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
-        self.localizable_widgets['local_op'] = localization_frame
+        localization_frame = ttk.LabelFrame(t_frame, text="Select Localization:")
+        localization_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        self.localizable_widgets['select_local'] = localization_frame
         localization_frame.columnconfigure(0, weight=1)
-        localization_frame.columnconfigure(1, weight=1)
 
         # Frame for localization combobox within the localization_frame
         self.save_loc = ttk.Frame(localization_frame)
         self.save_loc.grid(row=0, column=0, columnspan=2, padx=10, pady=5, sticky="ew")
         self.save_loc.columnconfigure(1, weight=1)
-
+        '''
         local_select = ttk.Label(self.save_loc, text="Select Localization:", font=self.font)
         local_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
         self.localizable_widgets['select_local'] = local_select
+        '''
         localization_combobox = ttk.Combobox(self.save_loc, textvariable=self.localization_var, state="readonly")
         localization_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         self.create_tooltip(localization_combobox, 'tp_localization_combobox', 'Select your language (languages are all saved in ./Templates/Localizations)')
 
         localization_combobox.bind("<<ComboboxSelected>>", self.localization_selected)
         self.update_localization_combobox(localization_combobox)
+
+        # LabelFrame for localization selection on the options tab
+        cache_frame = ttk.LabelFrame(t_frame, text="Clear Cache")
+        cache_frame.grid(row=1, column=1, padx=(0,10), pady=10, sticky="nsew")
+        #self.localizable_widgets['cache_op'] = cache_frame
+        cache_frame.columnconfigure(0, weight=1)
+
+        self.cache_b = ttk.Button(cache_frame, text="Cache", style='Accent.TButton', command=self.clear_cache)
+        self.cache_b.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+        self.observer = Observer()
+        self.handler = CacheHandler(update_callback=self.update_cache_button_text)
+        self.observer.schedule(self.handler, CACHE, recursive=True)
+        self.observer.start()
+        self.update_cache_button_text()
+        if self.file_opened:
+            self.update_cache_button_text()
     
+    def get_cache_size(self):
+        # Calculates the total size of the cache folder
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(CACHE):
+            for filename in filenames:
+                filepath = os.path.join(dirpath, filename)
+                total_size += os.path.getsize(filepath)
+        return total_size
+
+    def format_size(self, size_bytes):
+        # Formats the size in KB, MB, or GB 
+        if size_bytes < 1024:
+            return f"{size_bytes:.2f} bytes"
+        elif size_bytes < 1024**2:
+            return f"{size_bytes / 1024:.2f} KB"
+        elif size_bytes < 1024**3:
+            return f"{size_bytes / (1024**2):.2f} MB"
+        else:
+            return f"{size_bytes / (1024**3):.2f} GB"
+
+    def update_cache_button_text(self):
+        # Updates the cache button text to display the current cache folder size
+        try:
+            size = self.get_cache_size()
+            size_text = self.format_size(size)
+            # Ensure UI update happens on the main thread
+            self.after(0, lambda: self.cache_b.config(text=f"Cache: {size_text}"))
+        except Exception as e:
+            messagebox.showerror("Error", f"{self.localization.get('err_update_cache', 'An error occurred while updating cache size:')} {e}")
+
+    def clear_cache(self):
+        # Clears the cache folder
+        try:
+            for dirpath, dirnames, filenames in os.walk(CACHE, topdown=False):
+                for filename in filenames:
+                    filepath = os.path.join(dirpath, filename)
+                    os.remove(filepath)
+                for dirname in dirnames:
+                    os.rmdir(os.path.join(dirpath, dirname))
+            # Update the cache size display after clearing
+            self.update_cache_button_text()
+        except Exception as e:
+            messagebox.showerror("Error", f"{self.localization.get('err_cl_cache', 'An error occurred while clearing the cache:')} {e}")
+        
     def other_widgets(self):
         self.other_frame = ttk.Frame(self.others_tab)
         self.other_frame.grid(row=0, column=0, columnspan=2, padx=5, pady=10, sticky="nsew")
@@ -3699,17 +4126,17 @@ class Dictionary(TkinterDnD.Tk):
         button_frame.rowconfigure(0, weight=1)
         button_frame.rowconfigure(1, weight=1)
 
-        append_yaml = ttk.Button(button_frame, text="Append YAML File", command=self.append_yaml_file)
+        append_yaml = ttk.Button(button_frame, text="Append YAML File", style='Accent.TButton', command=self.append_yaml_file)
         append_yaml.grid(padx=5, pady=5, column=0, row=0, sticky="nsew")
         self.localizable_widgets['append_yaml'] = append_yaml
         self.create_tooltip(append_yaml, 'tp_append_yaml', 'Appends OpenUtau YAML dictionaries')
 
-        append_cmu = ttk.Button(button_frame, text="Append CMUdict File", command=self.append_yaml_file)
+        append_cmu = ttk.Button(button_frame, text="Append CMUdict File", style='Accent.TButton', command=self.append_cmudict_file)
         append_cmu.grid(padx=5, pady=5, column=0, row=1, sticky="nsew")
         self.localizable_widgets['append_cmu'] = append_cmu
         self.create_tooltip(append_cmu, 'tp_append_vmu', 'Appends CMUdict text file')
 
-        append_json = ttk.Button(button_frame, text="Append Synthv JSON File", command=self.append_yaml_file)
+        append_json = ttk.Button(button_frame, text="Append Synthv JSON File", style='Accent.TButton', command=self.append_json_file)
         append_json.grid(padx=5, pady=5, column=0, row=2, sticky="nsew")
         self.localizable_widgets['append_json'] = append_json
         self.create_tooltip(append_json, 'tp_append_json', 'Appends Synthv JSON Dictionaries')
@@ -3878,12 +4305,15 @@ class Dictionary(TkinterDnD.Tk):
         self.localizable_widgets['btn_git'] = btn_see
         btn_see.bind("<Button-1>", lambda e:
         self.callback("https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases/latest"))
+        self.create_tooltip(btn_see, 'tp_btn_see', 'Directs to the Github Repository for more information')
 
         # Add a checkbox to not show the "What's New" window next time
         self.show_whats_new_var = tk.BooleanVar(value=False)
         chk_show_whats_new = ttk.Checkbutton(button_frame, text="Do not show this again", variable=self.show_whats_new_var)
         chk_show_whats_new.pack(side=tk.LEFT, pady=10, anchor='w')
         self.localizable_widgets['whats_new_cb'] = chk_show_whats_new
+        self.create_tooltip(chk_show_whats_new, 'tp_chk_show_whats_new', 'Do not show this window on startup (Checkbox resets once you open again this window)')
+
         self.update_window.protocol("WM_DELETE_WINDOW", self.on_closing_whats_new)
         if self.update_window.winfo_exists():
             self.apply_localization()

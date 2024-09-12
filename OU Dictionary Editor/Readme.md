@@ -14,7 +14,9 @@
 - Proper YAML block style
 - Revamp Template mechanics
 - Revamp `Append YAML file` to `Append Dictionary` (now supports all of the current dictionary formats)
-- Add Tooltips
+- Add Tooltips and Tooltips toggle
+- Add cache cleaner
+- Update Localizations
 
 **`(8/03/24)`**
 - Add file drag and drop file support to open them directly
