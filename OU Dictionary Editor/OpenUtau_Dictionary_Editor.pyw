@@ -118,7 +118,7 @@ class Dictionary(TkinterDnD.Tk):
         
         config = configparser.ConfigParser()
         config.read('settings.ini')
-        selected_theme = config.get('Settings', 'theme', fallback='Dark')
+        selected_theme = config.get('Settings', 'theme', fallback='System')
         selected_accent = config.get('Settings', 'accent', fallback='Mint')
         self.theme_var = tk.StringVar(value=selected_theme)
         self.accent_var = tk.StringVar(value=selected_accent)
@@ -595,8 +595,10 @@ class Dictionary(TkinterDnD.Tk):
             if theme_key in theme_map:
                 ttk.Style().theme_use(theme_map[theme_key])
         except (configparser.NoSectionError, configparser.NoOptionError):
-            sv_ttk.set_theme("dark")
-            ttk.Style().theme_use("mint_dark")
+            system_theme = darkdetect.theme().lower()
+            theme_key = (f"mint_{system_theme}")
+            sv_ttk.set_theme(system_theme)
+            ttk.Style().theme_use(theme_key)
         
     def load_cmudict(self, filepath=None):
         if filepath is None:
@@ -3948,6 +3950,7 @@ class Dictionary(TkinterDnD.Tk):
 
         self.cache_b = ttk.Button(cache_frame, text="Cache", style='Accent.TButton', command=self.clear_cache)
         self.cache_b.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
+        self.create_tooltip(self.cache_b, 'tp_cache_b', 'Clears out the Cache folder')
         self.observer = Observer()
         self.handler = CacheHandler(update_callback=self.update_cache_button_text)
         self.observer.schedule(self.handler, CACHE, recursive=True)

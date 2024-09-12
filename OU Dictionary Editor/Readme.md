@@ -17,6 +17,7 @@
 - Add Tooltips and Tooltips toggle
 - Add cache cleaner
 - Update Localizations
+- Fixes to Copy and paste function to validate YAML entries first
 
 **`(8/03/24)`**
 - Add file drag and drop file support to open them directly
