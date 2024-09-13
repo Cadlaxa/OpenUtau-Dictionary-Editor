@@ -3950,6 +3950,8 @@ class Dictionary(TkinterDnD.Tk):
         self.cache_b = ttk.Button(cache_frame, text="Cache", style='Accent.TButton', command=self.clear_cache)
         self.cache_b.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
         self.create_tooltip(self.cache_b, 'tp_cache_b', 'Clears out the Cache folder')
+        if not CACHE.exists():
+            CACHE.mkdir(parents=True, exist_ok=True)
         self.observer = Observer()
         self.handler = CacheHandler(update_callback=self.update_cache_button_text)
         self.observer.schedule(self.handler, CACHE, recursive=True)
