@@ -1,6 +1,6 @@
 # Changelog
 ---
-**`(9/--/24)`**
+**`(9/14/24)`**
 - Ensure ascii is false when dumping the data on json
 - G2p combobox are now alphabetically arranged
 - Add support for Diffsinger Phoneme Replacement entries on Symbols Editor
@@ -16,7 +16,7 @@
 - Revamp `Append YAML file` to `Append Dictionary` (now supports all of the current dictionary formats)
 - Add Tooltips and Tooltips toggle
 - Add cache cleaner
-- Update Localizations @lolstat
+- Update Localizations @LOLSALT
 - Fixes to Copy and paste function to validate YAML entries first
 - Added Russian HHSKT G2p by - @Megageorgio
 - Code fixes
