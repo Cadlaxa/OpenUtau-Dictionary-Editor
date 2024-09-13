@@ -6,3 +6,4 @@ darkdetect
 tkhtmlview
 markdown2
 tkinterdnd2
+watchdog
