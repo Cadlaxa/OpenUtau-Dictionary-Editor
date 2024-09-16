@@ -29,7 +29,6 @@ from Assets.plugins.generate_yaml_template import generate_yaml_template_from_re
 from Assets.plugins.default_phoneme_system import default_csv_content
 
 
-
 # Directories
 TEMPLATES = P('./Templates')
 LOCAL = P('./Templates/Localizations')
@@ -128,7 +127,7 @@ class Dictionary(TkinterDnD.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.4.2"
+        self.current_version = "v1.6.1"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -3951,6 +3950,8 @@ class Dictionary(TkinterDnD.Tk):
         self.cache_b = ttk.Button(cache_frame, text="Cache", style='Accent.TButton', command=self.clear_cache)
         self.cache_b.grid(row=2, column=0, padx=10, pady=10, sticky="ew")
         self.create_tooltip(self.cache_b, 'tp_cache_b', 'Clears out the Cache folder')
+        if not CACHE.exists():
+            CACHE.mkdir(parents=True, exist_ok=True)
         self.observer = Observer()
         self.handler = CacheHandler(update_callback=self.update_cache_button_text)
         self.observer.schedule(self.handler, CACHE, recursive=True)
@@ -4057,8 +4058,8 @@ class Dictionary(TkinterDnD.Tk):
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=(5, 20), pady=5, sticky="ew")
-        self.g2p_selection['values'] = tuple(sorted(['Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Marzipan (German) G2p', 'Italian G2p', 'Japanese Monophone G2p'
-                                        , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p']))
+        self.g2p_selection['values'] = tuple(sorted(['Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Italian G2p', 'Japanese Monophone G2p'
+                                        , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p', 'Russian HHSKT G2p']))
         self.create_tooltip(self.g2p_selection, 'tp_g2p_selection', 'Select your G2p model here')
         self.load_last_g2p()
 
@@ -4209,12 +4210,13 @@ class Dictionary(TkinterDnD.Tk):
                 'Arpabet-Plus G2p': ('Assets.G2p.arpabet_plus', 'ArpabetPlusG2p'),
                 'French G2p': ('Assets.G2p.frenchG2p', 'FrenchG2p'),
                 'German G2p': ('Assets.G2p.germanG2p', 'GermanG2p'),
-                'Marzipan (German) G2p': ('Assets.G2p.marzipanG2p', 'MarzipanG2p'),
+                # 'Marzipan (German) G2p': ('Assets.G2p.marzipanG2p', 'MarzipanG2p'),
                 'Italian G2p': ('', 'ItalianG2p'),
                 'Japanese Monophone G2p': ('Assets.G2p.jp_mono', 'JapaneseMonophoneG2p'),
                 'Millefeuille (French) G2p': ('Assets.G2p.millefeuilleG2p', 'MillefeuilleG2p'),
                 'Portuguese G2p': ('Assets.G2p.portugueseG2p', 'PortugueseG2p'),
                 'Russian G2p': ('Assets.G2p.russianG2p', 'RussianG2p'),
+                'Russian HHSKT G2p': ('Assets.G2p.russian_hhsktG2p', 'Russian_hhsktG2p'),
                 'Spanish G2p': ('Assets.G2p.spanishG2p', 'SpanishG2p'),
             }
             module_name, class_name = g2p_models.get(selected_value, (None, None))

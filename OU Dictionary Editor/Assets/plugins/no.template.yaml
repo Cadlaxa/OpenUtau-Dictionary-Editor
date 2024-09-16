@@ -1,0 +1,6 @@
+%YAML 1.2
+---
+symbols:
+- {symbol: '1', type: vowel}
+entries:
+- {grapheme: two, phonemes: [t, uw]}
