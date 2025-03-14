@@ -1,5 +1,8 @@
 # Changelog
 ---
+**`(3/14/25)`**
+- Code optimization
+- Ability to load external G2Ps
 **`(9/14/24)`**
 - Ensure ascii is false when dumping the data on json
 - G2p combobox are now alphabetically arranged

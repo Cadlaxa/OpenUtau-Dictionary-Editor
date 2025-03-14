@@ -25,9 +25,9 @@ from watchdog.events import FileSystemEventHandler
 
 # Plugins
 from Assets.plugins.generate_yaml_template import read_symbol_types_from_yaml
+from Assets.G2p.ExternalG2pModelManager import G2pModelManager
 from Assets.plugins.generate_yaml_template import generate_yaml_template_from_reclist
 from Assets.plugins.default_phoneme_system import default_csv_content
-
 
 # Directories
 TEMPLATES = P('./Templates')
@@ -116,6 +116,7 @@ class Dictionary(TkinterDnD.Tk):
         super().__init__(*args, **kwargs)
         
         config = configparser.ConfigParser()
+        self.g2p_manager = G2pModelManager()
         config.read('settings.ini')
         selected_theme = config.get('Settings', 'theme', fallback='System')
         selected_accent = config.get('Settings', 'accent', fallback='Mint')
@@ -127,7 +128,7 @@ class Dictionary(TkinterDnD.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.6.1"
+        self.current_version = "v1.6.3"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -158,6 +159,7 @@ class Dictionary(TkinterDnD.Tk):
         self.systems = []
         self.file_opened = None
         self.tooltips = []
+        self.word_to_item_id = {}  # Dictionary for fast lookup of Treeview items
 
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
@@ -178,11 +180,9 @@ class Dictionary(TkinterDnD.Tk):
         t = threading.Thread(target=darkdetect.listener, args=(self.toggle_theme,))
         t.daemon = True
         t.start()
-
         self.icon()
         # Start update check in a non-blocking way
         threading.Thread(target=self.bg_updates, daemon=True).start()
-
         self.load_whats_new_state()
         self.check_and_update_version()
         # Check if "What's New" should be displayed
@@ -2489,69 +2489,107 @@ class Dictionary(TkinterDnD.Tk):
             pattern = regex_var.get()
             replacement = replace_var.get()
             target = target_var.get()
-            # Compile regex pattern to catch errors early
+
+            try:
+                compiled_pattern = re.compile(pattern)
+            except re.error as e:
+                messagebox.showerror("Regex Error", f"Invalid regex pattern: {e}")
+                return
+
+            items_modified = 0
+            updated_entries = {}
+
+            # Create a copy to avoid modifying the dictionary while iterating
+            dictionary_copy = list(self.dictionary.items())
+
+            for grapheme, phonemes in dictionary_copy:
+                if target == "Graphemes":
+                    new_grapheme = compiled_pattern.sub(replacement, grapheme)
+                    if new_grapheme != grapheme:
+                        self.dictionary[new_grapheme] = self.dictionary.pop(grapheme)  # Rename key
+                        updated_entries[grapheme] = (new_grapheme, ', '.join(phonemes))  # Update Treeview
+                        items_modified += 1
+                elif target == "Phonemes":
+                    phonemes_string = ', '.join(phonemes)
+                    modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
+                    if modified_phoneme_string != phonemes_string:
+                        new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
+                        self.dictionary[grapheme] = new_phoneme_list  # Update dictionary
+                        updated_entries[grapheme] = (grapheme, modified_phoneme_string)  # Update Treeview
+                        items_modified += 1
+
+            # Apply changes to Treeview in batch to avoid lag
+            for item in self.viewer_tree.get_children():
+                values = self.viewer_tree.item(item, "values")
+                grapheme = values[1]  # Grapheme column
+                if grapheme in updated_entries:
+                    index = values[0]  # original index
+                    new_values = (index, updated_entries[grapheme][0], updated_entries[grapheme][1])
+                    self.viewer_tree.item(item, values=new_values)
+
+            # Only refresh if something changed
+            if items_modified > 0:
+                self.refresh_treeview()
+            self.word_entry.delete(0, tk.END)
+            self.phoneme_entry.delete(0, tk.END)
+
+        def replace_selected():
+            self.save_state_before_change()
+            selected_items = self.viewer_tree.selection()
+            
+            if not selected_items:
+                apply_replace()  # If nothing is selected, apply to everything (if needed)
+                return
+
+            pattern = regex_var.get()
+            replacement = replace_var.get()
+            target = target_var.get()
+
+            # Compile regex (handle invalid patterns)
             try:
                 compiled_pattern = re.compile(pattern)
             except re.error as e:
                 print(f"Regex error: {e}")
                 return
-            # Prepare to track modifications
+
             items_modified = 0
-            # Iterate over all items in the tree view
-            for grapheme, phonemes in list(self.dictionary.items()):
+            updated_entries = {}
+
+            for item in selected_items:
+                item_values = self.viewer_tree.item(item, "values")
+                index, old_grapheme, old_phonemes = int(item_values[0]), item_values[1], item_values[2]
+
                 if target == "Graphemes":
-                    new_grapheme = compiled_pattern.sub(replacement, grapheme)
-                    if new_grapheme != grapheme:
-                        self.dictionary[new_grapheme] = self.dictionary.pop(grapheme)
+                    new_grapheme = compiled_pattern.sub(replacement, old_grapheme)
+                    if new_grapheme != old_grapheme:
+                        # Update both TreeView and Dictionary
+                        updated_entries[item] = (index, new_grapheme, old_phonemes)
+                        if old_grapheme in self.dictionary:
+                            self.dictionary[new_grapheme] = self.dictionary.pop(old_grapheme)
                         items_modified += 1
+
                 elif target == "Phonemes":
-                    phonemes_string = ', '.join(map(str, phonemes))
-                    modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
-                    if modified_phoneme_string != phonemes_string:
+                    phoneme_string = old_phonemes.strip()
+                    modified_phoneme_string = compiled_pattern.sub(replacement, phoneme_string)
+                    if modified_phoneme_string != phoneme_string:
+                        # Update TreeView & Dictionary
+                        updated_entries[item] = (index, old_grapheme, modified_phoneme_string)
                         new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
-                        self.dictionary[grapheme] = new_phoneme_list
+                        self.dictionary[old_grapheme] = new_phoneme_list
                         items_modified += 1
-            self.refresh_treeview()
+
+            # Apply changes in bulk to avoid multiple redraws
+            for item, new_values in updated_entries.items():
+                self.viewer_tree.item(item, values=new_values)
+
+            # Refresh TreeView only if something changed
+            if items_modified > 0:
+                self.refresh_treeview()
+
+            # Clear input fields
             self.word_entry.delete(0, tk.END)
             self.phoneme_entry.delete(0, tk.END)
-        def replace_selected():
-            self.save_state_before_change()
-            selected_items = self.viewer_tree.selection()
-            if selected_items:
-                pattern = regex_var.get()
-                replacement = replace_var.get()
-                target = target_var.get()
 
-                # Same mechanics to replace all but only on the selected entries
-                try:
-                    compiled_pattern = re.compile(pattern)
-                except re.error as e:
-                    print(f"Regex error: {e}")
-                    return
-
-                items_modified = 0
-                for item in selected_items:
-                    item_values = self.viewer_tree.item(item, "values")
-                    if target == "Graphemes":
-                        new_grapheme = compiled_pattern.sub(replacement, item_values[1])
-                        if new_grapheme != item_values[1]:
-                            self.viewer_tree.item(item, values=(new_grapheme, item_values[2]))
-                            if item_values[1] in self.dictionary:
-                                self.dictionary[new_grapheme] = self.dictionary.pop(item_values[1])
-                            items_modified += 1
-                    elif target == "Phonemes":
-                        phonemes_string = str(item_values[2]).strip()  # Ensure item_values[2] is treated as a string
-                        modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
-                        if modified_phoneme_string != phonemes_string:
-                            self.viewer_tree.item(item, values=(item_values[1], modified_phoneme_string))
-                            new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
-                            self.dictionary[str(item_values[1])] = new_phoneme_list  # Ensure item_values[1] is treated as a string
-                            items_modified += 1
-                self.refresh_treeview()
-                self.word_entry.delete(0, tk.END)
-                self.phoneme_entry.delete(0, tk.END)
-            else:
-                apply_replace()
             if self.search_var.get():
                 self.filter_treeview()
         self.icon(self.replace_window)
@@ -2978,90 +3016,90 @@ class Dictionary(TkinterDnD.Tk):
             self.phoneme_entry.delete(0, tk.END)
     
     def add_entry_treeview(self, new_word=None, new_phonemes=None, insert_index='end'):
-        if new_word and new_phonemes:
-            phoneme_display = ', '.join(new_phonemes)
+        if not new_word or not new_phonemes:
+            return
 
-            # Determine the actual insert index if 'end' and there are selected items
-            if insert_index == 'end' and self.viewer_tree.selection():
-                insert_index = self.viewer_tree.index(self.viewer_tree.selection()[-1]) + 1
+        phoneme_display = ', '.join(new_phonemes)
 
-            if new_word in self.dictionary:
-                # Update the existing item's phonemes
-                self.dictionary[new_word] = new_phonemes
-                for idx, item in enumerate(self.viewer_tree.get_children()):
-                    if self.viewer_tree.item(item, 'values')[1] == new_word:
-                        self.viewer_tree.item(item, values=(idx + 1, new_word, phoneme_display))
-                        break
+        # Determine insert index (1-based)
+        if insert_index == 'end' or not isinstance(insert_index, int):
+            if self.viewer_tree.selection():  # If an entry is selected, insert below it
+                selected_item = self.viewer_tree.selection()[-1]
+                insert_index = self.viewer_tree.index(selected_item) + 2  # Below selected item
             else:
-                # Insert new entry if the grapheme does not exist
-                new_item_ids = []
-                if insert_index == 'end':
-                    item_id = self.viewer_tree.insert('', 'end', values=(len(self.dictionary) + 1, new_word, phoneme_display), tags=('normal',))
-                    new_item_ids.append(item_id)
-                    self.dictionary[new_word] = new_phonemes
-                else:
-                    item_id = self.viewer_tree.insert('', insert_index, values=(insert_index, new_word, phoneme_display), tags=('normal',))
-                    new_item_ids.append(item_id)
-                    # Insert the new entry into the dictionary at the correct position
-                    items = list(self.dictionary.items())
-                    items.insert(insert_index, (new_word, new_phonemes))
-                    self.dictionary.clear()
-                    self.dictionary.update(items)
+                insert_index = len(self.dictionary) + 1  # Append at end
 
-                self.viewer_tree.selection_set(new_item_ids)
+        # Update existing entry efficiently
+        if new_word in self.dictionary:
+            self.dictionary[new_word] = new_phonemes  # Update dictionary
+            item_id = self.word_to_item_id.get(new_word)
+            if item_id:  # Update only the affected row
+                self.viewer_tree.item(item_id, values=(self.viewer_tree.index(item_id) + 1, new_word, phoneme_display))
+        else:
+            # Insert new entry into dictionary
+            self.dictionary = OrderedDict(
+                list(self.dictionary.items())[:insert_index - 1] +
+                [(new_word, new_phonemes)] + 
+                list(self.dictionary.items())[insert_index - 1:]
+            )
+
+            # Insert into TreeView (adjust index to start from 1)
+            item_id = self.viewer_tree.insert('', insert_index - 1, values=(insert_index, new_word, phoneme_display), tags=('normal',))
+            self.word_to_item_id[new_word] = item_id  # Store reference for fast lookup
+            self.viewer_tree.selection_set(item_id)
+
+            if insert_index == len(self.dictionary):
+                self.viewer_tree.see(item_id)  # Scroll to the new item
+
+        # Only refresh if inserting in the middle (not needed for 'end')
+        if insert_index != len(self.dictionary):
             self.refresh_treeview()
 
     def filter_treeview(self, exact_search=False):
-        search_text = self.search_var.get().strip().lower()  # Get and normalize search text
-        # Clear previous selections
+        search_text = self.search_var.get().strip().lower() 
         self.viewer_tree.selection_remove(self.viewer_tree.selection())
-        if search_text:
-            closest_item = None
-            closest_distance = float('inf')  # Start with a large distance
 
-            for item in self.viewer_tree.get_children():
-                item_values = self.viewer_tree.item(item, "values")
-                matched = False
-                for value in item_values:
-                    value_lower = value.lower().strip().replace(",", "")
-                    if exact_search:
-                        # Perform exact match search
-                        if search_text == value_lower:
+        if not search_text:
+            return
+
+        closest_item = None
+        closest_distance = float('inf')  # Start with a large distance
+        matched_items = []
+
+        for item in self.viewer_tree.get_children():
+            item_values = self.viewer_tree.item(item, "values")
+            matched = False
+
+            for value in item_values:
+                value_lower = str(value).lower().strip().replace(",", "")  # Convert everything to a string
+                
+                if exact_search:
+                    # Exact match search
+                    if search_text == value_lower:
+                        closest_item = item
+                        matched = True
+                        break  # Stop checking once an exact match is found
+                else:
+                    # Partial match search
+                    if search_text in value_lower:
+                        matched_items.append(item)  # Store all matches
+                        distance = abs(len(value_lower) - len(search_text))
+                        if distance < closest_distance:
                             closest_item = item
-                            matched = True
-                            break
-                    else:
-                        # Perform closest match search
-                        if search_text in value_lower:
-                            # Calculate distance
-                            distance = abs(len(value_lower) - len(search_text))
-                            if distance < closest_distance:
-                                closest_item = item
-                                closest_distance = distance
-                            matched = True
-
-                if exact_search and matched:
-                    # If exact match found and exact_search is True, stop iterating
-                    break
-            # Select the closest matching item
-            if closest_item:
-                self.viewer_tree.selection_set(closest_item)
-                self.viewer_tree.see(closest_item)
-            # Optionally iterate through all items if used by a button
-            elif not exact_search:
-                items_to_select = []
-                for item in self.viewer_tree.get_children():
-                    item_values = self.viewer_tree.item(item, "values")
-                    for value in item_values:
-                        value_lower = value.lower().strip().replace(",", "")
-                        if search_text in value_lower:
-                            items_to_select.append(item)
-                            break
-
-                # Set the selection to items found in the iteration
-                if items_to_select:
-                    self.viewer_tree.selection_set(items_to_select)
-                    self.viewer_tree.see(items_to_select[0])
+                            closest_distance = distance
+                        matched = True
+            
+            if exact_search and matched:
+                break
+        # Select and scroll to the closest matching item
+        if closest_item:
+            self.viewer_tree.selection_set(closest_item)
+            self.viewer_tree.see(closest_item)
+        
+        # If no exact match, highlight all partial matches
+        elif not exact_search and matched_items:
+            self.viewer_tree.selection_set(matched_items)
+            self.viewer_tree.see(matched_items[0])  # Scroll to the first match
     
     def iterate_search(self):
         search_text = self.search_var.get().strip().lower()  # Get and normalize search text
@@ -4058,8 +4096,8 @@ class Dictionary(TkinterDnD.Tk):
 
         self.g2p_selection = ttk.Combobox(g2p_frame, state='readonly')
         self.g2p_selection.grid(row=0, column=1, padx=(5, 20), pady=5, sticky="ew")
-        self.g2p_selection['values'] = tuple(sorted(['Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Italian G2p', 'Japanese Monophone G2p'
-                                        , 'Millefeuille (French) G2p', 'Portuguese G2p', 'Russian G2p', 'Spanish G2p', 'Russian HHSKT G2p']))
+        self.update_g2p_selection()
+        self.load_last_g2p()
         self.create_tooltip(self.g2p_selection, 'tp_g2p_selection', 'Select your G2p model here')
         self.load_last_g2p()
 
@@ -4170,6 +4208,36 @@ class Dictionary(TkinterDnD.Tk):
         if localization:
             self.localization.update(localization)
 
+    def update_g2p_selection(self):
+        # Updates the G2P model selection dropdown with built-in and external models
+        built_in_models = [
+            'Arpabet-Plus G2p', 'French G2p', 'German G2p', 'Italian G2p', 
+            'Japanese Monophone G2p', 'Millefeuille (French) G2p', 'Portuguese G2p', 
+            'Russian G2p', 'Spanish G2p', 'Russian HHSKT G2p'
+        ]
+
+        # Load external models using model names from config
+        g2p_manager = G2pModelManager()
+        external_models = sorted(g2p_manager.models.keys())  # Sort for better readability
+
+        # Create dropdown values with a divider
+        if external_models:
+            dropdown_values = built_in_models + ["── External Models ──"] + external_models
+        else:
+            dropdown_values = built_in_models
+
+        # Update Combobox values
+        self.g2p_selection['values'] = tuple(dropdown_values)
+
+        # Keep the previously selected model if valid, otherwise default to the first option
+        last_selected = self.g2p_selection.get()
+        if last_selected in dropdown_values:
+            self.g2p_selection.set(last_selected)
+        else:
+            self.g2p_selection.set(built_in_models[0])
+
+        print("🔄 G2P Model List Updated:", dropdown_values)
+
     def load_last_g2p(self):
         config = configparser.ConfigParser()
         config.read(self.config_file)
@@ -4205,35 +4273,48 @@ class Dictionary(TkinterDnD.Tk):
         
     def update_g2p_model(self, event=None):
         selected_value = self.g2p_selection.get()
-        if self.g2p_checkbox_var.get():
-            g2p_models = {
-                'Arpabet-Plus G2p': ('Assets.G2p.arpabet_plus', 'ArpabetPlusG2p'),
-                'French G2p': ('Assets.G2p.frenchG2p', 'FrenchG2p'),
-                'German G2p': ('Assets.G2p.germanG2p', 'GermanG2p'),
-                # 'Marzipan (German) G2p': ('Assets.G2p.marzipanG2p', 'MarzipanG2p'),
-                'Italian G2p': ('', 'ItalianG2p'),
-                'Japanese Monophone G2p': ('Assets.G2p.jp_mono', 'JapaneseMonophoneG2p'),
-                'Millefeuille (French) G2p': ('Assets.G2p.millefeuilleG2p', 'MillefeuilleG2p'),
-                'Portuguese G2p': ('Assets.G2p.portugueseG2p', 'PortugueseG2p'),
-                'Russian G2p': ('Assets.G2p.russianG2p', 'RussianG2p'),
-                'Russian HHSKT G2p': ('Assets.G2p.russian_hhsktG2p', 'Russian_hhsktG2p'),
-                'Spanish G2p': ('Assets.G2p.spanishG2p', 'SpanishG2p'),
-            }
+        # Dictionary of built-in G2P models (predefined in Assets.G2p)
+        g2p_models = {
+            'Arpabet-Plus G2p': ('Assets.G2p.arpabet_plus', 'ArpabetPlusG2p'),
+            'French G2p': ('Assets.G2p.frenchG2p', 'FrenchG2p'),
+            'German G2p': ('Assets.G2p.germanG2p', 'GermanG2p'),
+            'Italian G2p': ('', 'ItalianG2p'),
+            'Japanese Monophone G2p': ('Assets.G2p.jp_mono', 'JapaneseMonophoneG2p'),
+            'Millefeuille (French) G2p': ('Assets.G2p.millefeuilleG2p', 'MillefeuilleG2p'),
+            'Portuguese G2p': ('Assets.G2p.portugueseG2p', 'PortugueseG2p'),
+            'Russian G2p': ('Assets.G2p.russianG2p', 'RussianG2p'),
+            'Russian HHSKT G2p': ('Assets.G2p.russian_hhsktG2p', 'Russian_hhsktG2p'),
+            'Spanish G2p': ('Assets.G2p.spanishG2p', 'SpanishG2p'),
+        }
+
+        if self.g2p_checkbox_var.get():  # If G2P is enabled
             module_name, class_name = g2p_models.get(selected_value, (None, None))
+
+            # Check if it's a built-in G2P model
             if module_name and class_name:
                 try:
                     module = __import__(module_name, fromlist=[class_name])
                     self.g2p_model = getattr(module, class_name)()
-                    print(f"G2P model {selected_value} loaded successfully.")
+                    print(f"✅ G2P model {selected_value} loaded successfully.")
                     self.save_g2p(selected_value)
                     self.transform_text()
+                    return
                 except Exception as e:
-                    print(f"Failed to load G2P model {selected_value}: {e}")
+                    print(f"❌ Failed to load G2P model {selected_value}: {e}")
+
+            # Try loading external G2P models from `G2Ps/`
+            external_model = self.g2p_manager.get_model(selected_value)
+
+            if external_model:
+                self.g2p_model = external_model
+                print(f"✅ External G2P model {selected_value} loaded successfully.")
+                self.save_g2p(selected_value)
+                self.transform_text()
             else:
-                print(f"No G2P model found for {selected_value}")
+                print(f"❌ No G2P model found for {selected_value}. Using default settings.")
         else:
             self.g2p_model = None
-            print("G2P is disabled.")
+            print("🔕 G2P is disabled.")
             self.save_g2p(selected_value)
     
     def load_g2p_checkbox_state(self):
