@@ -1,7 +1,7 @@
 package require Tk 8.6
 
 # Source theme files in a loop for efficiency and maintainability
-set themes [list light dark amaranth_dark amaranth_light amethyst_dark amethyst_light burnt-sienna_dark burnt-sienna_light dandelion_dark dandelion_light denim_dark denim_light fern_dark fern_light lemon-ginger_dark lemon-ginger_light lightning-yellow_dark lightning-yellow_light mint_dark mint_light orange_dark orange_light pear_dark pear_light persian-red_dark persian-red_light pink_dark pink_light salmon_dark salmon_light sapphire_dark sapphire_light sea-green_dark sea-green_light seance_dark seance_light sunny-yellow_light sunny-yellow_dark yellow-green_light yellow-green_dark payne's-gray_light payne's-gray_dark sky-magenta_light sky-magenta_dark l-see-green_light l-see-green_dark]
+set themes [list light dark mint_light mint_dark]
 foreach theme $themes {
     source [file join [file dirname [info script]] theme $theme.tcl]
 }
