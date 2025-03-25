@@ -1,5 +1,9 @@
 # Changelog
 ---
+**`(3/--/25)`**
+- Revamped UI Accent colors
+- Add function to detect Accent Colors (Windows only)?
+
 **`(3/14/25)`**
 - Code optimization
 - Ability to load external G2Ps

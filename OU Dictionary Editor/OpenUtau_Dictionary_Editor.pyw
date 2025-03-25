@@ -1,6 +1,6 @@
 import tkinter as tk
 from Assets.modules.sv_ttk import sv_ttk
-from tkinter import filedialog, messagebox, ttk, Toplevel, BOTH, scrolledtext
+from tkinter import filedialog, messagebox, ttk, Toplevel, BOTH, scrolledtext, Canvas
 import os, sys, re
 sys.path.append('.')
 from pathlib import Path as P
@@ -10,9 +10,9 @@ from ruamel.yaml.compat import StringIO
 import tkinter.font as tkFont
 import configparser
 from Assets.modules import requests
-import zipfile
+import zipfile, colorsys
 from zipfile import ZipFile
-import shutil, threading, subprocess, copy, platform, gzip, pyglet, pyperclip, io, csv
+import shutil, threading, subprocess, copy, platform, gzip, pyglet, pyperclip, io, csv, importlib
 import ctypes as ct
 import json, pickle, darkdetect, webbrowser, markdown2, glob, chardet
 from tkhtmlview import HTMLLabel
@@ -22,6 +22,7 @@ import numpy as np
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from PIL import Image, UnidentifiedImageError, ImageFile
 
 # Plugins
 from Assets.plugins.generate_yaml_template import read_symbol_types_from_yaml
@@ -37,6 +38,9 @@ ICON = P('./Assets/icon.png')
 ICON1 = P('./Assets/icon.ico')
 CACHE = P('./Cache')
 PHONEME_SYSTEMS = TEMPLATES / P('phoneme systems.csv')
+TCL_THEME_DIR = os.path.expanduser("./Assets/modules/sv_ttk")
+HUE_LUMEN = P("Assets/modules/sv_ttk/theme/luminance.png")
+THEME_DIR = os.path.expanduser("./Assets/modules/sv_ttk/theme")
 # soon
 AUTOSAVES = P('./Autosaves and Backups')
 
@@ -119,7 +123,7 @@ class Dictionary(TkinterDnD.Tk):
         self.g2p_manager = G2pModelManager()
         config.read('settings.ini')
         selected_theme = config.get('Settings', 'theme', fallback='System')
-        selected_accent = config.get('Settings', 'accent', fallback='Mint')
+        selected_accent = config.get('Settings', 'accent', fallback='#00FFB2')
         self.theme_var = tk.StringVar(value=selected_theme)
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='English')
@@ -140,7 +144,6 @@ class Dictionary(TkinterDnD.Tk):
         self.session = requests.Session()
         
         # Template folder directory
-        sv_ttk.set_theme("dark")
         self.Templates = self.read_template_directory()
         self.config_file = "settings.ini"
         self.load_last_theme()
@@ -160,6 +163,7 @@ class Dictionary(TkinterDnD.Tk):
         self.file_opened = None
         self.tooltips = []
         self.word_to_item_id = {}  # Dictionary for fast lookup of Treeview items
+        self.hue_cache = {}
 
         self.template_var = tk.StringVar(value="Custom Template")
         self.entries_window = None
@@ -409,14 +413,12 @@ class Dictionary(TkinterDnD.Tk):
     # Directory for the YAML Templates via settings.ini
     def read_template_directory(self, config_file="settings.ini"):
         config = configparser.ConfigParser()
-        # Check if the config file exists
         if os.path.exists(config_file):
             config.read(config_file)
             try:
                 return config.get('Paths', 'template_location')
             except (configparser.NoSectionError, configparser.NoOptionError):
                 pass
-        # Save the directory
         return self.save_directory_to_config(config_file)
 
     def save_directory_to_config(self, config_file):
@@ -432,82 +434,226 @@ class Dictionary(TkinterDnD.Tk):
         else:
             self.title(self.base_title)
     
-    def toggle_theme(self, event=None):
-        # Read the current theme selection from the combobox
-        theme_name = self.theme_var.get()
-        accent_name = self.accent_var.get()
-        theme_map = {
-            ("Electric Blue", "Dark"): "sun-valley-dark",
-            ("Electric Blue", "Light"): "sun-valley-light",
-            ("Amaranth", "Light"): "amaranth_light",
-            ("Amaranth", "Dark"): "amaranth_dark",
-            ("Amethyst", "Light"): "amethyst_light",
-            ("Amethyst", "Dark"): "amethyst_dark",
-            ("Burnt Sienna", "Light"): "burnt-sienna_light",
-            ("Burnt Sienna", "Dark"): "burnt-sienna_dark",
-            ("Dandelion", "Light"): "dandelion_light",
-            ("Dandelion", "Dark"): "dandelion_dark",
-            ("Denim", "Light"): "denim_light",
-            ("Denim", "Dark"): "denim_dark",
-            ("Fern", "Light"): "fern_light",
-            ("Fern", "Dark"): "fern_dark",
-            ("Lemon Ginger", "Light"): "lemon-ginger_light",
-            ("Lemon Ginger", "Dark"): "lemon-ginger_dark",
-            ("Lightning Yellow", "Light"): "lightning-yellow_light",
-            ("Lightning Yellow", "Dark"): "lightning-yellow_dark",
-            ("Mint", "Light"): "mint_light",
-            ("Mint", "Dark"): "mint_dark",
-            ("Orange", "Light"): "orange_light",
-            ("Orange", "Dark"): "orange_dark",
-            ("Pear", "Light"): "pear_light",
-            ("Pear", "Dark"): "pear_dark",
-            ("Persian Red", "Light"): "persian-red_light",
-            ("Persian Red", "Dark"): "persian-red_dark",
-            ("Pink", "Light"): "pink_light",
-            ("Pink", "Dark"): "pink_dark",
-            ("Salmon", "Light"): "salmon_light",
-            ("Salmon", "Dark"): "salmon_dark",
-            ("Sapphire", "Light"): "sapphire_light",
-            ("Sapphire", "Dark"): "sapphire_dark",
-            ("Sea Green", "Light"): "sea-green_light",
-            ("Sea Green", "Dark"): "sea-green_dark",
-            ("Seance", "Light"): "seance_light",
-            ("Seance", "Dark"): "seance_dark",
-            ("Sunny Yellow", "Light"): "sunny-yellow_light",
-            ("Sunny Yellow", "Dark"): "sunny-yellow_dark",
-            ("Moonstone", "Light"): "moonstone_light",
-            ("Moonstone", "Dark"): "moonstone_dark",
-            ("Dark Red", "Light"): "dark-red_light",
-            ("Dark Red", "Dark"): "dark-red_dark",
-            ("Beaver", "Light"): "beaver_light",
-            ("Beaver", "Dark"): "beaver_dark",
-            ("Liver", "Light"): "liver_light",
-            ("Liver", "Dark"): "liver_dark",
-            ("Yellow Green", "Light"): "yellow-green_light",
-            ("Yellow Green", "Dark"): "yellow-green_dark",
-            ("Payne's Gray", "Light"): "payne's-gray_light",
-            ("Payne's Gray", "Dark"): "payne's-gray_dark",
-            ("Hunter Green", "Light"): "hunter-green_light",
-            ("Hunter Green", "Dark"): "hunter-green_dark",
-            ("Sky Magenta", "Light"): "sky-magenta_light",
-            ("Sky Magenta", "Dark"): "sky-magenta_dark",
-            ("Light See Green", "Light"): "l-see-green_light",
-            ("Light See Green", "Dark"): "l-see-green_dark",
-            ("Middle Green Yellow", "Light"): "middle-gy_light",
-            ("Middle Green Yellow", "Dark"): "middle-gy_dark"
-        }
-        # Apply the theme using sv_ttk
-        if theme_name == 'System':
-            system_theme = darkdetect.theme()
-            theme_key = (accent_name, system_theme)
-        else:
-            theme_key = (accent_name, theme_name)
+    def change_hue_and_save(self, image_path, hue):
+        ImageFile.LOAD_TRUNCATED_IMAGES = True  # Prevents crashes from truncated images
+        img = Image.open(image_path).convert("RGBA")
+        arr = np.array(img, dtype=np.float32) / 255.0  # Normalize pixel values
 
-        if theme_key in theme_map:
-            ttk.Style().theme_use(theme_map[theme_key])
-            self.widget_style()
-            self.save_theme_to_config(accent_name, theme_name)
+        r, g, b, a = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2], arr[:, :, 3]
+        
+        # Convert RGB to HLS
+        h, l, s = np.vectorize(colorsys.rgb_to_hls)(r, g, b)
+        h = hue / 360.0
+        hue_mask = s > 0.9 # Only modify areas with some color
+        
+        # Convert HLS back to RGB
+        r, g, b = np.vectorize(colorsys.hls_to_rgb)(h, l, s)
+        
+        # Convert back to 8-bit integer format
+        arr[:, :, 0] = (r * 255).astype(np.uint8)
+        arr[:, :, 1] = (g * 255).astype(np.uint8)
+        arr[:, :, 2] = (b * 255).astype(np.uint8)
+        arr[:, :, 3] = (a * 255).astype(np.uint8)  # Preserve alpha channel
+
+        Image.fromarray(arr.astype(np.uint8)).save(image_path)
     
+    def apply_hue_to_sv_ttk(self, hue):
+        # Apply hue changes in a background thread to prevent UI lag
+        def process_images():
+            threads = []
+            for root, _, files in os.walk(THEME_DIR):
+                for file in files:
+                    if file.endswith(".png"):
+                        file_path = os.path.join(root, file)
+                        thread = threading.Thread(target=self.change_hue_and_save, args=(file_path, hue))
+                        thread.start()
+                        threads.append(thread)
+
+            # Wait for all threads to finish (but now in a background thread)
+            for thread in threads:
+                thread.join()
+
+            self.update_tcl_foreground_color(HUE_LUMEN)
+            #importlib.reload(sv_ttk)
+            #ttk.Style().theme_use(ttk.Style().theme_use())
+
+            print(f"✅ Updated Sun Valley theme assets with hue {hue}")
+
+        threading.Thread(target=process_images, daemon=True).start()
+    
+    def calculate_luminance(self, rgb):
+        # Calculates perceived brightness (luminance) from an RGB color
+        r, g, b = [x / 255.0 for x in rgb]  # Normalize to 0-1 range
+        luminance = (0.299 * r) + (0.587 * g) + (0.114 * b)  # brightness formula
+        return luminance
+
+    def detect_best_foreground_color(self, image_path):
+        # Detects the best foreground color (black or white) based on background brightness
+        try:
+            img = Image.open(image_path).convert("RGB")
+            img = img.resize((50, 50)) 
+            pixels = np.array(img).reshape(-1, 3) 
+
+            # Compute average luminance (perceived brightness)
+            avg_luminance = np.mean([self.calculate_luminance(rgb) for rgb in pixels])
+
+            # foreground color
+            foreground_color = "#000000" if avg_luminance > 0.5 else "#FFFFFF"
+            print(f"🎨 Detected Luminance: {avg_luminance:.2f}, Foreground Color: {foreground_color}")
+            return foreground_color
+
+        except Exception as e:
+            print(f"❌ Error detecting foreground color: {e}")
+            return "#000000"  # Default to black if detection fails
+    
+    def update_tcl_foreground_color(self, image_path):
+        # Finds and updates all TCL theme files except light.tcl and dark.tcl.
+        foreground_color = self.detect_best_foreground_color(image_path)
+        EXCLUDED_FOLDER = os.path.abspath("./Assets/modules/sv_ttk/theme/backup")
+
+        if not foreground_color:
+            print("❌ Error: Foreground color is None, skipping update.")
+            return
+
+        # ✅ Modify only the foreground color line in `.tcl` files
+        tcl_files = [
+            file for file in glob.glob(os.path.join(TCL_THEME_DIR, "**", "*.tcl"), recursive=True)
+            if not os.path.abspath(file).startswith(EXCLUDED_FOLDER) 
+            and not file.endswith(("sprites_light.tcl", "sprites_dark.tcl"))  # Exclude specific sprite TCL files
+        ]
+        for tcl_file in tcl_files:
+            with open(tcl_file, "r", encoding="utf-8") as file:
+                tcl_lines = file.readlines()
+
+            modified = False 
+            for i in range(len(tcl_lines)):
+                if "ttk::style configure Accent.TButton" in tcl_lines[i]:  
+                    if "-foreground" in tcl_lines[i]:  
+                        # Update existing foreground color
+                        tcl_lines[i] = f'    ttk::style configure Accent.TButton -padding {{8 2 8 3}} -anchor center -foreground "{foreground_color}"\n'
+                    else:  
+                        # If `-foreground` is missing, add it
+                        tcl_lines[i] = tcl_lines[i].strip() + f' -foreground "{foreground_color}"\n'
+                    modified = True
+
+            # ✅ Save only if the file was modified
+            if modified:
+                with open(tcl_file, "w", encoding="utf-8") as file:
+                    file.writelines(tcl_lines)
+                    print(f"✅ Updated foreground color in {tcl_file} to {foreground_color}")
+            else:
+                print(f"⚠️ No foreground color found in {tcl_file}, skipping update.")
+
+    def detect_hue_from_image(self, image_path):
+        try:
+            img = Image.open(image_path).convert("RGB")
+            img = img.resize((50, 50)) 
+            pixels = np.array(img, dtype=np.float32) / 255.0  # Normalize pixel values
+            
+            # Convert RGB to HSV and extract hue values with precise calculations
+            hues, lightness = np.array([
+                (colorsys.rgb_to_hls(r, g, b)[0] * 360, colorsys.rgb_to_hls(r, g, b)[1])
+                for r, g, b in pixels.reshape(-1, 3)
+            ]).T
+            
+            # Focus on the most frequent hue for better accuracy
+            hist, bin_edges = np.histogram(hues, bins=180, range=(0, 360))
+            dominant_hue = np.average(bin_edges[:-1], weights=hist)
+            avg_brightness = np.mean(lightness)
+            
+            # Map hue (0-360) to new slider scale (-180 to 180)
+            mapped_hue = self.map_roygbiv_hue(dominant_hue)
+            
+            print(f"🎨 Detected Hue: {dominant_hue:.2f}° (Mapped: {mapped_hue}), Brightness: {avg_brightness:.2f}")
+            return mapped_hue
+        
+        except Exception as e:
+            print(f"❌ Error detecting hue: {e}")
+            return 0, 0.5  # Default to 0 hue and 0.5 brightness if detection fails
+
+    def cache_hue(self, hue_path):
+        if hue_path not in self.hue_cache:
+            self.hue_cache[hue_path] = self.detect_hue_from_image(hue_path)
+    
+    def map_roygbiv_hue(self, hue):
+        return ((hue / 360) * 360)
+    
+    def update_hue_slider(self):
+        detected_hue = self.detect_hue_from_image(HUE_LUMEN)
+        self.hue_slider.set(detected_hue)  # Set the slider value to detected hue
+    
+    def hue_to_hex(self, hue):
+        normalized_hue = hue / 360.0
+        r, g, b = colorsys.hsv_to_rgb(normalized_hue, 1, 1)  # Convert HSV → RGB (max saturation & brightness)
+        return "#{:02X}{:02X}{:02X}".format(int(r * 255), int(g * 255), int(b * 255))
+
+    def hex_to_hue(self, hex_color):
+        if not hex_color or not hex_color.startswith("#"):
+            return 160 # Default to 160°
+        
+        hex_color = hex_color.lstrip("#")
+        r, g, b = tuple(int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4))
+        hue, _, _ = colorsys.rgb_to_hsv(r, g, b)
+        return hue * 360  # Convert hue to degrees
+
+    def toggle_theme(self, event=None):
+        theme_name = self.theme_var.get() if hasattr(self.theme_var, "get") else self.theme_var
+        hue = self.hue_slider.get()
+        hex_color = self.hue_to_hex(hue)
+        current_theme = ttk.Style().theme_use()
+
+        # Handle "System" theme selection dynamically
+        if theme_name == "System":
+            system_theme = darkdetect.theme().lower()
+        else:
+            system_theme = theme_name 
+
+        # Choose the correct theme
+        themes = [
+            "sun-valley-light", "mint_light",
+            "sun-valley-dark", "mint_dark"
+        ]
+
+        # Find current theme index and switch to the next one
+        for i, theme in enumerate(themes):
+            if current_theme == theme:
+                new_theme = themes[(i + 1) % len(themes)]  # Loop through themes
+                break
+        else:
+            new_theme = "sun-valley-light"  # Default fallback
+        # Apply the theme only if it changes
+        if new_theme != current_theme:
+            ttk.Style().theme_use(new_theme)
+            sv_ttk.set_theme(system_theme)
+
+        self.widget_style()
+        self.save_theme_to_config(hex_color, theme_name)
+        print(f"✅ Applied Theme: {new_theme} (System theme: {darkdetect.theme() if theme_name == 'System' else 'Manual'})")
+
+    def hex_value(self, event=None):
+        hue = self.hue_slider.get()
+        hex_color = self.hue_to_hex(hue)
+
+        if hasattr(self, "theme_combobox"):  # Ensure combobox exists
+            self.draw_color_preview(hex_color)
+        
+        config = configparser.ConfigParser()
+        config.read(self.config_file)
+        if 'Settings' not in config.sections():
+            config['Settings'] = {}
+        config['Settings']['accent'] = hex_color
+        with open(self.config_file, 'w') as configfile:
+            config.write(configfile)
+    
+    def draw_color_preview(self, hex_color):
+        for widget in self.theme_combobox.winfo_children():
+            widget.destroy()
+
+        canvas = Canvas(self.theme_combobox, width=40, height=16, bg=hex_color, highlightthickness=1)
+        canvas.place(x=5, y=5)
+
+        self.theme_combobox.set(hex_color)
+
     def save_theme_to_config(self, accent_name, theme_name):
         config = configparser.ConfigParser()
         config.read(self.config_file)
@@ -523,76 +669,29 @@ class Dictionary(TkinterDnD.Tk):
         config.read(self.config_file)
         try:
             theme_name = config.get('Settings', 'theme')
-            #theme_name = self.theme_var.get()
+            theme_name = self.theme_var.get()
             accent_name = config.get('Settings', 'accent')
-            theme_map = {
-                ("Electric Blue", "Dark"): "sun-valley-dark",
-                ("Electric Blue", "Light"): "sun-valley-light",
-                ("Amaranth", "Light"): "amaranth_light",
-                ("Amaranth", "Dark"): "amaranth_dark",
-                ("Amethyst", "Light"): "amethyst_light",
-                ("Amethyst", "Dark"): "amethyst_dark",
-                ("Burnt Sienna", "Light"): "burnt-sienna_light",
-                ("Burnt Sienna", "Dark"): "burnt-sienna_dark",
-                ("Dandelion", "Light"): "dandelion_light",
-                ("Dandelion", "Dark"): "dandelion_dark",
-                ("Denim", "Light"): "denim_light",
-                ("Denim", "Dark"): "denim_dark",
-                ("Fern", "Light"): "fern_light",
-                ("Fern", "Dark"): "fern_dark",
-                ("Lemon Ginger", "Light"): "lemon-ginger_light",
-                ("Lemon Ginger", "Dark"): "lemon-ginger_dark",
-                ("Lightning Yellow", "Light"): "lightning-yellow_light",
-                ("Lightning Yellow", "Dark"): "lightning-yellow_dark",
-                ("Mint", "Light"): "mint_light",
-                ("Mint", "Dark"): "mint_dark",
-                ("Orange", "Light"): "orange_light",
-                ("Orange", "Dark"): "orange_dark",
-                ("Pear", "Light"): "pear_light",
-                ("Pear", "Dark"): "pear_dark",
-                ("Persian Red", "Light"): "persian-red_light",
-                ("Persian Red", "Dark"): "persian-red_dark",
-                ("Pink", "Light"): "pink_light",
-                ("Pink", "Dark"): "pink_dark",
-                ("Salmon", "Light"): "salmon_light",
-                ("Salmon", "Dark"): "salmon_dark",
-                ("Sapphire", "Light"): "sapphire_light",
-                ("Sapphire", "Dark"): "sapphire_dark",
-                ("Sea Green", "Light"): "sea-green_light",
-                ("Sea Green", "Dark"): "sea-green_dark",
-                ("Seance", "Light"): "seance_light",
-                ("Seance", "Dark"): "seance_dark",
-                ("Sunny Yellow", "Light"): "sunny-yellow_light",
-                ("Sunny Yellow", "Dark"): "sunny-yellow_dark",
-                ("Moonstone", "Light"): "moonstone_light",
-                ("Moonstone", "Dark"): "moonstone_dark",
-                ("Dark Red", "Light"): "dark-red_light",
-                ("Dark Red", "Dark"): "dark-red_dark",
-                ("Beaver", "Light"): "beaver_light",
-                ("Beaver", "Dark"): "beaver_dark",
-                ("Liver", "Light"): "liver_light",
-                ("Liver", "Dark"): "liver_dark",
-                ("Yellow Green", "Light"): "yellow-green_light",
-                ("Yellow Green", "Dark"): "yellow-green_dark",
-                ("Payne's Gray", "Light"): "payne's-gray_light",
-                ("Payne's Gray", "Dark"): "payne's-gray_dark",
-                ("Hunter Green", "Light"): "hunter-green_light",
-                ("Hunter Green", "Dark"): "hunter-green_dark",
-                ("Sky Magenta", "Light"): "sky-magenta_light",
-                ("Sky Magenta", "Dark"): "sky-magenta_dark",
-                ("Light See Green", "Light"): "l-see-green_light",
-                ("Light See Green", "Dark"): "l-see-green_dark",
-                ("Middle Green Yellow", "Light"): "middle-green-yellow_light",
-                ("Middle Green Yellow", "Dark"): "middle-green-yellow_dark"
-            }
+
+            accent_hue = self.hex_to_hue(accent_name)
+            detected_hue = self.detect_hue_from_image(HUE_LUMEN)
+
+            # If detected hue is different from the accent hue, adjust it
+            if abs(detected_hue - accent_hue) > 1:  # Allow small differences
+                for root, _, files in os.walk(THEME_DIR):
+                    for file in files:
+                        if file.endswith(".png"):
+                            file_path = os.path.join(root, file)
+                            thread = threading.Thread(target=self.change_hue_and_save, args=(file_path, accent_hue))
+                            thread.start()
+            
             # Apply the theme using sv_ttk
             if theme_name == 'System':
-                system_theme = darkdetect.theme()
-                theme_key = (accent_name, system_theme)
+                system_theme = darkdetect.theme().lower()
             else:
-                theme_key = (accent_name, theme_name)
-            if theme_key in theme_map:
-                ttk.Style().theme_use(theme_map[theme_key])
+                system_theme = theme_name.lower()
+            self.update_tcl_foreground_color(HUE_LUMEN)
+            sv_ttk.set_theme(system_theme)
+           
         except (configparser.NoSectionError, configparser.NoOptionError):
             system_theme = darkdetect.theme().lower()
             theme_key = (f"mint_{system_theme}")
@@ -3911,25 +4010,47 @@ class Dictionary(TkinterDnD.Tk):
         theme_frame.columnconfigure(0, weight=1)
         theme_frame.columnconfigure(1, weight=1)
 
+        # LabelFrame for themes
+        tri_frame = ttk.Frame(theme_frame)
+        tri_frame.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+        tri_frame.columnconfigure(0, weight=3)
+        tri_frame.columnconfigure(2, weight=2)
+
         # Frame for theme combobox within the theme_frame
-        self.theming = ttk.Frame(theme_frame)
-        self.theming.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
-        self.theming.columnconfigure(1, weight=1)
-        self.theming.columnconfigure(1, weight=1)
-        
-        # Label and combobox for Accent selection
-        theme_select = ttk.Label(self.theming, text="Select Theme:", font=self.font)
-        theme_select.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-        self.localizable_widgets['def_theme'] = theme_select
-        theme_options = ["Amaranth", "Amethyst", "Burnt Sienna", "Dandelion", "Denim",
-                         "Electric Blue", "Fern", "Lemon Ginger", "Light See Green", "Lightning Yellow",
-                         "Mint","Orange", "Payne's Gray", "Pear",
-                         "Persian Red", "Pink", "Salmon", "Sapphire", "Sea Green", "Seance", "Sky Magenta", "Sunny Yellow",
-                         "Yellow Green"] # Theme options
-        theme_combobox = ttk.Combobox(self.theming, textvariable=self.accent_var, values=theme_options, state="readonly")
-        theme_combobox.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
-        theme_combobox.bind("<<ComboboxSelected>>", self.toggle_theme)
-        self.create_tooltip(theme_combobox, 'tp_theme_combobox', 'Change accent color')
+        self.theming = ttk.Frame(tri_frame)
+        self.theming.grid(row=0, column=0, columnspan=1, padx=0, pady=0, sticky="ew")
+        self.theming.columnconfigure(0, weight=1)
+
+        self.theming1 = ttk.Frame(tri_frame)
+        self.theming1.grid(row=0, column=1, columnspan=1, padx=5, pady=0)
+        self.theming1.columnconfigure(0, weight=1)
+
+        self.theming2 = ttk.Frame(tri_frame)
+        self.theming2.grid(row=0, column=2, columnspan=1, padx=(5,10), pady=0, sticky="ew")
+        self.theming2.columnconfigure(0, weight=1)
+
+        self.theme_combobox = ttk.Combobox(self.theming, textvariable=self.accent_var, state="readonly", justify="right")
+        self.theme_combobox.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
+        self.create_tooltip(self.theme_combobox, 'tp_theme_combobox', 'Change accent color')
+
+        # Hue Slider
+        self.hue_slider = ttk.Scale(self.theming1, from_=0, to=360, orient="horizontal")
+        self.hue_slider.grid(row=0, column=0, padx=0, pady=0, sticky="ew")
+        self.after(50, self.update_hue_slider)
+        self.hue_slider.bind("<ButtonRelease-1>", lambda e: self.hex_value())
+        self.create_tooltip(self.hue_slider, 'tp_theme_combobox', 'Change accent color')
+        detected_hue = self.detect_hue_from_image(HUE_LUMEN)
+        self.hue_slider.set(detected_hue)
+        self.after(100, self.hex_value)
+
+        self.hue_img = tk.PhotoImage(file="./Assets/track.png")
+        hue_slider = tk.Canvas(self.theming1, highlightthickness = 0, width = self.hue_img.width(), height = self.hue_img.height())
+        hue_slider.grid(row=1, column=0, padx=0, pady=5, sticky="ew")
+        hue_slider.create_image(0, 0, image = self.hue_img, anchor = "nw")
+
+        # Apply Button
+        apply_button = ttk.Button(self.theming2, text="Apply", style='Accent.TButton', command=lambda: self.apply_hue_to_sv_ttk(self.hue_slider.get()))
+        apply_button.grid(row=0, column=0, padx=0, pady=0, sticky="ew")
 
         radio_frame = ttk.Frame(theme_frame)
         radio_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=(0,20), sticky="ew")
