@@ -1,6 +1,6 @@
 # Changelog
 ---
-**`(4/--/25)`**
+**`(4/8/25)`**
 - Revamped UI Accent colors
 - Update localizations
 - Bug fixes
