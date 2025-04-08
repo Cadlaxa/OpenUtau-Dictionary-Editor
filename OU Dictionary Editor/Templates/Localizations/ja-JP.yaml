@@ -209,6 +209,11 @@ err_cl_cache: "キャッシュのクリア中にエラーが発生しました:"
 err_update_cache: "キャッシュサイズの更新中にエラーが発生しました:"
 tp_tooltip_checkbox: "ツールチップの提案を有効または無効にする"
 tooltip_checkbox: "ツールチップを有効にする"
+tp_hex_combobox: "選択した色相の16進コード"
+tp_hex_apply: "選択した色相を適用してアクセントカラーを変更する"
+tp_hex_reset: "色相を元の色にリセットする"
+reset_accent_color: "アクセントカラーが #00FFB2 にリセットされました"
+accent_color_apply: "アクセントカラーがtclファイルに正常に適用されました。アクセントカラーを再読み込みするには、OpenUtau辞書エディタを再起動してください。"
 
 # Tooltips
 tp_search_entry: "辞書のシンボルを検索"

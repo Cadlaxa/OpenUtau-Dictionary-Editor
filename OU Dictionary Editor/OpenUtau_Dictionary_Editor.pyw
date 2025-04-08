@@ -123,7 +123,7 @@ class Dictionary(TkinterDnD.Tk):
         self.g2p_manager = G2pModelManager()
         config.read('settings.ini')
         selected_theme = config.get('Settings', 'theme', fallback='System')
-        selected_accent = config.get('Settings', 'accent', fallback='#00FFB2')
+        selected_accent = config.get('Settings', 'accent', fallback='#00FFA9')
         self.theme_var = tk.StringVar(value=selected_theme)
         self.accent_var = tk.StringVar(value=selected_accent)
         selected_local = config.get('Settings', 'localization', fallback='English')
@@ -132,7 +132,7 @@ class Dictionary(TkinterDnD.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.6.3"
+        self.current_version = "v1.7.0"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -474,13 +474,14 @@ class Dictionary(TkinterDnD.Tk):
                 thread.join()
 
             self.update_tcl_foreground_color(HUE_LUMEN)
-            #importlib.reload(sv_ttk)
-            #ttk.Style().theme_use(ttk.Style().theme_use())
-
-            print(f"✅ Updated Sun Valley theme assets with hue {hue}")
-
         threading.Thread(target=process_images, daemon=True).start()
+        self.reload_tcl_theme()
+        print(f"✅ Updated Sun Valley theme assets with hue {hue}")
     
+    def reload_tcl_theme(self):
+        messagebox.showinfo("Accent Color Applied", f"{self.localization.get('accent_color_apply', 'Accent color applied to tcl file successfully, please restart OpenUtau Dictionary Editor')}")
+        
+
     def calculate_luminance(self, rgb):
         # Calculates perceived brightness (luminance) from an RGB color
         r, g, b = [x / 255.0 for x in rgb]  # Normalize to 0-1 range
@@ -595,6 +596,30 @@ class Dictionary(TkinterDnD.Tk):
         r, g, b = tuple(int(hex_color[i:i+2], 16) / 255.0 for i in (0, 2, 4))
         hue, _, _ = colorsys.rgb_to_hsv(r, g, b)
         return hue * 360  # Convert hue to degrees
+    
+    def copy_folder_contents(self):
+        source_folder = os.path.join("./Assets/default theme")
+        destination_folder = THEME_DIR
+        if not os.path.exists(source_folder):
+            print(f"❌ Source folder not found: {source_folder}")
+            return False
+        os.makedirs(destination_folder, exist_ok=True)
+
+        # Copy each file
+        for filename in os.listdir(source_folder):
+            source_path = os.path.join(source_folder, filename)
+            destination_path = os.path.join(destination_folder, filename)
+
+            # Copy only files (not subdirectories)
+            if os.path.isfile(source_path):
+                shutil.copy2(source_path, destination_path)  # Keeps metadata (timestamps)
+                print(f"✅ Copied: {source_path} → {destination_path}")
+        messagebox.showinfo("Accent Color Reset", f"{self.localization.get('reset_accent_color', 'Accent color was reset to #00FFB2')}")
+        detected_hue = self.detect_hue_from_image(HUE_LUMEN)
+        self.hue_slider.set(detected_hue)
+        self.hex_value()
+        self.update_tcl_foreground_color
+        return True
 
     def toggle_theme(self, event=None):
         theme_name = self.theme_var.get() if hasattr(self.theme_var, "get") else self.theme_var
@@ -606,21 +631,18 @@ class Dictionary(TkinterDnD.Tk):
         if theme_name == "System":
             system_theme = darkdetect.theme().lower()
         else:
-            system_theme = theme_name 
+            system_theme = theme_name.lower()
 
-        # Choose the correct theme
-        themes = [
-            "sun-valley-light", "mint_light",
-            "sun-valley-dark", "mint_dark"
-        ]
+       # Theme mapping based on current theme
+        theme_switch = {
+            "sun-valley-light": "mint_light",
+            "mint_light": "sun-valley-light",
+            "sun-valley-dark": "mint_dark",
+            "mint_dark": "sun-valley-dark"
+        }
+        # Determine the new theme
+        new_theme = theme_switch.get(current_theme, "sun-valley-light")  # Default fallback
 
-        # Find current theme index and switch to the next one
-        for i, theme in enumerate(themes):
-            if current_theme == theme:
-                new_theme = themes[(i + 1) % len(themes)]  # Loop through themes
-                break
-        else:
-            new_theme = "sun-valley-light"  # Default fallback
         # Apply the theme only if it changes
         if new_theme != current_theme:
             ttk.Style().theme_use(new_theme)
@@ -676,20 +698,25 @@ class Dictionary(TkinterDnD.Tk):
             detected_hue = self.detect_hue_from_image(HUE_LUMEN)
 
             # If detected hue is different from the accent hue, adjust it
-            if abs(detected_hue - accent_hue) > 1:  # Allow small differences
+            if abs(detected_hue - accent_hue) > 1:
+                threads = [] 
                 for root, _, files in os.walk(THEME_DIR):
                     for file in files:
                         if file.endswith(".png"):
                             file_path = os.path.join(root, file)
                             thread = threading.Thread(target=self.change_hue_and_save, args=(file_path, accent_hue))
                             thread.start()
-            
+                            threads.append(thread)
+                # Wait for all threads to complete before updating TCL foreground color
+                for thread in threads:
+                    thread.join()
+                self.update_tcl_foreground_color(HUE_LUMEN)
+
             # Apply the theme using sv_ttk
             if theme_name == 'System':
                 system_theme = darkdetect.theme().lower()
             else:
                 system_theme = theme_name.lower()
-            self.update_tcl_foreground_color(HUE_LUMEN)
             sv_ttk.set_theme(system_theme)
            
         except (configparser.NoSectionError, configparser.NoOptionError):
@@ -700,7 +727,12 @@ class Dictionary(TkinterDnD.Tk):
         
     def load_cmudict(self, filepath=None):
         if filepath is None:
-            filepath = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+            filepath = filedialog.askopenfilename(filetypes=[
+                ("All supported text files", "*.txt;*.tsv;*.csv"),
+                ("Text files", "*.txt"),
+                ("TSV files", "*.tsv"),
+                ("CSV files", "*.csv")
+            ])
         if not filepath:
             messagebox.showinfo("No File", f"{self.localization.get('cmudict_nofile', 'No file was selected.')}")
             return
@@ -757,6 +789,7 @@ class Dictionary(TkinterDnD.Tk):
 
         dictionary = {}
         comments = []  # Store comments here if needed
+        grapheme_count = {}
         error_occurred = False
         for line_number, line in enumerate(lines, start=1):
             try:
@@ -764,10 +797,16 @@ class Dictionary(TkinterDnD.Tk):
                     comments.append(line.strip()[3:])
                     continue
 
-                parts = re.split(r'\s{2,}|\t', line.strip())  # Match two or more spaces or a tab
+                parts = re.split(r'\s{2,}|\t|,;/', line.strip())  # Match two or more spaces, a tab, a comma, semi-colon or a slash
                 if len(parts) == 2:
                     grapheme = str(parts[0])
                     phonemes = list(map(str, parts[1].split()))
+                    base_grapheme = grapheme
+                    if base_grapheme in grapheme_count:
+                        grapheme_count[base_grapheme] += 1
+                        grapheme = f"{base_grapheme}({grapheme_count[base_grapheme]})"
+                    else:
+                        grapheme_count[base_grapheme] = 0  # First appearance keeps the name as-is
                     dictionary[grapheme] = phonemes
                 else:
                     self.loading_window.destroy()
@@ -4013,7 +4052,7 @@ class Dictionary(TkinterDnD.Tk):
         # LabelFrame for themes
         tri_frame = ttk.Frame(theme_frame)
         tri_frame.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
-        tri_frame.columnconfigure(0, weight=3)
+        tri_frame.columnconfigure(0, weight=5)
         tri_frame.columnconfigure(2, weight=2)
 
         # Frame for theme combobox within the theme_frame
@@ -4026,12 +4065,13 @@ class Dictionary(TkinterDnD.Tk):
         self.theming1.columnconfigure(0, weight=1)
 
         self.theming2 = ttk.Frame(tri_frame)
-        self.theming2.grid(row=0, column=2, columnspan=1, padx=(5,10), pady=0, sticky="ew")
+        self.theming2.grid(row=0, column=2, columnspan=2, padx=(5,10), pady=0, sticky="ew")
         self.theming2.columnconfigure(0, weight=1)
+        self.theming2.columnconfigure(1, weight=1)
 
         self.theme_combobox = ttk.Combobox(self.theming, textvariable=self.accent_var, state="readonly", justify="right")
-        self.theme_combobox.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-        self.create_tooltip(self.theme_combobox, 'tp_theme_combobox', 'Change accent color')
+        self.theme_combobox.grid(row=0, column=0, padx=(10,5), pady=10, sticky="ew")
+        self.create_tooltip(self.theme_combobox, 'tp_hex_combobox', 'Hex code of the current selected hue')
 
         # Hue Slider
         self.hue_slider = ttk.Scale(self.theming1, from_=0, to=360, orient="horizontal")
@@ -4049,8 +4089,14 @@ class Dictionary(TkinterDnD.Tk):
         hue_slider.create_image(0, 0, image = self.hue_img, anchor = "nw")
 
         # Apply Button
-        apply_button = ttk.Button(self.theming2, text="Apply", style='Accent.TButton', command=lambda: self.apply_hue_to_sv_ttk(self.hue_slider.get()))
+        apply_button = ttk.Button(self.theming2, text="✓", style='Accent.TButton', command=lambda: self.apply_hue_to_sv_ttk(self.hue_slider.get()))
         apply_button.grid(row=0, column=0, padx=0, pady=0, sticky="ew")
+        self.create_tooltip(apply_button, 'tp_hex_apply', 'Apply the select hue to change the accent color')
+
+        # Reset Button
+        reset_button = ttk.Button(self.theming2, text="⟳", command=lambda: self.copy_folder_contents())
+        reset_button.grid(row=0, column=1, padx=(5,0), pady=0, sticky="ew")
+        self.create_tooltip(reset_button, 'tp_hex_reset', 'Resets the hue to the original color')
 
         radio_frame = ttk.Frame(theme_frame)
         radio_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=(0,20), sticky="ew")
@@ -4491,7 +4537,7 @@ class Dictionary(TkinterDnD.Tk):
         container.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
         # Load and convert the markdown file
-        with open("readme.md", "r") as file:
+        with open("Readme.md", "r") as file:
             readme_content = file.read()
         html_content = markdown2.markdown(readme_content, extras=["fenced-code-blocks", "tables", "code-friendly", "footnotes", "toc", "cuddled-lists", "metadata"])
 
