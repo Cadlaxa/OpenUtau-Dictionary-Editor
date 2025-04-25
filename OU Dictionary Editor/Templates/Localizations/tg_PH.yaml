@@ -206,6 +206,11 @@ err_cl_cache: "Nagkaroon ng error habang nililinis ang cache:"
 err_update_cache: "Nagkaroon ng error habang ina-update ang sukat ng cache:"
 tp_tooltip_checkbox: "I-enable o I-disable ang mga mungkahi ng tooltip"
 tooltip_checkbox: "I-enable ang Tooltips"
+tp_hex_combobox: "Hex code ng napiling kulay"
+tp_hex_apply: "Ilapat ang napiling kulay upang baguhin ang accent color"
+tp_hex_reset: "I-reset ang kulay sa orihinal nitong anyo"
+reset_accent_color: "Ang accent color ay na-reset sa #00FFB2"
+accent_color_apply: "Matagumpay na-apply ang accent color sa tcl file, pakirestart ang OpenUtau Dictionary Editor upang muling mai-load ang accent color."
 
 # Tooltips
 tp_search_entry: "Hanapin ang mga simbolo ng diksyunaryo"

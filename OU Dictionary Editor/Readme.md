@@ -1,8 +1,10 @@
 # Changelog
 ---
-**`(3/--/25)`**
+**`(4/8/25)`**
 - Revamped UI Accent colors
-- Add function to detect Accent Colors (Windows only)?
+- Update localizations
+- Bug fixes
+- CMUDict import now supports TSV and CSV and adds numbered suffix to duplicate graphemes
 
 **`(3/14/25)`**
 - Code optimization
