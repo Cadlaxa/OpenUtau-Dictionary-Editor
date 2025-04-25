@@ -206,6 +206,11 @@ err_cl_cache: "清除缓存时发生错误: "
 err_update_cache: "更新缓存大小时发生错误: "
 tp_tooltip_checkbox: "激活或停用工具提示建议"
 tooltip_checkbox: "激活工具提示"
+tp_hex_combobox: "当前所选色调的十六进制代码"
+tp_hex_apply: "应用所选色调以更改强调色"
+tp_hex_reset: "将色调重置为原始颜色"
+reset_accent_color: "强调色已重置为 #00FFB2"
+accent_color_apply: "已成功将强调色应用于 tcl 文件，请重新启动 OpenUtau 辞典编辑器以重新加载强调色"
 
 # Tooltips
 tp_search_entry: "搜索辞典符号"
