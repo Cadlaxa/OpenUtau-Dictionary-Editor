@@ -206,6 +206,11 @@ err_cl_cache: "清除快取時發生錯誤: "
 err_update_cache: "更新快取大小時發生錯誤: "
 tp_tooltip_checkbox: "啟用或停用工具提示建議"
 tooltip_checkbox: "啟用工具提示"
+tp_hex_combobox: "當前所選色調嘅十六進制代碼"
+tp_hex_apply: "應用選擇色調來改變重點顏色"
+tp_hex_reset: "將色調重置為原色"
+reset_accent_color: "重點顏色被重設為 #00FFB2"
+accent_color_apply: "重點音色套用到 tcl 檔案成功，請重啟 OpenUtau 辭典編輯器重新載入重點音色"
 
 # Tooltips
 tp_search_entry: "搜尋辭典符號"
