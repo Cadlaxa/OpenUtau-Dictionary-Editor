@@ -1686,6 +1686,8 @@ class Dictionary(TkinterDnD.Tk):
         added_symbols = set()  # Track added symbols to avoid duplicates
 
         for symbol, values in self.symbols.items():
+            if ',' in symbol or ' ' in symbol:
+                continue
             escaped_symbol = symbol
             type_list = values[0] if isinstance(values[0], list) else [values[0]]
             type_str = ', '.join(f"{t}" for t in type_list)
@@ -1698,36 +1700,50 @@ class Dictionary(TkinterDnD.Tk):
         rename_entries = CommentedSeq()
         added_replacements = set()  # Track added replacements to avoid duplicates
         for symbol, data in self.symbols.items():
-            if not isinstance(symbol, str):
-                continue
             if len(data) > 1:
-                from_data = symbol if isinstance(symbol, str) else list(symbol)
-                to_entries = data[1:]  # Could be one or more replacements
+                from_symbol = symbol if not isinstance(symbol, list) else list(symbol) 
+                to_data_entries = data[1:]
 
-                for to_data in to_entries:
-                    if not to_data or (isinstance(to_data, str) and not to_data.strip()):
-                        continue  # Skip empty
+                for to_entry in to_data_entries:
+                    if not to_entry or (isinstance(to_entry, str) and to_entry.strip() == ''):
+                        continue  # Skip empty replacements
 
-                    # Handle comma-separated strings like "O, u"
-                    if isinstance(to_data, str) and ',' in to_data:
-                        to_list = [item.strip() for item in to_data.split(',') if item.strip()]
+                    # Handle comma-separated strings as lists
+                    if isinstance(to_entry, str) and ',' in to_entry:
+                        to_list = [item.strip() for item in to_entry.split(',') if item.strip()]
+                        if not to_list:
+                            continue
                         to_key = tuple(to_list)
                         to_yaml_value = to_list
-                    elif isinstance(to_data, list):
-                        to_key = tuple(to_data)
-                        to_yaml_value = to_data
+                    elif isinstance(to_entry, list):
+                        if not to_entry:
+                            continue
+                        to_key = tuple(to_entry)
+                        to_yaml_value = to_entry
                     else:
-                        to_key = to_data
-                        to_yaml_value = to_data
+                        to_key = to_entry
+                        to_yaml_value = to_entry
 
-                    # Make from_symbol compatible with list froms later if needed
-                    from_key = tuple(from_data) if isinstance(from_data, list) else from_data
+                    if isinstance(from_symbol, str) and ',' in from_symbol:
+                        from_list = [item.strip() for item in from_symbol.split(',') if item.strip()]
+                        if not from_list:
+                            continue
+                        from_key = tuple(from_list)
+                        from_yaml_value = from_list
+                    elif isinstance(from_symbol, list):
+                        if not from_symbol:
+                            continue
+                        from_key = tuple(from_symbol)
+                        from_yaml_value = from_symbol
+                    else:
+                        from_key = from_symbol
+                        from_yaml_value = from_symbol
+
                     replacement_key = (from_key, to_key)
-
                     if replacement_key not in added_replacements:
                         added_replacements.add(replacement_key)
                         entry = CommentedMap([
-                            ('from', from_data),
+                            ('from', from_yaml_value),
                             ('to', to_yaml_value)
                         ])
                         rename_entries.append(entry)
@@ -1840,7 +1856,7 @@ class Dictionary(TkinterDnD.Tk):
             # Normalize rename input
             if isinstance(rename, str):
                 # Remove commas, split by spaces, and strip extra spaces
-                rename = [item.strip() for item in rename.replace(',', '').split() if item.strip()]
+                rename = [item.strip() for item in rename.replace(',,', ',').split() if item.strip()]
             elif not isinstance(rename, list):
                 rename = []
 
@@ -1896,8 +1912,7 @@ class Dictionary(TkinterDnD.Tk):
         initial_grapheme = item_values[0]
         initial_phoneme = item_values[1]
         initial_rename = item_values[2] if len(item_values) > 2 else ''
-        #initial_phoneme = self.viewer_tree.item(selected_item, "values")[2].replace(",", "").replace("'", "")
-
+       
         # Destroy currently open widgets if they exist
         if self.current_entry_widgets:
             for widget in self.current_entry_widgets.values():
@@ -1928,7 +1943,8 @@ class Dictionary(TkinterDnD.Tk):
             # Get the edited values from entry widgets
             new_grapheme = self.entry_popup_sym.get()
             new_phoneme = self.entry_popup_val.get()
-            new_rename = self.entry_popup_rn.get().replace(",", "").replace("'", "")
+            new_rename = self.entry_popup_rn.get()
+            rename_list = [rename.replace(" ", ",") if " " in rename else rename for rename in new_rename.split()]
 
             # Update Treeview with edited values
             self.symbol_treeview.set(selected_item, grapheme_column, new_grapheme)
@@ -1948,14 +1964,14 @@ class Dictionary(TkinterDnD.Tk):
 
             # Check if a rename value exists, and update accordingly
             if new_rename:
-                self.symbols[new_grapheme].append(new_rename)  # Add rename if it exists
+                self.symbols[new_grapheme].append(rename_list)  # Add rename if it exists
 
             # Update symbols_list
             for entry in self.symbols_list:
                 if entry['symbol'] == initial_grapheme:
                     entry['symbol'] = new_grapheme
                     entry['type'] = phoneme_list
-                    entry['rename'] = new_rename.split()  # Always update the rename field
+                    entry['rename'] = rename_list  # Always update the rename field
                     break
             self.refresh_treeview_symbols()
 
@@ -2710,7 +2726,8 @@ class Dictionary(TkinterDnD.Tk):
                         updated_entries[grapheme] = (new_grapheme, ', '.join(phonemes))  # Update Treeview
                         items_modified += 1
                 elif target == "Phonemes":
-                    phonemes_string = ', '.join(phonemes)
+                    cleaned_phonemes = [p.replace("'", "") for p in phonemes]
+                    phonemes_string = ', '.join(cleaned_phonemes)
                     modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
                     if modified_phoneme_string != phonemes_string:
                         new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
@@ -3411,7 +3428,7 @@ class Dictionary(TkinterDnD.Tk):
         added_symbols = set()  # Track added symbols to avoid duplicates
 
         for symbol, values in self.symbols.items():
-            if isinstance(values[0], list) and ',' and ' ' in symbol:
+            if ',' in symbol or ' ' in symbol:
                 continue
             escaped_symbol = symbol
             type_list = values[0] if isinstance(values[0], list) else [values[0]]
@@ -3448,11 +3465,26 @@ class Dictionary(TkinterDnD.Tk):
                         to_key = to_entry
                         to_yaml_value = to_entry
 
-                    replacement_key = (tuple(from_symbol) if isinstance(from_symbol, list) else from_symbol, to_key)
+                    if isinstance(from_symbol, str) and ',' in from_symbol:
+                        from_list = [item.strip() for item in from_symbol.split(',') if item.strip()]
+                        if not from_list:
+                            continue
+                        from_key = tuple(from_list)
+                        from_yaml_value = from_list
+                    elif isinstance(from_symbol, list):
+                        if not from_symbol:
+                            continue
+                        from_key = tuple(from_symbol)
+                        from_yaml_value = from_symbol
+                    else:
+                        from_key = from_symbol
+                        from_yaml_value = from_symbol
+
+                    replacement_key = (from_key, to_key)
                     if replacement_key not in added_replacements:
                         added_replacements.add(replacement_key)
                         entry = CommentedMap([
-                            ('from', from_symbol if not isinstance(from_symbol, list) else list(from_symbol)),
+                            ('from', from_yaml_value),
                             ('to', to_yaml_value)
                         ])
                         rename_entries.append(entry)
