@@ -1,5 +1,9 @@
 # Changelog
 ---
+**`(6/8/25)`**
+- Replacements now support phoneme list
+- Regex replacement bug fix
+
 **`(4/8/25)`**
 - Revamped UI Accent colors
 - Update localizations

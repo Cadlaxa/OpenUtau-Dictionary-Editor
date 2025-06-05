@@ -166,3 +166,8 @@ cython_debug/
 */Cache
 */Autosaves and Backups
 */Templates/phoneme systems.csv
+*/Assets/modules/sv_ttk/theme/luminance.png
+*/Assets/modules/sv_ttk/theme/spritesheet_dark.png
+*/Assets/modules/sv_ttk/theme/spritesheet_light.png
+*/Assets/modules/sv_ttk/theme/spritesheet_mint_dark.png
+*/Assets/modules/sv_ttk/theme/spritesheet_mint_light.png
