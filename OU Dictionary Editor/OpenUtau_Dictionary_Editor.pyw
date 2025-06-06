@@ -1013,6 +1013,76 @@ class Dictionary(TkinterDnD.Tk):
         finally:
             self.loading_window.destroy()
     
+    def export_csv_tsv(self):
+        if not self.dictionary:
+            messagebox.showinfo("Warning", self.localization.get('save_cmudict_m', 'No entries to save. Please add entries before saving.'))
+            return
+
+        # Prompt user for CSV or TSV save location
+        output_file_path = filedialog.asksaveasfilename(
+            title="Export CSV or TSV",
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("TSV files", "*.tsv"), ("All files", "*.*")]
+        )
+
+        if not output_file_path:
+            messagebox.showinfo("Cancelled", self.localization.get('cmudict_cancel', 'Save operation cancelled.'))
+            return
+
+        self.save_window()
+        self.saving_window.update_idletasks()
+        self.after(100, self.process_export_csv_tsv, output_file_path)
+
+    def process_export_csv_tsv(self, filepath):
+        self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
+
+        # Determine delimiter from extension
+        _, ext = os.path.splitext(filepath)
+        delimiter = '\t' if ext.lower() == '.tsv' else ','
+
+        try:
+            cache_dir = CACHE
+            os.makedirs(cache_dir, exist_ok=True)
+
+            # Create a unique cache file path
+            cache_filename = filepath.replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
+
+            # Check if the cache file exists and is up-to-date
+            if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+                try:
+                    with gzip.open(cache_filepath, 'rb') as cache_file:
+                        self.dictionary, self.comments = pickle.load(cache_file)
+                        self.update_entries_window()
+                        self.loading_window.destroy()
+                        return
+                except Exception as e:
+                    messagebox.showerror("Error", f"{self.localization.get('cmudict_err_read', 'Error occurred while reading from cache: ')} {e}")
+
+            # Write CSV/TSV
+            with open(filepath, 'w', encoding='utf-8', newline='') as file:
+                writer = csv.writer(file, delimiter=delimiter)
+                writer.writerow(["Grapheme", "Phonemes"])  # Header
+
+                for grapheme, phonemes in self.dictionary.items():
+                    if self.lowercase_phonemes_var.get():
+                        phonemes = [phoneme.lower() for phoneme in phonemes]
+                    if self.remove_numbered_accents_var.get():
+                        phonemes = self.remove_numbered_accents(phonemes)
+                    writer.writerow([grapheme, ' '.join(phonemes)])
+
+            # Save cache
+            with gzip.open(cache_filepath, 'wb') as cache_file:
+                pickle.dump((self.dictionary, self.comments), cache_file)
+
+            self.saving_window.destroy()
+            messagebox.showinfo("Success", self.localization.get('cmudict_saved_dict', 'Dictionary saved to ') + filepath)
+
+        except Exception as e:
+            messagebox.showerror("Error", self.localization.get('cmudict_cache_err', 'Error occurred while saving: ') + str(e))
+
     def append_json_file(self, filepath=None):
         if filepath is None:
             filepath = filedialog.askopenfilename(title="Open JSON File", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
@@ -3842,6 +3912,10 @@ class Dictionary(TkinterDnD.Tk):
                 self.load_yaml_file(filepath=file)
             elif ext == '.txt':
                 self.load_cmudict(filepath=file)
+            elif ext == '.csv':
+                self.load_cmudict(filepath=file)
+            elif ext == '.tsv':
+                self.load_cmudict(filepath=file)
             elif ext == '.json':
                 self.load_json_file(filepath=file)
             elif ext == '.tmp':
@@ -4338,7 +4412,7 @@ class Dictionary(TkinterDnD.Tk):
 
         # Frame for Synthv controls
         synthv_frame = ttk.LabelFrame(self.other_frame, text="Synthv")
-        synthv_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        synthv_frame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         synthv_frame.columnconfigure(0, weight=1)
 
         # Synthv Import/Export
@@ -4350,9 +4424,22 @@ class Dictionary(TkinterDnD.Tk):
         synthv_import.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['import'] = synthv_import
 
+        # Frame for CSV and TSV
+        ui_frame = ttk.LabelFrame(self.other_frame, text="CVS and TSV")
+        ui_frame.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+        ui_frame.columnconfigure(0, weight=1)
+
+        tsv = ttk.Button(ui_frame, style='Accent.TButton', text="Export TSV", command=self.export_csv_tsv)
+        tsv.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['tsv'] = tsv
+
+        csv = ttk.Button(ui_frame, text="Export CSV", style='TButton', command=self.export_csv_tsv)
+        csv .grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['csv'] = csv 
+
         # Frame for UI controls (placeholder name)
         ui_frame = ttk.LabelFrame(self.other_frame, text="Adding more in the future")
-        ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
+        ui_frame.grid(row=1, column=0, padx=5, pady=10, sticky="nsew")
         ui_frame.columnconfigure(0, weight=1)
 
         ui_export_button = ttk.Button(ui_frame, state="disabled", style='Accent.TButton', text="Export Dictionary", command=self.export_json)

@@ -211,6 +211,8 @@ tp_hex_apply: "Apply the select hue to change the accent color"
 tp_hex_reset: "Resets the hue to the original color"
 reset_accent_color: "Accent color was reset to #00FFB2"
 accent_color_apply: "Accent color applied to tcl file successfully, please restart OpenUtau Dictionary Editor to reload the accent color"
+tsv: "Export TSV file"
+csv: "Export CSV file"
 
 # Tooltips
 tp_search_entry: "Search the dictionary symbols"

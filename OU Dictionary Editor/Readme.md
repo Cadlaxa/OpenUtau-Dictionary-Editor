@@ -3,6 +3,8 @@
 **`(6/8/25)`**
 - Replacements now support phoneme list
 - Regex replacement bug fix
+- Support CSV and TSV file drag and drop and export
+- Localization Updater
 
 **`(4/8/25)`**
 - Revamped UI Accent colors
