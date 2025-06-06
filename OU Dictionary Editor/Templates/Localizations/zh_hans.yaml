@@ -211,6 +211,10 @@ tp_hex_apply: "应用所选色调以更改强调色"
 tp_hex_reset: "将色调重置为原始颜色"
 reset_accent_color: "强调色已重置为 #00FFB2"
 accent_color_apply: "已成功将强调色应用于 tcl 文件，请重新启动 OpenUtau 辞典编辑器以重新加载强调色"
+tsv: "导出 TSV 文件"
+csv: "导出 CSV 文件"
+localization_updated: "本地化档案已成功更新。"
+localization_err: "无法更新本地化档案: "
 
 # Tooltips
 tp_search_entry: "搜索辞典符号"
