@@ -213,6 +213,9 @@ reset_accent_color: "Ang accent color ay na-reset sa #00FFB2"
 accent_color_apply: "Matagumpay na-apply ang accent color sa tcl file, pakirestart ang OpenUtau Dictionary Editor upang muling mai-load ang accent color."
 tsv: "I-export ang TSV file"
 csv: "I-export ang CSV file"
+localization_updated: "Matagumpay na na-update ang mga localization file."
+localization_err: "Nabigong i-update ang mga localization file: "
+
 
 # Tooltips
 tp_search_entry: "Hanapin ang mga simbolo ng diksyunaryo"

@@ -216,6 +216,9 @@ reset_accent_color: "アクセントカラーが #00FFB2 にリセットされ�
 accent_color_apply: "アクセントカラーがtclファイルに正常に適用されました。アクセントカラーを再読み込みするには、OpenUtau辞書エディタを再起動してください。"
 tsv: "TSVファイルをエクスポート"
 csv: "CSVファイルをエクスポート"
+localization_updated: "ローカライズファイルが正常に更新されました。"
+localization_err: "ローカライズファイルの更新に失敗しました: "
+
 
 # Tooltips
 tp_search_entry: "辞書のシンボルを検索"

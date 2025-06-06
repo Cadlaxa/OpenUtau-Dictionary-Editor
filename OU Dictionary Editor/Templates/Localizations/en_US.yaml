@@ -213,6 +213,9 @@ reset_accent_color: "Accent color was reset to #00FFB2"
 accent_color_apply: "Accent color applied to tcl file successfully, please restart OpenUtau Dictionary Editor to reload the accent color"
 tsv: "Export TSV file"
 csv: "Export CSV file"
+localization_updated: "Localization files have been updated successfully."
+localization_err: "Failed to update localization files: "
+
 
 # Tooltips
 tp_search_entry: "Search the dictionary symbols"
