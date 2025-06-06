@@ -161,8 +161,21 @@ cython_debug/
 
 
 # Custom gitignore items for this repo
-*/settings.ini
-*/OpenUtau_Dictionary_Editor.exe
-*/Cache
-*/Autosaves and Backups
-*/Templates/phoneme systems.csv
+
+# Ignore settings file
+**/settings.ini
+
+# Ignore executable
+**/OpenUtau_Dictionary_Editor.exe
+
+# Ignore cache folder
+**/Cache/
+
+# Ignore backup/autosave folder
+**/Autosaves and Backups/
+
+# Ignore specific templates
+**/Templates/phoneme systems.csv
+
+# Ignore .sha files
+**/*.sha

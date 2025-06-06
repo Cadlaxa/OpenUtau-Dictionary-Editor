@@ -211,6 +211,11 @@ tp_hex_apply: "Appliquer la teinte sélectionnée pour modifier la couleur d'acc
 tp_hex_reset: "Réinitialiser la teinte à la couleur d'origine"
 reset_accent_color: "La couleur d'accentuation a été réinitialisée à #00FFB2"
 accent_color_apply: "Couleur d’accent appliquée avec succès au fichier tcl, veuillez redémarrer l’Éditeur de Dictionnaire OpenUtau pour recharger la couleur d’accent."
+tsv: "Exporter le fichier TSV"
+csv: "Exporter le fichier CSV"
+localization_updated: "Les fichiers de localisation ont été mis à jour avec succès."
+localization_err: "Échec de la mise à jour des fichiers de localisation : "
+
 
 # Tooltips
 tp_search_entry: "Rechercher les symboles du dictionnaire"

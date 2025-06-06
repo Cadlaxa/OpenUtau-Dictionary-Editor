@@ -132,7 +132,7 @@ class Dictionary(TkinterDnD.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.7.0"
+        self.current_version = "v1.7.5"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -153,6 +153,7 @@ class Dictionary(TkinterDnD.Tk):
         self.comments = {}
         self.localization = {}
         self.symbols = {}
+        self.replacements = []
         self.symbols_list = []
         self.undo_stack = []
         self.redo_stack = []
@@ -187,6 +188,7 @@ class Dictionary(TkinterDnD.Tk):
         self.icon()
         # Start update check in a non-blocking way
         threading.Thread(target=self.bg_updates, daemon=True).start()
+        threading.Thread(target=self.update_localization_files, daemon=True).start()
         self.load_whats_new_state()
         self.check_and_update_version()
         # Check if "What's New" should be displayed
@@ -1012,6 +1014,76 @@ class Dictionary(TkinterDnD.Tk):
         finally:
             self.loading_window.destroy()
     
+    def export_csv_tsv(self):
+        if not self.dictionary:
+            messagebox.showinfo("Warning", self.localization.get('save_cmudict_m', 'No entries to save. Please add entries before saving.'))
+            return
+
+        # Prompt user for CSV or TSV save location
+        output_file_path = filedialog.asksaveasfilename(
+            title="Export CSV or TSV",
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("TSV files", "*.tsv"), ("All files", "*.*")]
+        )
+
+        if not output_file_path:
+            messagebox.showinfo("Cancelled", self.localization.get('cmudict_cancel', 'Save operation cancelled.'))
+            return
+
+        self.save_window()
+        self.saving_window.update_idletasks()
+        self.after(100, self.process_export_csv_tsv, output_file_path)
+
+    def process_export_csv_tsv(self, filepath):
+        self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
+
+        # Determine delimiter from extension
+        _, ext = os.path.splitext(filepath)
+        delimiter = '\t' if ext.lower() == '.tsv' else ','
+
+        try:
+            cache_dir = CACHE
+            os.makedirs(cache_dir, exist_ok=True)
+
+            # Create a unique cache file path
+            cache_filename = filepath.replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
+            cache_filepath = os.path.join(cache_dir, cache_filename)
+
+            # Check if the cache file exists and is up-to-date
+            if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
+                try:
+                    with gzip.open(cache_filepath, 'rb') as cache_file:
+                        self.dictionary, self.comments = pickle.load(cache_file)
+                        self.update_entries_window()
+                        self.loading_window.destroy()
+                        return
+                except Exception as e:
+                    messagebox.showerror("Error", f"{self.localization.get('cmudict_err_read', 'Error occurred while reading from cache: ')} {e}")
+
+            # Write CSV/TSV
+            with open(filepath, 'w', encoding='utf-8', newline='') as file:
+                writer = csv.writer(file, delimiter=delimiter)
+                writer.writerow(["Grapheme", "Phonemes"])  # Header
+
+                for grapheme, phonemes in self.dictionary.items():
+                    if self.lowercase_phonemes_var.get():
+                        phonemes = [phoneme.lower() for phoneme in phonemes]
+                    if self.remove_numbered_accents_var.get():
+                        phonemes = self.remove_numbered_accents(phonemes)
+                    writer.writerow([grapheme, ' '.join(phonemes)])
+
+            # Save cache
+            with gzip.open(cache_filepath, 'wb') as cache_file:
+                pickle.dump((self.dictionary, self.comments), cache_file)
+
+            self.saving_window.destroy()
+            messagebox.showinfo("Success", self.localization.get('cmudict_saved_dict', 'Dictionary saved to ') + filepath)
+
+        except Exception as e:
+            messagebox.showerror("Error", self.localization.get('cmudict_cache_err', 'Error occurred while saving: ') + str(e))
+
     def append_json_file(self, filepath=None):
         if filepath is None:
             filepath = filedialog.askopenfilename(title="Open JSON File", filetypes=[("JSON files", "*.json"), ("All files", "*.*")])
@@ -1180,41 +1252,81 @@ class Dictionary(TkinterDnD.Tk):
                         raise ValueError({self.localization.get('sym_inc_rv', 'Symbol entry format incorrect. Each entry must be a dictionary.')})
                     symbol = item.get('symbol')
                     type_ = item.get('type')
-                    rename = item.get('rename')
                     if symbol is None or type_ is None:
                         self.loading_window.destroy()
                         raise ValueError({self.localization.get('sym_ent_inc_rv', 'Symbol entry is incomplete.')})
                     if not isinstance(type_, str):
                         self.loading_window.destroy()
                         raise ValueError({self.localization.get('sym_str_rv', 'Type must be a string representing the category.')})
-                    if rename:  # If 'rename' exists, add it to symbols dictionary
-                        self.symbols[symbol] = [type_, rename]
-                        self.symbols_list.append({'symbol': symbol, 'type': [type_], 'rename': rename})
                     else:  # If 'rename' does not exist, load only the symbol and type
                         self.symbols[symbol] = [type_]
                         self.symbols_list.append({'symbol': symbol, 'type': [type_]})
             
-            # Load and process replacements
+            # Ensure replacements are loaded correctly from YAML
             replacements = data.get('replacements', [])
             for replacement in replacements:
-                from_symbol = replacement.get('from')
-                to_symbol = replacement.get('to')
-                if from_symbol is None or to_symbol is None:
-                    messagebox.showerror("Error", f"{self.localization.get('process_repl_sym_err', 'Each replacement entry must have a (from) and a (to) symbol (string)')}")
+                from_config = replacement.get('from')
+                to_config = replacement.get('to')
+                symbol_types = read_symbol_types_from_yaml(TEMPLATES)
+
+                # Ensure both 'from' and 'to' are valid lists
+                if from_config is None or to_config is None:
+                    messagebox.showerror("Error", self.localization.get('process_repl_sym_err', 'Each replacement entry must have a (from) and a (to) symbol (string or list)'))
                     return
 
-                if from_symbol in self.symbols:
-                    # Update the existing symbol with new rename
-                    existing_type = self.symbols[from_symbol][0]
-                    existing_rename = self.symbols[from_symbol][1] if len(self.symbols[from_symbol]) > 1 else ''
-                    new_rename = f"{existing_rename}, {to_symbol}" if existing_rename else to_symbol
-                    self.symbols[from_symbol] = [existing_type, new_rename]
-                else:
-                    # Add new symbol with the replacement as rename
-                    self.symbols[from_symbol] = ['', to_symbol]
+                # Ensure 'from' is a list (if it's a single string, convert it to a list)
+                from_list = from_config if isinstance(from_config, list) else [from_config]
+                to_list = to_config if isinstance(to_config, list) else [to_config]
+
+                # Treat from_list as a single string (even if it's a list)
+                from_symbol = ', '.join(from_list).strip()
+
+                if not from_list or not to_list:
+                    messagebox.showerror("Error", self.localization.get('process_repl_inv_err', '(from) and (to) in replacements cannot be empty.'))
+                    return
+
+                # Register 'from' symbols too if missing
+                if from_symbol not in self.symbols:
+                    from_str = str(from_symbol)
+                    type_ = symbol_types.get(from_str, 'unknown')
+                    self.symbols[from_symbol] = [type_]
+
+                # Ensure that 'from_symbol' has a rename list
+                if len(self.symbols[from_symbol]) < 2 or not isinstance(self.symbols[from_symbol][1], list):
+                    self.symbols[from_symbol].append([])  # Ensure rename is a list of lists if missing
+
+                rename_list = self.symbols[from_symbol][1]
+                for to_symbol in to_list:
+                    # Add the to_symbol to the rename list if not present
+                    if to_symbol not in rename_list:
+                        rename_list.append(to_symbol)
+                    
+                    # If the to_symbol isn't in self.symbols, add it with a default or guessed type
+                    if to_symbol not in self.symbols:
+                        symbol_type = symbol_types.get(to_symbol, 'unknown')
+                        self.symbols[to_symbol] = [symbol_type]
+
 
             # Update symbols_list after processing replacements
-            self.symbols_list = [{'symbol': k, 'type': v[0], 'rename': v[1] if len(v) > 1 else ''} for k, v in self.symbols.items()]
+            self.symbols_list = []
+            for symbol, data in self.symbols.items():
+                if isinstance(data, list) and len(data) > 0:
+                    type_ = data[0] if isinstance(data[0], str) else ''
+                    rename_data = data[1:] if len(data) > 1 else []
+
+                    # Optional: Format rename as list or string for GUI
+                    if not rename_data:
+                        rename = ''
+                    elif len(rename_data) == 1:
+                        rename = rename_data[0]
+                    else:
+                        rename = rename_data
+
+                    self.symbols_list.append({
+                        'symbol': symbol,
+                        'type': type_,
+                        'rename': rename
+                    })
 
             self.update_entries_window()
         except (YAMLError, ValueError) as e:
@@ -1505,6 +1617,7 @@ class Dictionary(TkinterDnD.Tk):
             self.apply_localization()
     
     def start_drag_sym(self, event):
+        self.save_state_before_change()
         self.drag_start_x_sym = event.x
         self.drag_start_y_sym = event.y
         self.dragged_symbols = self.symbol_treeview.identify_row(event.y)
@@ -1644,6 +1757,8 @@ class Dictionary(TkinterDnD.Tk):
         added_symbols = set()  # Track added symbols to avoid duplicates
 
         for symbol, values in self.symbols.items():
+            if ',' in symbol or ' ' in symbol:
+                continue
             escaped_symbol = symbol
             type_list = values[0] if isinstance(values[0], list) else [values[0]]
             type_str = ', '.join(f"{t}" for t in type_list)
@@ -1656,14 +1771,53 @@ class Dictionary(TkinterDnD.Tk):
         rename_entries = CommentedSeq()
         added_replacements = set()  # Track added replacements to avoid duplicates
         for symbol, data in self.symbols.items():
-            if len(data) > 1 and data[1]:  # Check if rename data exists
-                from_symbol = symbol
-                to_data = (data[1])
-                replacement_key = (from_symbol, to_data)  # Create a key to check for duplicates
-                if replacement_key not in added_replacements:  # Avoid adding duplicates
-                    entry = CommentedMap([('from', from_symbol), ('to', to_data)])
-                    rename_entries.append(entry)
-                    added_replacements.add(replacement_key)
+            if len(data) > 1:
+                from_symbol = symbol if not isinstance(symbol, list) else list(symbol) 
+                to_data_entries = data[1:]
+
+                for to_entry in to_data_entries:
+                    if not to_entry or (isinstance(to_entry, str) and to_entry.strip() == ''):
+                        continue  # Skip empty replacements
+
+                    # Handle comma-separated strings as lists
+                    if isinstance(to_entry, str) and ',' in to_entry:
+                        to_list = [item.strip() for item in to_entry.split(',') if item.strip()]
+                        if not to_list:
+                            continue
+                        to_key = tuple(to_list)
+                        to_yaml_value = to_list
+                    elif isinstance(to_entry, list):
+                        if not to_entry:
+                            continue
+                        to_key = tuple(to_entry)
+                        to_yaml_value = to_entry
+                    else:
+                        to_key = to_entry
+                        to_yaml_value = to_entry
+
+                    if isinstance(from_symbol, str) and ',' in from_symbol:
+                        from_list = [item.strip() for item in from_symbol.split(',') if item.strip()]
+                        if not from_list:
+                            continue
+                        from_key = tuple(from_list)
+                        from_yaml_value = from_list
+                    elif isinstance(from_symbol, list):
+                        if not from_symbol:
+                            continue
+                        from_key = tuple(from_symbol)
+                        from_yaml_value = from_symbol
+                    else:
+                        from_key = from_symbol
+                        from_yaml_value = from_symbol
+
+                    replacement_key = (from_key, to_key)
+                    if replacement_key not in added_replacements:
+                        added_replacements.add(replacement_key)
+                        entry = CommentedMap([
+                            ('from', from_yaml_value),
+                            ('to', to_yaml_value)
+                        ])
+                        rename_entries.append(entry)
 
         # Clear existing sections in the existing_data
         existing_data.pop('symbols', None)
@@ -1705,16 +1859,18 @@ class Dictionary(TkinterDnD.Tk):
         value = self.phoneme_edit.get().strip()
         rname = self.rename_edit.get().strip()
         self.save_state_before_change()
+
         if symbol and value:
             if not self.symbol_editor_window or not self.symbol_editor_window.winfo_exists():
                 self.open_symbol_editor()
-            self.add_symbols_treeview(symbol, value.split(), rname)  # Pass rename to the method
+            rename_list = rname.split() if rname else []
+            self.add_symbols_treeview(symbol, value.split(), rename_list)
             self.phoneme_edit.delete(0, tk.END)
             self.word_edit.delete(0, tk.END)
             self.rename_edit.delete(0, tk.END)
         else:
             messagebox.showinfo("Error", f"{self.localization.get('add_sym_ent', 'Please provide both phonemes and its respective value for the entry.')}")
-    
+
     def delete_symbol_entry(self):
         selected_items = self.symbol_treeview.selection()
         if not selected_items:
@@ -1759,55 +1915,53 @@ class Dictionary(TkinterDnD.Tk):
         self.rename_edit.delete(0, tk.END)
 
     def add_symbols_treeview(self, word=None, value=None, rename=None):
+        self.save_state_before_change()
+
         if word and value is not None:
-            # Convert phonemes list to a string for display
-            phoneme_display = ', '.join(value)
+            # Convert phoneme list to display string
+            phoneme_display = value
             new_item_ids = []
             selected_item = self.symbol_treeview.selection()
-            item_to_select = None  # Keep track of the item to select
+            item_to_select = None
 
-            if word in self.symbols:
-                # Update the existing item's phonemes and rename
+            # Normalize rename input
+            if isinstance(rename, str):
+                # Remove commas, split by spaces, and strip extra spaces
+                rename = [item.strip() for item in rename.replace(',,', ',').split() if item.strip()]
+            elif not isinstance(rename, list):
+                rename = []
+
+            # Determine if this is a new or existing symbol
+            symbol_exists = word in self.symbols
+
+            if symbol_exists:
+                # Update the existing symbol data
                 self.symbols[word] = [value, rename]
                 for item in self.symbol_treeview.get_children():
                     if self.symbol_treeview.item(item, 'values')[0] == word:
                         self.symbol_treeview.item(item, values=(word, phoneme_display, rename))
-                        item_to_select = item  # Set the existing item to be selected
+                        item_to_select = item
                         break
             else:
-                if selected_item:
-                    insert_index = self.symbol_treeview.index(selected_item[0]) + 1
-                else:
-                    insert_index = 'end'
-
-                # Insert the new entry
+                # Insert new symbol
+                insert_index = self.symbol_treeview.index(selected_item[0]) + 1 if selected_item else 'end'
                 item_id = self.symbol_treeview.insert('', insert_index, values=(word, phoneme_display, rename), tags=('normal',))
                 new_item_ids.append(item_id)
                 self.symbols[word] = [value, rename]
-                item_to_select = item_id  # Set the newly added item to be selected
+                item_to_select = item_id
 
-            # Update symbols_list to reflect changes
+            # Rebuild symbols_list
             self.symbols_list = []
             for k, v in self.symbols.items():
-                # Ensure each entry has at least two elements
-                if len(v) >= 2:
-                    self.symbols_list.append({'symbol': k, 'type': v[0], 'rename': v[1]})
-                else:
-                    # Handle cases where the data might be incomplete
-                    self.symbols_list.append({'symbol': k, 'type': v[0], 'rename': ''})
+                symbol_type = v[0]
+                symbol_rename = v[1] if len(v) > 1 else []
+                self.symbols_list.append({'symbol': k, 'type': symbol_type, 'rename': symbol_rename})
 
-            # Re-index items to maintain order consistency
-            for item in self.symbol_treeview.get_children():
-                values = self.symbol_treeview.item(item, 'values')
-                if len(values) == 3:
-                    self.symbol_treeview.item(item, values=(values[0], values[1], values[2]))
-
-            # Select the newly added or updated item
+            # Update the treeview selection and refresh
             if item_to_select:
                 self.symbol_treeview.selection_set(item_to_select)
-                self.symbol_treeview.see(item_to_select)  # Ensure the item is visible
+                self.symbol_treeview.see(item_to_select)
 
-            # Refresh the Treeview to reflect the changes visually
             self.refresh_treeview_symbols()
 
     def edit_cell_symbols(self, event):
@@ -1829,7 +1983,7 @@ class Dictionary(TkinterDnD.Tk):
         initial_grapheme = item_values[0]
         initial_phoneme = item_values[1]
         initial_rename = item_values[2] if len(item_values) > 2 else ''
-
+       
         # Destroy currently open widgets if they exist
         if self.current_entry_widgets:
             for widget in self.current_entry_widgets.values():
@@ -1861,6 +2015,7 @@ class Dictionary(TkinterDnD.Tk):
             new_grapheme = self.entry_popup_sym.get()
             new_phoneme = self.entry_popup_val.get()
             new_rename = self.entry_popup_rn.get()
+            rename_list = [rename.replace(" ", ",") if " " in rename else rename for rename in new_rename.split()]
 
             # Update Treeview with edited values
             self.symbol_treeview.set(selected_item, grapheme_column, new_grapheme)
@@ -1880,17 +2035,15 @@ class Dictionary(TkinterDnD.Tk):
 
             # Check if a rename value exists, and update accordingly
             if new_rename:
-                self.symbols[new_grapheme].append(new_rename)  # Add rename if it exists
+                self.symbols[new_grapheme].append(rename_list)  # Add rename if it exists
 
             # Update symbols_list
             for entry in self.symbols_list:
                 if entry['symbol'] == initial_grapheme:
                     entry['symbol'] = new_grapheme
                     entry['type'] = phoneme_list
-                    entry['rename'] = new_rename.split()  # Always update the rename field
+                    entry['rename'] = rename_list  # Always update the rename field
                     break
-
-            # Re-index and select the newly edited item
             self.refresh_treeview_symbols()
 
         self.entry_popup_sym.bind("<Return>", on_validate)
@@ -1930,11 +2083,9 @@ class Dictionary(TkinterDnD.Tk):
                     self.symbol_treeview.delete(item)
     
     def refresh_treeview_symbols(self):
-        # Setup tag configurations for normal and bold fonts
         self.symbol_treeview.tag_configure('normal', font=self.tree_font)
         self.symbol_treeview.tag_configure('selected', font=self.tree_font_b)
 
-        # Capture the symbol of the currently selected item before clearing entries
         selected = self.symbol_treeview.selection()
         selected_symbol = None
         if selected:
@@ -1942,28 +2093,20 @@ class Dictionary(TkinterDnD.Tk):
             selected_item_values = self.symbol_treeview.item(selected_item_id, "values")
             selected_symbol = selected_item_values[0] if selected_item_values else None
 
-        # Clear all current entries from the treeview
         self.symbol_treeview.delete(*self.symbol_treeview.get_children())
 
-        # Insert new entries into the treeview
         new_selection_id = None
         for entry in self.symbols_list:
             symbol = entry['symbol']
             type_list = entry['type']
-            rename = entry.get('rename', '')  # Get 'rename' if it exists, else use an empty string
-            
-            # Prepare the values tuple based on whether 'rename' is present
-            values = (symbol, type_list)
-            if rename:
-                values = (symbol, type_list, rename)
-            
+            rename = entry.get('rename', [])
+            rename_display = ', '.join(rename) if isinstance(rename, list) else str(rename)
+            values = (symbol, type_list, rename_display)
             item_id = self.symbol_treeview.insert('', 'end', values=values, tags=('normal',))
 
-            # Check if this was the previously selected symbol
             if symbol == selected_symbol:
                 new_selection_id = item_id
 
-        # If there was a previously selected symbol, reselect its new corresponding item ID
         if new_selection_id:
             self.symbol_treeview.selection_set(new_selection_id)
             self.symbol_treeview.item(new_selection_id, tags=('selected',))
@@ -1998,7 +2141,13 @@ class Dictionary(TkinterDnD.Tk):
                         rename = ''  # Default value if rename is missing
                     else:
                         grapheme = phonemes = rename = ''  # Default values if data is insufficient
-                    
+
+                    if isinstance(rename, str):  # If rename is a string, split it into a list
+                        rename = [x.strip() for x in rename.split(',')]  # Split by commas, remove any extra whitespace
+
+                    # Now handle the case when `rename` is a list of strings
+                    rename = [item.replace(',', '').strip() for item in rename if item.strip()]
+
                     graphemes.append(grapheme)
                     phoneme_lists.append(phonemes)
                     renames.append(rename)
@@ -2015,7 +2164,7 @@ class Dictionary(TkinterDnD.Tk):
 
             # Handle rename - show the first rename value or concatenate if needed
             if len(renames) > 1:
-                rename_text = ', '.join(renames)
+                rename_text = (renames)
             else:
                 rename_text = renames[0] if renames else ''
 
@@ -2648,7 +2797,8 @@ class Dictionary(TkinterDnD.Tk):
                         updated_entries[grapheme] = (new_grapheme, ', '.join(phonemes))  # Update Treeview
                         items_modified += 1
                 elif target == "Phonemes":
-                    phonemes_string = ', '.join(phonemes)
+                    cleaned_phonemes = [p.replace("'", "") for p in phonemes]
+                    phonemes_string = ', '.join(cleaned_phonemes)
                     modified_phoneme_string = compiled_pattern.sub(replacement, phonemes_string)
                     if modified_phoneme_string != phonemes_string:
                         new_phoneme_list = [phoneme.strip() for phoneme in modified_phoneme_string.split(',')]
@@ -3349,6 +3499,8 @@ class Dictionary(TkinterDnD.Tk):
         added_symbols = set()  # Track added symbols to avoid duplicates
 
         for symbol, values in self.symbols.items():
+            if ',' in symbol or ' ' in symbol:
+                continue
             escaped_symbol = symbol
             type_list = values[0] if isinstance(values[0], list) else [values[0]]
             type_str = ', '.join(f"{t}" for t in type_list)
@@ -3360,13 +3512,53 @@ class Dictionary(TkinterDnD.Tk):
         rename_entries = CommentedSeq()
         added_replacements = set()  # Track added replacements to avoid duplicates
         for symbol, data in self.symbols.items():
-            if len(data) > 1 and data[1]:  # Check if rename data exists
-                from_symbol = (symbol)
-                to_data = (data[1])
-                replacement_key = (from_symbol, to_data)  # Create a key to check for duplicates
-                if replacement_key not in added_replacements:  # Avoid adding duplicates
-                    entry = CommentedMap([('from', from_symbol), ('to', to_data)])
-                    rename_entries.append(entry)
+            if len(data) > 1:
+                from_symbol = symbol if not isinstance(symbol, list) else list(symbol) 
+                to_data_entries = data[1:]
+
+                for to_entry in to_data_entries:
+                    if not to_entry or (isinstance(to_entry, str) and to_entry.strip() == ''):
+                        continue  # Skip empty replacements
+
+                    # Handle comma-separated strings as lists
+                    if isinstance(to_entry, str) and ',' in to_entry:
+                        to_list = [item.strip() for item in to_entry.split(',') if item.strip()]
+                        if not to_list:
+                            continue
+                        to_key = tuple(to_list)
+                        to_yaml_value = to_list
+                    elif isinstance(to_entry, list):
+                        if not to_entry:
+                            continue
+                        to_key = tuple(to_entry)
+                        to_yaml_value = to_entry
+                    else:
+                        to_key = to_entry
+                        to_yaml_value = to_entry
+
+                    if isinstance(from_symbol, str) and ',' in from_symbol:
+                        from_list = [item.strip() for item in from_symbol.split(',') if item.strip()]
+                        if not from_list:
+                            continue
+                        from_key = tuple(from_list)
+                        from_yaml_value = from_list
+                    elif isinstance(from_symbol, list):
+                        if not from_symbol:
+                            continue
+                        from_key = tuple(from_symbol)
+                        from_yaml_value = from_symbol
+                    else:
+                        from_key = from_symbol
+                        from_yaml_value = from_symbol
+
+                    replacement_key = (from_key, to_key)
+                    if replacement_key not in added_replacements:
+                        added_replacements.add(replacement_key)
+                        entry = CommentedMap([
+                            ('from', from_yaml_value),
+                            ('to', to_yaml_value)
+                        ])
+                        rename_entries.append(entry)
 
         # Prepare new entries
         new_entries = CommentedSeq()
@@ -3720,6 +3912,10 @@ class Dictionary(TkinterDnD.Tk):
             if ext == '.yaml':
                 self.load_yaml_file(filepath=file)
             elif ext == '.txt':
+                self.load_cmudict(filepath=file)
+            elif ext == '.csv':
+                self.load_cmudict(filepath=file)
+            elif ext == '.tsv':
                 self.load_cmudict(filepath=file)
             elif ext == '.json':
                 self.load_json_file(filepath=file)
@@ -4217,7 +4413,7 @@ class Dictionary(TkinterDnD.Tk):
 
         # Frame for Synthv controls
         synthv_frame = ttk.LabelFrame(self.other_frame, text="Synthv")
-        synthv_frame.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+        synthv_frame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
         synthv_frame.columnconfigure(0, weight=1)
 
         # Synthv Import/Export
@@ -4229,9 +4425,22 @@ class Dictionary(TkinterDnD.Tk):
         synthv_import.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         self.localizable_widgets['import'] = synthv_import
 
+        # Frame for CSV and TSV
+        ui_frame = ttk.LabelFrame(self.other_frame, text="CVS and TSV")
+        ui_frame.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
+        ui_frame.columnconfigure(0, weight=1)
+
+        tsv = ttk.Button(ui_frame, style='Accent.TButton', text="Export TSV", command=self.export_csv_tsv)
+        tsv.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['tsv'] = tsv
+
+        csv = ttk.Button(ui_frame, text="Export CSV", style='TButton', command=self.export_csv_tsv)
+        csv .grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        self.localizable_widgets['csv'] = csv 
+
         # Frame for UI controls (placeholder name)
         ui_frame = ttk.LabelFrame(self.other_frame, text="Adding more in the future")
-        ui_frame.grid(row=0, column=1, padx=5, pady=10, sticky="nsew")
+        ui_frame.grid(row=1, column=0, padx=5, pady=10, sticky="nsew")
         ui_frame.columnconfigure(0, weight=1)
 
         ui_export_button = ttk.Button(ui_frame, state="disabled", style='Accent.TButton', text="Export Dictionary", command=self.export_json)
@@ -4598,6 +4807,49 @@ class Dictionary(TkinterDnD.Tk):
         with open(self.config_file, 'w') as configfile:
             config.write(configfile)
         print(f"'What's New' state {state} and version {self.current_version} saved to config file.")
+    
+    def update_localization_files(self):
+        if not self.is_connected():
+            return
+
+        try:
+            api_url = "https://api.github.com/repos/Cadlaxa/OpenUtau-Dictionary-Editor/contents/OU%20Dictionary%20Editor/Templates/Localizations"
+            response = requests.get(api_url)
+            response.raise_for_status()
+            files = response.json()
+
+            updated = False
+            local_dir = os.path.join("Templates", "Localizations")
+            os.makedirs(local_dir, exist_ok=True)
+
+            for file_info in files:
+                file_name = file_info['name']
+                download_url = file_info['download_url']
+                remote_sha = file_info['sha']
+                local_file_path = os.path.join(local_dir, file_name)
+                sha_file_path = local_file_path + ".sha"
+
+                local_sha = None
+                if os.path.exists(local_file_path) and os.path.exists(sha_file_path):
+                    with open(sha_file_path, 'r', encoding='utf-8') as f:
+                        local_sha = f.read().strip()
+
+                if local_sha != remote_sha:
+                    file_response = requests.get(download_url)
+                    file_response.raise_for_status()
+                    with open(local_file_path, 'wb') as local_file:
+                        local_file.write(file_response.content)
+                    with open(sha_file_path, 'w', encoding='utf-8') as sha_file:
+                        sha_file.write(remote_sha)
+                    updated = True
+
+            if updated:
+                messagebox.showinfo("Localization Updated", self.localization.get(
+                    'localization_updated', 'Localization files have been updated successfully.'))
+
+        except requests.RequestException as e:
+            messagebox.showerror("Localization Error", self.localization.get(
+                'localization_err', 'Failed to update localization files: ') + str(e))
 
     def check_and_update_version(self):
         # Check if the app version is updated and update the config

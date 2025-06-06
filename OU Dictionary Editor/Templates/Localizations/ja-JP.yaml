@@ -214,6 +214,11 @@ tp_hex_apply: "選択した色相を適用してアクセントカラーを変�
 tp_hex_reset: "色相を元の色にリセットする"
 reset_accent_color: "アクセントカラーが #00FFB2 にリセットされました"
 accent_color_apply: "アクセントカラーがtclファイルに正常に適用されました。アクセントカラーを再読み込みするには、OpenUtau辞書エディタを再起動してください。"
+tsv: "TSVファイルをエクスポート"
+csv: "CSVファイルをエクスポート"
+localization_updated: "ローカライズファイルが正常に更新されました。"
+localization_err: "ローカライズファイルの更新に失敗しました: "
+
 
 # Tooltips
 tp_search_entry: "辞書のシンボルを検索"
