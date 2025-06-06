@@ -132,7 +132,7 @@ class Dictionary(TkinterDnD.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.7.0"
+        self.current_version = "v1.7.5"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
@@ -188,6 +188,7 @@ class Dictionary(TkinterDnD.Tk):
         self.icon()
         # Start update check in a non-blocking way
         threading.Thread(target=self.bg_updates, daemon=True).start()
+        threading.Thread(target=self.update_localization_files, daemon=True).start()
         self.load_whats_new_state()
         self.check_and_update_version()
         # Check if "What's New" should be displayed
@@ -4806,6 +4807,49 @@ class Dictionary(TkinterDnD.Tk):
         with open(self.config_file, 'w') as configfile:
             config.write(configfile)
         print(f"'What's New' state {state} and version {self.current_version} saved to config file.")
+    
+    def update_localization_files(self):
+        if not self.is_connected():
+            return
+
+        try:
+            api_url = "https://api.github.com/repos/Cadlaxa/OpenUtau-Dictionary-Editor/contents/OU%20Dictionary%20Editor/Templates/Localizations"
+            response = requests.get(api_url)
+            response.raise_for_status()
+            files = response.json()
+
+            updated = False
+            local_dir = os.path.join("Templates", "Localizations")
+            os.makedirs(local_dir, exist_ok=True)
+
+            for file_info in files:
+                file_name = file_info['name']
+                download_url = file_info['download_url']
+                remote_sha = file_info['sha']
+                local_file_path = os.path.join(local_dir, file_name)
+                sha_file_path = local_file_path + ".sha"
+
+                local_sha = None
+                if os.path.exists(local_file_path) and os.path.exists(sha_file_path):
+                    with open(sha_file_path, 'r', encoding='utf-8') as f:
+                        local_sha = f.read().strip()
+
+                if local_sha != remote_sha:
+                    file_response = requests.get(download_url)
+                    file_response.raise_for_status()
+                    with open(local_file_path, 'wb') as local_file:
+                        local_file.write(file_response.content)
+                    with open(sha_file_path, 'w', encoding='utf-8') as sha_file:
+                        sha_file.write(remote_sha)
+                    updated = True
+
+            if updated:
+                messagebox.showinfo("Localization Updated", self.localization.get(
+                    'localization_updated', 'Localization files have been updated successfully.'))
+
+        except requests.RequestException as e:
+            messagebox.showerror("Localization Error", self.localization.get(
+                'localization_err', 'Failed to update localization files: ') + str(e))
 
     def check_and_update_version(self):
         # Check if the app version is updated and update the config
