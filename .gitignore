@@ -161,14 +161,21 @@ cython_debug/
 
 
 # Custom gitignore items for this repo
-*/settings.ini
-*/OpenUtau_Dictionary_Editor.exe
-*/Cache
-*/Autosaves and Backups
-*/Templates/phoneme systems.csv
-*/Assets/modules/sv_ttk/theme/luminance.png
-*/Assets/modules/sv_ttk/theme/spritesheet_dark.png
-*/Assets/modules/sv_ttk/theme/spritesheet_light.png
-*/Assets/modules/sv_ttk/theme/spritesheet_mint_dark.png
-*/Assets/modules/sv_ttk/theme/spritesheet_mint_light.png
-*/.sha
+
+# Ignore settings file
+**/settings.ini
+
+# Ignore executable
+**/OpenUtau_Dictionary_Editor.exe
+
+# Ignore cache folder
+**/Cache/
+
+# Ignore backup/autosave folder
+**/Autosaves and Backups/
+
+# Ignore specific templates
+**/Templates/phoneme systems.csv
+
+# Ignore .sha files
+**/*.sha
