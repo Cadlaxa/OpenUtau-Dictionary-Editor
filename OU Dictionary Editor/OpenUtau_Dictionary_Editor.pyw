@@ -132,7 +132,7 @@ class Dictionary(TkinterDnD.Tk):
         self.local_var = tk.StringVar(value=self.current_local)
         self.selected_g2p = config.get('Settings', 'g2p', fallback="Arpabet-Plus G2p")
         self.g2p_var = tk.StringVar(value=self.selected_g2p)
-        self.current_version = "v1.7.5"
+        self.current_version = "v1.7.9"
 
         # Set window title
         self.base_title = "OpenUTAU Dictionary Editor"
