@@ -215,6 +215,10 @@ tsv: "I-export ang TSV file"
 csv: "I-export ang CSV file"
 localization_updated: "Malampusong na-update ang mga localization file."
 localization_err: "Napakyas sa pag-update sa mga localization file: "
+append_csv: "Idugang ang CSV nga File"
+tp_append_csv: "Nagdagdag og mga CSV (Comma Separated Value) nga file"
+append_tsv: "Idugang ang TSV nga File"
+tp_append_tsv: "Nagdagdag og mga TSV (Tab Separated Value) nga file"
 
 
 # Tooltips

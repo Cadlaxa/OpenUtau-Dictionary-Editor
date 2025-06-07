@@ -772,64 +772,66 @@ class Dictionary(TkinterDnD.Tk):
             except Exception as e:
                 messagebox.showerror("Error", f"{self.localization.get('cmudict_err_read', 'Error occurred while reading from cache: ')} {e}")
 
-        # Load from original file if cache is not available or outdated
+        # Load from source file
+        ext = os.path.splitext(filepath)[-1].lower()
+        delimiter = ',' if ext == '.csv' else '\t' if ext == '.tsv' else None
+
         try:
-            with open(filepath, 'r', encoding='utf-8') as file:
-                lines = file.readlines()
-        except UnicodeDecodeError:
-            try:
-                with open(filepath, 'r', encoding='ANSI') as file:
-                    lines = file.readlines()
-            except Exception as e:
-                self.loading_window.destroy()
-                messagebox.showerror("Error", f"{self.localization.get('cmudict_err_enc', 'Error occurred while reading file with alternate encoding: ')} {e}")
-                return
+            with open(filepath, 'r', encoding='utf-8-sig', newline='') as file:
+                if delimiter:
+                    reader = csv.reader(file, delimiter=delimiter)
+                else:
+                    reader = (re.split(r'\s{2,}|\t|,|;', line.strip()) for line in file)
+
+                dictionary = {}
+                comments = []
+                grapheme_count = {}
+                error_occurred = False
+
+                for line_number, parts in enumerate(reader, start=1):
+                    try:
+                        if isinstance(parts, str):
+                            parts = re.split(r'\s{2,}|\t|,|;', parts.strip())
+                        if not parts or len(parts) < 2:
+                            continue
+                        if parts[0].strip().lower() == 'grapheme' and parts[1].strip().lower() == 'phonemes':
+                            continue  # Skip header
+                        if parts[0].strip().startswith(';;;'):
+                            comments.append(parts[0].strip()[3:])
+                            continue
+
+                        grapheme = parts[0].strip()
+                        phonemes = list(map(str.strip, parts[1].split()))
+                        base_grapheme = grapheme
+
+                        if base_grapheme in grapheme_count:
+                            grapheme_count[base_grapheme] += 1
+                            grapheme = f"{base_grapheme}({grapheme_count[base_grapheme]})"
+                        else:
+                            grapheme_count[base_grapheme] = 0
+
+                        dictionary[grapheme] = phonemes
+
+                    except Exception as e:
+                        self.loading_window.destroy()
+                        messagebox.showerror("Error", f"{self.localization.get('load_cmudict_procc', 'Error occurred while processing line')} {line_number}: '{parts}'\n{str(e)}")
+                        error_occurred = True
+                        break
+
+                if not error_occurred:
+                    self.dictionary = dictionary
+                    self.comments = comments
+                    self.update_entries_window()
+                    try:
+                        with gzip.open(cache_filepath, 'wb') as cache_file:
+                            pickle.dump((self.dictionary, self.comments), cache_file)
+                    except Exception as e:
+                        messagebox.showerror("Error", f"{self.localization.get('cmudict_cache_err', 'Error occurred while saving to cache: ')} {e}")
+
         except Exception as e:
             self.loading_window.destroy()
             messagebox.showerror("Error", f"{self.localization.get('cmudict_err_1', 'Error occurred while reading file: ')} {e}")
             return
-
-        dictionary = {}
-        comments = []  # Store comments here if needed
-        grapheme_count = {}
-        error_occurred = False
-        for line_number, line in enumerate(lines, start=1):
-            try:
-                if line.strip().startswith(';;;'):
-                    comments.append(line.strip()[3:])
-                    continue
-
-                parts = re.split(r'\s{2,}|\t|,;/', line.strip())  # Match two or more spaces, a tab, a comma, semi-colon or a slash
-                if len(parts) == 2:
-                    grapheme = str(parts[0])
-                    phonemes = list(map(str, parts[1].split()))
-                    base_grapheme = grapheme
-                    if base_grapheme in grapheme_count:
-                        grapheme_count[base_grapheme] += 1
-                        grapheme = f"{base_grapheme}({grapheme_count[base_grapheme]})"
-                    else:
-                        grapheme_count[base_grapheme] = 0  # First appearance keeps the name as-is
-                    dictionary[grapheme] = phonemes
-                else:
-                    self.loading_window.destroy()
-                    raise ValueError(f"{self.localization.get('cmudict_invL', 'Invalid format in line:')} {line.strip()}")
-            except Exception as e:
-                self.loading_window.destroy()
-                messagebox.showerror("Error", f"{self.localization.get('load_cmudict_procc', 'Error occurred while processing line')} {line_number}: '{line.strip()}'\n{str(e)}")
-                error_occurred = True
-                break
-
-        if not error_occurred:
-            self.dictionary = dictionary  # Update the main dictionary only if no errors occurred
-            self.comments = comments
-            self.update_entries_window()
-
-            # Save to cache (regardless of whether it was updated from the file or not)
-            try:
-                with gzip.open(cache_filepath, 'wb') as cache_file:
-                    pickle.dump((self.dictionary, self.comments), cache_file)
-            except Exception as e:
-                messagebox.showerror("Error", f"{self.localization.get('cmudict_cache_err', 'Error occurred while saving to cache: ')} {e}")
 
         self.loading_window.destroy()
     
@@ -937,6 +939,83 @@ class Dictionary(TkinterDnD.Tk):
             except Exception as e:
                 messagebox.showerror("Error", f"{self.localization.get('cmudict_cache_err', 'Error occurred while saving to cache: ')} {e}")
         self.loading_window.destroy()
+    
+    def append_csv_tsv(self, filepath=None):
+        if filepath is None:
+            filepath = filedialog.askopenfilename(filetypes=[
+                ("Supported Text Files", "*.tsv;*.csv"),
+                ("TSV files", "*.tsv"),
+                ("CSV files", "*.csv"),
+                ("All files", "*.*")
+            ])
+        if not filepath:
+            messagebox.showinfo("No File", f"{self.localization.get('cmudict_nofile', 'No file was selected.')}")
+            return
+
+        self.load_window()
+        self.loading_window.update_idletasks()
+        self.after(100, lambda: self._process_append_csv_tsv(filepath))
+
+    def _process_append_csv_tsv(self, filepath):
+        self.file_opened = True
+        self.update_cache_button_text()
+        self.save_state_before_change()
+        self.update_template_combobox(self.template_combobox)
+        if filepath:
+            self.current_filename = filepath
+            self.file_modified = False  # Reset modification status
+            self.update_title()
+            self.current_order = list(self.dictionary.keys())
+
+        ext = os.path.splitext(filepath)[-1].lower()
+        is_csv = ext == ".csv"
+        is_tsv = ext == ".tsv"
+        delimiter = ',' if is_csv else '\t' if is_tsv else None
+
+        try:
+            with open(filepath, 'r', encoding='utf-8-sig', newline='') as f:
+                if delimiter:
+                    reader = csv.reader(f, delimiter=delimiter)
+                else:
+                    reader = (re.split(r'\s{2,}|\t|,|;', line.strip()) for line in f)
+
+                for line_number, parts in enumerate(reader, start=1):
+                    if isinstance(parts, str):
+                        parts = [p.strip() for p in parts if p.strip()]
+                    if not parts or len(parts) < 2:
+                        continue
+
+                    # Check for header
+                    if ("grapheme" in parts[0].lower() and "phoneme" in parts[1].lower()):
+                        continue  # Skip header line
+
+                    grapheme = str(parts[0]).strip()
+                    phoneme_list = [p.strip() for p in parts[1].split()]
+
+                    if not grapheme or not phoneme_list:
+                        continue
+
+                    if grapheme in self.dictionary:
+                        if self.dictionary[grapheme] == phoneme_list:
+                            continue  # Exact match exists
+                        suffix = 1
+                        new_grapheme = f"{grapheme}({suffix})"
+                        while new_grapheme in self.dictionary:
+                            if self.dictionary[new_grapheme] == phoneme_list:
+                                break  # Match already added
+                            suffix += 1
+                            new_grapheme = f"{grapheme}({suffix})"
+                        else:
+                            grapheme = new_grapheme  # Use new unique name
+
+                    self.dictionary[grapheme] = phoneme_list
+
+            self.update_entries_window()
+
+        except Exception as e:
+            messagebox.showerror("Error", f"{self.localization.get('load_cmudict_procc', 'Error processing file')}: {str(e)}")
+        finally:
+            self.loading_window.destroy()
 
     def remove_numbered_accents(self, phonemes):
         return [phoneme[:-1] if phoneme[-1].isdigit() else phoneme for phoneme in phonemes]
@@ -1354,21 +1433,21 @@ class Dictionary(TkinterDnD.Tk):
         self.after(100, self.append_process_yaml_file, filepath)  # Delay to ensure the loading window appears
     def append_process_yaml_file(self, filepath):
         self.file_opened = True
+        self.data_list = []
         self.update_cache_button_text()
         self.save_state_before_change()
         self.update_template_combobox(self.template_combobox)
         try:
-            # Handle file opening to update title
             self.current_filename = filepath
             self.file_modified = False
             self.update_title()
             self.current_order = list(self.dictionary.keys())
             cache_dir = CACHE
             os.makedirs(cache_dir, exist_ok=True)
-            # Create a unique cache file path
+
             cache_filename = filepath.replace('/', '-').replace(':', '').replace('\\', '-') + '.y\'all'
             cache_filepath = os.path.join(cache_dir, cache_filename)
-            # Check if the cache file exists and is up-to-date
+
             if os.path.exists(cache_filepath) and os.path.getmtime(cache_filepath) >= os.path.getmtime(filepath):
                 try:
                     with gzip.open(cache_filepath, 'rb') as cache_file:
@@ -1384,108 +1463,120 @@ class Dictionary(TkinterDnD.Tk):
                     data = yaml.load(file)
                     if data is None:
                         self.loading_window.destroy()
-                        raise ValueError(f"{self.localization.get('yaml_inc_format_rv', 'The YAML file is empty or has an incorrect format.')}")
-                # Save to cache
+                        raise ValueError(self.localization.get('yaml_inc_format_rv', 'The YAML file is empty or has an incorrect format.'))
                 try:
                     with gzip.open(cache_filepath, 'wb') as cache_file:
                         pickle.dump(data, cache_file)
                 except Exception as e:
                     self.loading_window.destroy()
                     raise ValueError(f"{self.localization.get('yaml_err_save_rv', 'Error occurred while saving to cache:')} {e}")
-            # Initialize or reset attributes
-            if not hasattr(self, 'data_list'):
-                self.data_list = []
-            if not hasattr(self, 'symbols_list'):
-                self.symbols_list = []
-            if not hasattr(self, 'symbols'):
-                self.symbols = {}
-            if not hasattr(self, 'dictionary'):
-                self.dictionary = {}
 
-            # Load entries
             entries = data.get('entries', [])
             if not isinstance(entries, list):
                 if isinstance(data, list):
-                    entries = [item for item in data if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item]
-                elif isinstance(data, dict) and 'grapheme' in data and 'phonemes' in data:
-                    entries = [data]
-            new_dictionary = {}
-            new_data_list = []
+                    for item in data:
+                        if isinstance(item, dict) and 'grapheme' in item and 'phonemes' in item:
+                            entries.append(item)
+                elif isinstance(data, dict):
+                    if 'grapheme' in data and 'phonemes' in data:
+                        entries.append(data)
+
             for item in entries:
                 if not isinstance(item, dict):
                     self.loading_window.destroy()
-                    raise ValueError(f"{self.localization.get('yaml_dict_fromat_rv', 'Entry format incorrect. Each entry must be a dictionary.')}")
+                    raise ValueError(self.localization.get('yaml_dict_fromat_rv', 'Entry format incorrect. Each entry must be a dictionary.'))
+
                 grapheme = item.get('grapheme')
                 phonemes = item.get('phonemes', [])
+
                 if grapheme is None or not isinstance(phonemes, list):
                     self.loading_window.destroy()
-                    raise ValueError(f"{self.localization.get('yaml_type_rv', 'Each entry must have a (grapheme) key and a list of (phonemes).')}")
-                if grapheme not in self.dictionary:
-                    new_dictionary[grapheme] = phonemes
-                    new_data_list.append({'grapheme': grapheme, 'phonemes': phonemes})
+                    raise ValueError(self.localization.get('yaml_type_rv', 'Each entry must have a (grapheme) key and a list of (phonemes).'))
 
-            # Merge with existing dictionary
-            self.dictionary.update(new_dictionary)
-            self.data_list = list({v['grapheme']: v for v in self.data_list + new_data_list}.values())  # Remove duplicates
+                if grapheme in self.dictionary and self.dictionary[grapheme] == phonemes:
+                    continue
 
-            # Load symbols if available
+                new_grapheme = grapheme
+                suffix = 1
+                while new_grapheme in self.dictionary and self.dictionary[new_grapheme] != phonemes:
+                    new_grapheme = f"{grapheme}({suffix})"
+                    suffix += 1
+
+                self.dictionary[new_grapheme] = phonemes
+                self.data_list.append({'grapheme': new_grapheme, 'phonemes': phonemes})
+
             symbols = data.get('symbols', [])
-            new_symbols = {}
-            new_symbols_list = []
             if isinstance(symbols, list):
+                self.symbols = {}
+                self.symbols_list = []
+
                 for item in symbols:
                     if not isinstance(item, dict):
                         self.loading_window.destroy()
-                        raise ValueError(f"{self.localization.get('sym_inc_rv', 'Symbol entry format incorrect. Each entry must be a dictionary.')}")
+                        raise ValueError(self.localization.get('sym_inc_rv', 'Symbol entry format incorrect. Each entry must be a dictionary.'))
                     symbol = item.get('symbol')
                     type_ = item.get('type')
-                    rename = item.get('rename')
                     if symbol is None or type_ is None:
                         self.loading_window.destroy()
-                        raise ValueError(f"{self.localization.get('sym_ent_inc_rv', 'Symbol entry is incomplete.')}")
+                        raise ValueError(self.localization.get('sym_ent_inc_rv', 'Symbol entry is incomplete.'))
                     if not isinstance(type_, str):
                         self.loading_window.destroy()
-                        raise ValueError(f"{self.localization.get('sym_str_rv', 'Type must be a string representing the category.')}")
-                    if symbol in self.symbols:
-                        # Update existing symbol with new rename
-                        existing_type = self.symbols[symbol][0]
-                        existing_rename = self.symbols[symbol][1] if len(self.symbols[symbol]) > 1 else ''
-                        new_rename = f"{existing_rename}, {rename}" if rename else existing_rename
-                        self.symbols[symbol] = [existing_type, new_rename]
+                        raise ValueError(self.localization.get('sym_str_rv', 'Type must be a string representing the category.'))
                     else:
-                        # Add new symbol
-                        if rename:
-                            self.symbols[symbol] = [type_, rename]
-                            new_symbols_list.append({'symbol': symbol, 'type': [type_], 'rename': rename})
-                        else:
-                            self.symbols[symbol] = [type_]
-                            new_symbols_list.append({'symbol': symbol, 'type': [type_]})
+                        self.symbols[symbol] = [type_]
+                        self.symbols_list.append({'symbol': symbol, 'type': [type_]})
 
-            # Merge with existing symbols
-            self.symbols.update(new_symbols)
-            self.symbols_list = list({v['symbol']: v for v in self.symbols_list + new_symbols_list}.values())  # Remove duplicates
-
-            # Load and process replacements
             replacements = data.get('replacements', [])
             for replacement in replacements:
-                from_symbol = replacement.get('from')
-                to_symbol = replacement.get('to')
-                if from_symbol is None or to_symbol is None:
-                    messagebox.showerror("Error", f"{self.localization.get('process_repl_sym_err', 'Each replacement entry must have a (from) and a (to) symbol (string)')}")
+                from_config = replacement.get('from')
+                to_config = replacement.get('to')
+                symbol_types = read_symbol_types_from_yaml(TEMPLATES)
+
+                if from_config is None or to_config is None:
+                    messagebox.showerror("Error", self.localization.get('process_repl_sym_err', 'Each replacement entry must have a (from) and a (to) symbol (string or list)'))
                     return
 
-                if from_symbol in self.symbols:
-                    # Update the existing symbol with new rename
-                    existing_type = self.symbols[from_symbol][0]
-                    existing_rename = self.symbols[from_symbol][1] if len(self.symbols[from_symbol]) > 1 else ''
-                    new_rename = f"{existing_rename}, {to_symbol}" if existing_rename else to_symbol
-                    self.symbols[from_symbol] = [existing_type, new_rename]
-                else:
-                    # Add new symbol with the replacement as rename
-                    self.symbols[from_symbol] = ['', to_symbol]
+                from_list = from_config if isinstance(from_config, list) else [from_config]
+                to_list = to_config if isinstance(to_config, list) else [to_config]
 
-            # Update symbols_list after processing replacements
-            self.symbols_list = [{'symbol': k, 'type': v[0], 'rename': v[1] if len(v) > 1 else ''} for k, v in self.symbols.items()]
+                from_symbol = ', '.join(from_list).strip()
+
+                if not from_list or not to_list:
+                    messagebox.showerror("Error", self.localization.get('process_repl_inv_err', '(from) and (to) in replacements cannot be empty.'))
+                    return
+
+                if from_symbol not in self.symbols:
+                    from_str = str(from_symbol)
+                    type_ = symbol_types.get(from_str, 'unknown')
+                    self.symbols[from_symbol] = [type_]
+
+                if len(self.symbols[from_symbol]) < 2 or not isinstance(self.symbols[from_symbol][1], list):
+                    self.symbols[from_symbol].append([])
+
+                rename_list = self.symbols[from_symbol][1]
+                for to_symbol in to_list:
+                    if to_symbol not in rename_list:
+                        rename_list.append(to_symbol)
+                    if to_symbol not in self.symbols:
+                        symbol_type = symbol_types.get(to_symbol, 'unknown')
+                        self.symbols[to_symbol] = [symbol_type]
+
+            self.symbols_list = []
+            for symbol, data in self.symbols.items():
+                if isinstance(data, list) and len(data) > 0:
+                    type_ = data[0] if isinstance(data[0], str) else ''
+                    rename_data = data[1:] if len(data) > 1 else []
+                    if not rename_data:
+                        rename = ''
+                    elif len(rename_data) == 1:
+                        rename = rename_data[0]
+                    else:
+                        rename = rename_data
+                    self.symbols_list.append({
+                        'symbol': symbol,
+                        'type': type_,
+                        'rename': rename
+                    })
 
             self.update_entries_window()
         except (YAMLError, ValueError) as e:
@@ -4531,7 +4622,7 @@ class Dictionary(TkinterDnD.Tk):
         window_width = self.append_window.winfo_width()
         window_height = self.append_window.winfo_height()
         x = self.ap_button.winfo_rootx() + (self.ap_button.winfo_width() // 2) - (window_width // 2)
-        y = self.ap_button.winfo_rooty() - 155
+        y = self.ap_button.winfo_rooty() - 230
         self.append_window.geometry(f"+{x}+{y}")
 
         border = ttk.Frame(self.append_window, borderwidth=2, relief="solid")
@@ -4558,6 +4649,16 @@ class Dictionary(TkinterDnD.Tk):
         append_json.grid(padx=5, pady=5, column=0, row=2, sticky="nsew")
         self.localizable_widgets['append_json'] = append_json
         self.create_tooltip(append_json, 'tp_append_json', 'Appends Synthv JSON Dictionaries')
+
+        append_csv= ttk.Button(button_frame, text="Append CSV File", style='Accent.TButton', command=self.append_csv_tsv)
+        append_csv.grid(padx=5, pady=5, column=0, row=3, sticky="nsew")
+        self.localizable_widgets['append_csv'] = append_csv
+        self.create_tooltip(append_csv, 'tp_append_csv', 'Appends CSV (Comma Separated Value) Files')
+
+        append_tsv= ttk.Button(button_frame, text="Append TSV File", style='Accent.TButton', command=self.append_csv_tsv)
+        append_tsv.grid(padx=5, pady=5, column=0, row=4, sticky="nsew")
+        self.localizable_widgets['append_tsv'] = append_tsv
+        self.create_tooltip(append_tsv, 'tp_append_tsv', 'Appends TSV (Tab Separated Value) Files')
 
         # Close the menu window when it loses focus
         self.append_window.focus_set()

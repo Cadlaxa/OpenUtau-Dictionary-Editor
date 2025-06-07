@@ -218,6 +218,10 @@ tsv: "TSVファイルをエクスポート"
 csv: "CSVファイルをエクスポート"
 localization_updated: "ローカライズファイルが正常に更新されました。"
 localization_err: "ローカライズファイルの更新に失敗しました: "
+append_csv: "CSVファイルを追加"
+tp_append_csv: "CSV（カンマ区切り値）ファイルを追加します"
+append_tsv: "TSVファイルを追加"
+tp_append_tsv: "TSV（タブ区切り値）ファイルを追加します"
 
 
 # Tooltips

@@ -1,5 +1,10 @@
 # Changelog
 ---
+**`(6/--/25)`**
+- Fixed Append YAML to include list replacements
+- Fixed CSV and TSV errors out when the file has BOM attributes
+- Support Appending CSV and TSV files
+
 **`(6/6/25)`**
 - Replacements now support phoneme list
 - Regex replacement bug fix

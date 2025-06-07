@@ -215,7 +215,10 @@ tsv: "Export TSV file"
 csv: "Export CSV file"
 localization_updated: "Localization files have been updated successfully."
 localization_err: "Failed to update localization files: "
-
+append_csv: "Append CSV File"
+tp_append_csv: "Appends CSV (Comma Separated Value) Files"
+append_tsv: "Append TSV File"
+tp_append_tsv: "Appends TSV (Tab Separated Value) Files"
 
 # Tooltips
 tp_search_entry: "Search the dictionary symbols"

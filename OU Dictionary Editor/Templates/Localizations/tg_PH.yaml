@@ -20,7 +20,7 @@ add_entry: "Magdagdag ng Entry"
 # Main Buttons UI
 convert_cmudict: "I-import ang CMUDict"
 export_cmudict: "I-export ang CMUDict"
-append_yaml: "Idagdag ang YAML File"
+append_yaml: "Magdagdag ng YAML File"
 open_yaml: "Buksan ang YAML File"
 save_ou: "I-save ang OU Dictionary"
 save_ds: "I-save ang DS Dictionary"
@@ -196,9 +196,9 @@ save_win: "Nagsa-save, mangyaring maghintay..."
 load_win: "Naglo-load, mangyaring maghintay..."
 
 # New translation (mixed)
-append_file: "Idagdag ang Diksyunaryo"
-append_cmu: "Idagdag ang CMUdict File"
-append_json: "Idagdag ang Synthv JSON File"
+append_file: "Magdagdag ng Diksyunaryo"
+append_cmu: "Magdagdag ng CMUdict File"
+append_json: "Magdagdag ng Synthv JSON File"
 get_symbols_button: "Kunin ang mga Simbolo"
 process_repl_sym_err: "Ang bawat entry ng pagpapalit ay dapat magkaroon ng (mula sa) at (patungong) simbolo (string)"
 no_template: "Pinili mo ang (Walang Template). Lahat ng kasalukuyang mga simbolo ay malilinisan."
@@ -215,6 +215,11 @@ tsv: "I-export ang TSV file"
 csv: "I-export ang CSV file"
 localization_updated: "Matagumpay na na-update ang mga localization file."
 localization_err: "Nabigong i-update ang mga localization file: "
+append_csv: "Magdagdag ng CSV File"
+tp_append_csv: "Nagdaragdag ng mga CSV (Comma Separated Value) na file"
+append_tsv: "Magdagdag ng TSV File"
+tp_append_tsv: "Nagdaragdag ng mga TSV (Tab Separated Value) na file"
+
 
 
 # Tooltips

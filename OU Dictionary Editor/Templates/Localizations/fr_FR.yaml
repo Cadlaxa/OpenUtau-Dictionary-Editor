@@ -215,6 +215,11 @@ tsv: "Exporter le fichier TSV"
 csv: "Exporter le fichier CSV"
 localization_updated: "Les fichiers de localisation ont été mis à jour avec succès."
 localization_err: "Échec de la mise à jour des fichiers de localisation : "
+append_csv: "Ajouter un fichier CSV"
+tp_append_csv: "Ajoute des fichiers CSV (valeurs séparées par des virgules)"
+append_tsv: "Ajouter un fichier TSV"
+tp_append_tsv: "Ajoute des fichiers TSV (valeurs séparées par des tabulations)"
+
 
 
 # Tooltips
