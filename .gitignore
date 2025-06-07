@@ -176,7 +176,8 @@ cython_debug/
 
 # Ignore specific templates
 **/Templates/phoneme systems.csv
-**/ready_release.py
+**/ready_release.pyw
+**/paths.json
 
 # Ignore .sha files
 **/*.sha
