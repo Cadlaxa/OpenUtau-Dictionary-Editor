@@ -55,7 +55,7 @@ select_local: "选择本地化:"
 local_op: "本地化选项"
 update: "更新"
 update_b: "检查更新"
-btn_git: "请参阅 Github 上的发布"
+btn_git: "参阅 Github 上的版本"
 whats_new: "新消息"
 whats_new_cb: "不要再显示这个"
 
