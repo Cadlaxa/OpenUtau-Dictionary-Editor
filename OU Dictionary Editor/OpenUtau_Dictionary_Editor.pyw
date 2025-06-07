@@ -4863,11 +4863,10 @@ class Dictionary(TkinterDnD.Tk):
         btn_close.pack(side=tk.RIGHT, padx=5)
         self.localizable_widgets['close'] = btn_close
 
-        btn_see = ttk.Button(button_frame, text="See Release on Github", style='Accent.TButton')
+        btn_see = ttk.Button(button_frame, text="See Release on Github", style='Accent.TButton',
+            command=lambda: self.callback("https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases/latest"))
         btn_see.pack(side=tk.RIGHT, padx=5)
         self.localizable_widgets['btn_git'] = btn_see
-        btn_see.bind("<Button-1>", lambda e:
-        self.callback("https://github.com/Cadlaxa/OpenUtau-Dictionary-Editor/releases/latest"))
         self.create_tooltip(btn_see, 'tp_btn_see', 'Directs to the Github Repository for more information')
 
         # Add a checkbox to not show the "What's New" window next time

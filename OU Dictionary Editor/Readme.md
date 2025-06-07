@@ -4,6 +4,7 @@
 - Fixed Append YAML to include list replacements
 - Fixed CSV and TSV errors out when the file has BOM attributes
 - Support Appending CSV and TSV files
+- Fixed `See Release on Github` not calling the Github Release Page
 
 **`(6/6/25)`**
 - Replacements now support phoneme list
