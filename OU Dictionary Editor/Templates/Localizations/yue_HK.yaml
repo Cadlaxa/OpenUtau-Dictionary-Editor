@@ -215,6 +215,10 @@ tsv: "導出 TSV 檔案"
 csv: "導出 CSV 檔案"
 localization_updated: "本地化檔案已經成功更新。"
 localization_err: "無法更新本地化檔案: "
+append_csv: "附加 CSV 檔案"
+tp_append_csv: "附加 CSV (逗號分隔值) 檔案"
+append_tsv: "附加 TSV 檔案"
+tp_append_tsv: "附加 TSV (製表符分隔值) 檔案"
 
 # Tooltips
 tp_search_entry: "搜尋辭典符號"
